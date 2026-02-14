@@ -90,7 +90,19 @@ const login = async (req, res) => {
   }
 };
 
+const forgotPassword = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { email } = req.body;
+  // For now, just return a success message
+  res.status(200).json({ message: 'Password reset link sent to your email.' });
+};
+
 module.exports = {
   register,
-  login
+  login,
+  forgotPassword,
 };

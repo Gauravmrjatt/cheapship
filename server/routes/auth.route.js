@@ -3,9 +3,47 @@ const router = express.Router();
 const { check } = require('express-validator');
 const authController = require('../controllers/auth.controller');
 
-// @route   POST api/v1/auth/register
-// @desc    Register user
-// @access  Public
+/**
+ * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Authentication endpoints
+ */
+
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *               - mobile
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *               mobile:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *       400:
+ *         description: Bad request
+ */
 router.post(
   '/register',
   [
@@ -17,9 +55,34 @@ router.post(
   authController.register
 );
 
-// @route   POST api/v1/auth/login
-// @desc    Authenticate user & get token
-// @access  Public
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Login a user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *     responses:
+ *       200:
+ *         description: User logged in successfully
+ *       400:
+ *         description: Invalid credentials
+ */
 router.post(
   '/login',
   [
@@ -27,6 +90,36 @@ router.post(
     check('password', 'Password is required').exists()
   ],
   authController.login
+);
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Forgot password
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Password reset link sent
+ *       400:
+ *         description: Bad request
+ */
+router.post(
+  '/forgot-password',
+  [check('email', 'Please include a valid email').isEmail()],
+  authController.forgotPassword
 );
 
 module.exports = router;

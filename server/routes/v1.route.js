@@ -8,6 +8,8 @@ const orderRoute = require("./order.route");
 
 route.use('/auth', authRoute);
 route.use('/orders', orderRoute);
+const dashboardRoute = require("./dashboard.route");
+route.use('/dashboard', dashboardRoute);
 route.get('/test-db', async (req, res) => {
   try {
     const prisma = req.app.locals.prisma;

@@ -9,12 +9,10 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
-  type ColumnFiltersState,
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table"
 import Link from "next/link"
-
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -44,22 +42,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { 
   MoreVerticalCircle01Icon, 
   LeftToRightListBulletIcon, 
   ArrowDown01Icon, 
+  Add01Icon, 
   ArrowLeftDoubleIcon, 
   ArrowLeft01Icon, 
   ArrowRight01Icon, 
   ArrowRightDoubleIcon,
   CheckmarkCircle01Icon,
   Loading03Icon,
-  Cancel01Icon,
   DeliveryTruck01Icon,
-  Package01Icon,
   SearchIcon,
+  FilterIcon,
+  Calendar01Icon,
+  Cancel01Icon
 } from "@hugeicons/core-free-icons"
+import { OrderFilters } from "@/lib/hooks/use-orders"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Separator } from "@/components/ui/separator"
 
 export type Order = {
   id: string
@@ -69,43 +78,6 @@ export type Order = {
   total_amount: number
   shipment_status: string
   created_at?: string
-}
-
-const getStatusBadge = (status: string) => {
-  const statusConfig: Record<string, { icon: React.ReactNode; className: string }> = {
-    "delivered": {
-      icon: <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400" />,
-      className: "text-green-700 border-green-200 bg-green-50 dark:text-green-400 dark:border-green-800 dark:bg-green-950",
-    },
-    "in_transit": {
-      icon: <HugeiconsIcon icon={DeliveryTruck01Icon} strokeWidth={2} className="text-blue-500" />,
-      className: "text-blue-700 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950",
-    },
-    "pending": {
-      icon: <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="text-yellow-500" />,
-      className: "text-yellow-700 border-yellow-200 bg-yellow-50 dark:text-yellow-400 dark:border-yellow-800 dark:bg-yellow-950",
-    },
-    "cancelled": {
-      icon: <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="text-red-500" />,
-      className: "text-red-700 border-red-200 bg-red-50 dark:text-red-400 dark:border-red-800 dark:bg-red-950",
-    },
-    "processing": {
-      icon: <HugeiconsIcon icon={Package01Icon} strokeWidth={2} className="text-purple-500" />,
-      className: "text-purple-700 border-purple-200 bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:bg-purple-950",
-    },
-  }
-
-  const config = statusConfig[status.toLowerCase()] || {
-    icon: <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} />,
-    className: "text-muted-foreground",
-  }
-
-  return (
-    <Badge variant="outline" className={`px-2 py-0.5 ${config.className}`}>
-      {config.icon}
-      <span className="capitalize">{status.replace(/_/g, " ")}</span>
-    </Badge>
-  )
 }
 
 const columns: ColumnDef<Order>[] = [
@@ -138,11 +110,11 @@ const columns: ColumnDef<Order>[] = [
   },
   {
     accessorKey: "id",
-    header: "Order ID",
+    header: "Shipment ID",
     cell: ({ row }) => (
-      <Link 
+      <Link
         href={`/dashboard/orders/${row.original.id}`}
-        className="font-medium text-primary hover:underline"
+        className="text-foreground hover:underline font-medium"
       >
         #{row.original.id.slice(0, 8)}
       </Link>
@@ -151,25 +123,27 @@ const columns: ColumnDef<Order>[] = [
   },
   {
     accessorKey: "order_type",
-    header: "Order Type",
+    header: "Type",
     cell: ({ row }) => (
-      <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
-        {row.original.order_type}
-      </Badge>
+      <div className="w-24">
+        <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
+          {row.original.order_type}
+        </Badge>
+      </div>
     ),
   },
   {
     accessorKey: "shipment_type",
-    header: "Shipment Type",
+    header: "Service",
     cell: ({ row }) => (
-      <Badge variant="secondary" className="px-1.5 capitalize">
+      <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
         {row.original.shipment_type}
       </Badge>
     ),
   },
   {
     accessorKey: "payment_mode",
-    header: "Payment Mode",
+    header: "Payment",
     cell: ({ row }) => (
       <span className="capitalize">{row.original.payment_mode}</span>
     ),
@@ -178,7 +152,7 @@ const columns: ColumnDef<Order>[] = [
     accessorKey: "total_amount",
     header: () => <div className="text-right">Amount</div>,
     cell: ({ row }) => (
-      <div className="text-right font-medium">
+      <div className="text-right tabular-nums">
         ₹{row.original.total_amount.toLocaleString("en-IN")}
       </div>
     ),
@@ -186,7 +160,21 @@ const columns: ColumnDef<Order>[] = [
   {
     accessorKey: "shipment_status",
     header: "Status",
-    cell: ({ row }) => getStatusBadge(row.original.shipment_status),
+    cell: ({ row }) => {
+      const status = row.original.shipment_status.toLowerCase();
+      return (
+        <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
+          {status === "delivered" ? (
+            <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400" />
+          ) : status === "pending" || status === "processing" ? (
+            <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} />
+          ) : (
+            <HugeiconsIcon icon={DeliveryTruck01Icon} strokeWidth={2} />
+          )}
+          {status.replace(/_/g, " ")}
+        </Badge>
+      );
+    },
   },
   {
     id: "actions",
@@ -204,12 +192,12 @@ const columns: ColumnDef<Order>[] = [
           <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
           <span className="sr-only">Open menu</span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
+        <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem render={<Link href={`/dashboard/orders/${row.original.id}`} />}>
             View Details
           </DropdownMenuItem>
-          <DropdownMenuItem>Track Order</DropdownMenuItem>
-          <DropdownMenuItem>Download Invoice</DropdownMenuItem>
+          <DropdownMenuItem>Track Shipment</DropdownMenuItem>
+          <DropdownMenuItem>Download Label</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive">Cancel Order</DropdownMenuItem>
         </DropdownMenuContent>
@@ -227,25 +215,24 @@ interface OrdersDataTableProps {
     totalPages: number
     total: number
   }
+  filters?: OrderFilters
   onPageChange?: (page: number) => void
   onPageSizeChange?: (pageSize: number) => void
+  onFilterChange?: (filters: OrderFilters) => void
 }
 
 export function OrdersDataTable({
   data,
   isLoading,
   pagination,
+  filters,
   onPageChange,
   onPageSizeChange,
+  onFilterChange,
 }: OrdersDataTableProps) {
   const [rowSelection, setRowSelection] = React.useState({})
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [globalFilter, setGlobalFilter] = React.useState("")
 
   const table = useReactTable({
     data,
@@ -254,217 +241,379 @@ export function OrdersDataTable({
       sorting,
       columnVisibility,
       rowSelection,
-      columnFilters,
-      globalFilter,
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+  const handleFilterUpdate = (key: keyof OrderFilters, value: string) => {
+    onFilterChange?.({ ...filters, [key]: value })
   }
 
+  const clearAllFilters = () => {
+    onFilterChange?.({
+      order_type: "ALL",
+      shipment_status: "ALL",
+      payment_mode: "ALL",
+      shipment_type: "ALL",
+      from: "",
+      to: "",
+      search: "",
+    })
+  }
+
+  const activeFiltersCount = Object.entries(filters || {}).filter(
+    ([key, value]) => value && value !== "ALL" && key !== "search" && key !== "shipment_status"
+  ).length
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+    <Tabs
+      value={filters?.shipment_status ?? "ALL"}
+      onValueChange={(v) => handleFilterUpdate("shipment_status", v)}
+      className="w-full flex-col justify-start gap-6"
+    >
+      <div className="flex items-center justify-between px-4 lg:px-6">
+        <div className="flex items-center gap-4">
+          <Label htmlFor="status-selector" className="sr-only">
+            Status
+          </Label>
+          <Select
+            value={filters?.shipment_status ?? "ALL"}
+            onValueChange={(v) => handleFilterUpdate("shipment_status", v)}
+          >
+            <SelectTrigger
+              className="flex w-fit @4xl/main:hidden"
+              size="sm"
+              id="status-selector"
+            >
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="ALL">All Orders</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="PROCESSING">Processing</SelectItem>
+                <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
+                <SelectItem value="DELIVERED">Delivered</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
+            <TabsTrigger value="ALL">All Orders</TabsTrigger>
+            <TabsTrigger value="PENDING">Pending</TabsTrigger>
+            <TabsTrigger value="PROCESSING">Processing</TabsTrigger>
+            <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
+            <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
+            <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
+          </TabsList>
+        </div>
+
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <HugeiconsIcon 
-              icon={SearchIcon} 
-              strokeWidth={2} 
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" 
-            />
+          <div className="relative hidden w-64 lg:block">
+            <HugeiconsIcon icon={SearchIcon} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               placeholder="Search orders..."
-              value={globalFilter ?? ""}
-              onChange={(event) => setGlobalFilter(event.target.value)}
-              className="pl-8 w-64"
+              className="pl-9 h-8"
+              value={filters?.search ?? ""}
+              onChange={(e) => handleFilterUpdate("search", e.target.value)}
             />
           </div>
-        </div>
-        <div className="flex items-center gap-2">
+
+          <Popover>
+            <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+              <HugeiconsIcon icon={Calendar01Icon} className="size-4" />
+              <span className="hidden lg:inline">Date Range</span>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4" align="end">
+              <div className="space-y-4">
+                <h4 className="font-medium text-sm">Select Date Range</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase opacity-40">From</Label>
+                    <Input
+                      type="date"
+                      className="h-8"
+                      value={filters?.from ?? ""}
+                      onChange={(e) => handleFilterUpdate("from", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase opacity-40">To</Label>
+                    <Input
+                      type="date"
+                      className="h-8"
+                      value={filters?.to ?? ""}
+                      onChange={(e) => handleFilterUpdate("to", e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" className="flex-1 h-8 text-xs" onClick={() => onFilterChange?.({ ...filters, from: new Date().toISOString().split('T')[0], to: new Date().toISOString().split('T')[0] })}>Today</Button>
+                  <Button variant="ghost" className="flex-1 h-8 text-xs" onClick={() => { handleFilterUpdate("from", ""); handleFilterUpdate("to", ""); }}>Reset</Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+              <HugeiconsIcon icon={FilterIcon} className="size-4" />
+              <span className="hidden lg:inline">Filters</span>
+              {activeFiltersCount > 0 && (
+                <Badge variant="secondary" className="ml-2 h-5 rounded-full px-1">
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4 space-y-4" align="end">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Service Layer</Label>
+                  <Select value={filters?.shipment_type ?? "ALL"} onValueChange={(v) => handleFilterUpdate("shipment_type", v)}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Services</SelectItem>
+                      <SelectItem value="DOMESTIC">Domestic</SelectItem>
+                      <SelectItem value="INTERNATIONAL">International</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Payment Mode</Label>
+                  <Select value={filters?.payment_mode ?? "ALL"} onValueChange={(v) => handleFilterUpdate("payment_mode", v)}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Payments</SelectItem>
+                      <SelectItem value="PREPAID">Prepaid</SelectItem>
+                      <SelectItem value="COD">COD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Logistics Protocol</Label>
+                  <Select value={filters?.order_type ?? "ALL"} onValueChange={(v) => handleFilterUpdate("order_type", v)}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Protocols</SelectItem>
+                      <SelectItem value="SURFACE">Surface</SelectItem>
+                      <SelectItem value="EXPRESS">Express</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Separator />
+              <Button variant="ghost" className="w-full h-8 text-xs text-destructive" onClick={clearAllFilters}>
+                Clear All Filters
+              </Button>
+            </PopoverContent>
+          </Popover>
+
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="outline" size="sm" />}
             >
               <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} data-icon="inline-start" />
-              Columns
+              <span className="hidden lg:inline">Columns</span>
               <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              {table
-                .getAllColumns()
-                .filter(
-                  (column) =>
-                    typeof column.accessorFn !== "undefined" &&
-                    column.getCanHide()
-                )
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id.replace(/_/g, " ")}
-                    </DropdownMenuCheckboxItem>
-                  )
-                })}
+              {table.getAllColumns().filter(c => c.getCanHide()).map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.id}
+                  className="capitalize"
+                  checked={column.getIsVisible()}
+                  onCheckedChange={v => column.toggleVisibility(!!v)}
+                >
+                  {column.id.replace(/_/g, " ")}
+                </DropdownMenuCheckboxItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="default" size="sm" render={<Link href="/dashboard/orders/new" />}>
-            Create Order
+
+          <Button size="sm" render={<Link href="/dashboard/orders/new" />}>
+            <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
+            <span className="hidden lg:inline">New Order</span>
           </Button>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border">
-        <Table>
-          <TableHeader className="bg-muted sticky top-0 z-10">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
+      {/* Active Filter Chips */}
+      {(activeFiltersCount > 0 || filters?.search || filters?.from) && (
+        <div className="flex flex-wrap items-center gap-2 px-4 lg:px-6">
+          {filters?.search && (
+            <Badge variant="secondary" className="px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1.5">
+              Search: {filters.search}
+              <button onClick={() => handleFilterUpdate("search", "")} className="hover:text-foreground"><HugeiconsIcon icon={Cancel01Icon} className="size-2.5" /></button>
+            </Badge>
+          )}
+          {filters?.from && (
+            <Badge variant="secondary" className="px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1.5">
+              Date Applied
+              <button onClick={() => { handleFilterUpdate("from", ""); handleFilterUpdate("to", ""); }} className="hover:text-foreground"><HugeiconsIcon icon={Cancel01Icon} className="size-2.5" /></button>
+            </Badge>
+          )}
+          {filters?.shipment_type !== "ALL" && (
+            <Badge variant="secondary" className="px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1.5 uppercase">
+              {filters?.shipment_type}
+              <button onClick={() => handleFilterUpdate("shipment_type", "ALL")} className="hover:text-foreground"><HugeiconsIcon icon={Cancel01Icon} className="size-2.5" /></button>
+            </Badge>
+          )}
+          {activeFiltersCount > 0 && (
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all" onClick={clearAllFilters}>
+              Clear All
+            </Button>
+          )}
+        </div>
+      )}
+
+      <TabsContent
+        value={filters?.shipment_status ?? "ALL"}
+        className="relative flex flex-col gap-4 overflow-auto px-4 rounded-2xl lg:px-6"
+      >
+        <div className="overflow-hidden rounded-lg border rounded-2xl">
+          <Table>
+            <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
                     <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No orders found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableHeader>
+            <TableBody className="**:data-[slot=table-cell]:first:w-8 rounded-2xl">
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <HugeiconsIcon icon={Loading03Icon} className="size-6 animate-spin mx-auto text-muted-foreground" />
+                  </TableCell>
+                </TableRow>
+              ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-      <div className="flex items-center justify-between px-2">
-        <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {pagination?.total || table.getFilteredRowModel().rows.length} order(s) selected.
+        <div className="flex items-center justify-between px-4">
+          <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+            {table.getFilteredSelectedRowModel().rows.length} of{" "}
+            {pagination?.total || 0} row(s) selected.
+          </div>
+          <div className="flex w-full items-center gap-8 lg:w-fit">
+            <div className="hidden items-center gap-2 lg:flex">
+              <Label htmlFor="rows-per-page" className="text-sm font-medium">
+                Rows per page
+              </Label>
+              <Select
+                value={`${pagination?.pageSize || 10}`}
+                onValueChange={(value) => {
+                  onPageSizeChange?.(Number(value))
+                }}
+                items={[10, 20, 50].map((pageSize) => ({
+                  label: `${pageSize}`,
+                  value: `${pageSize}`,
+                }))}
+              >
+                <SelectTrigger size="sm" className="w-20" id="rows-per-page">
+                  <SelectValue
+                    placeholder={pagination?.pageSize || 10}
+                  />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  <SelectGroup>
+                    {[10, 20, 50].map((pageSize) => (
+                      <SelectItem key={pageSize} value={`${pageSize}`}>
+                        {pageSize}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex w-fit items-center justify-center text-sm font-medium">
+              Page {pagination?.page || 1} of{" "}
+              {pagination?.totalPages || 1}
+            </div>
+            <div className="ml-auto flex items-center gap-2 lg:ml-0">
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={() => onPageChange?.(1)}
+                disabled={pagination?.page === 1}
+              >
+                <span className="sr-only">Go to first page</span>
+                <HugeiconsIcon icon={ArrowLeftDoubleIcon} strokeWidth={2} />
+              </Button>
+              <Button
+                variant="outline"
+                className="size-8"
+                size="icon"
+                onClick={() => onPageChange?.((pagination?.page || 1) - 1)}
+                disabled={pagination?.page === 1}
+              >
+                <span className="sr-only">Go to previous page</span>
+                <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+              </Button>
+              <Button
+                variant="outline"
+                className="size-8"
+                size="icon"
+                onClick={() => onPageChange?.((pagination?.page || 1) + 1)}
+                disabled={pagination?.page === pagination?.totalPages}
+              >
+                <span className="sr-only">Go to next page</span>
+                <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
+              </Button>
+              <Button
+                variant="outline"
+                className="hidden size-8 lg:flex"
+                size="icon"
+                onClick={() => onPageChange?.(pagination?.totalPages || 1)}
+                disabled={pagination?.page === pagination?.totalPages}
+              >
+                <span className="sr-only">Go to last page</span>
+                <HugeiconsIcon icon={ArrowRightDoubleIcon} strokeWidth={2} />
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex w-full items-center gap-8 lg:w-fit">
-          <div className="hidden items-center gap-2 lg:flex">
-            <Label htmlFor="rows-per-page" className="text-sm font-medium">
-              Rows per page
-            </Label>
-            <Select
-              value={`${pagination?.pageSize || 10}`}
-              onValueChange={(value) => {
-                onPageSizeChange?.(Number(value))
-              }}
-              items={[10, 20, 30, 40, 50].map((pageSize) => ({
-                label: `${pageSize}`,
-                value: `${pageSize}`,
-              }))}
-            >
-              <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                <SelectValue placeholder={pagination?.pageSize || 10} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                <SelectGroup>
-                  {[10, 20, 30, 40, 50].map((pageSize) => (
-                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                      {pageSize}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex w-fit items-center justify-center text-sm font-medium">
-            Page {pagination?.page || 1} of {pagination?.totalPages || 1}
-          </div>
-          <div className="ml-auto flex items-center gap-2 lg:ml-0">
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => onPageChange?.(1)}
-              disabled={!pagination || pagination.page === 1}
-            >
-              <span className="sr-only">Go to first page</span>
-              <HugeiconsIcon icon={ArrowLeftDoubleIcon} strokeWidth={2} />
-            </Button>
-            <Button
-              variant="outline"
-              className="size-8"
-              size="icon"
-              onClick={() => onPageChange?.((pagination?.page || 1) - 1)}
-              disabled={!pagination || pagination.page === 1}
-            >
-              <span className="sr-only">Go to previous page</span>
-              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-            </Button>
-            <Button
-              variant="outline"
-              className="size-8"
-              size="icon"
-              onClick={() => onPageChange?.((pagination?.page || 1) + 1)}
-              disabled={!pagination || pagination.page === pagination.totalPages}
-            >
-              <span className="sr-only">Go to next page</span>
-              <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
-            </Button>
-            <Button
-              variant="outline"
-              className="hidden size-8 lg:flex"
-              size="icon"
-              onClick={() => onPageChange?.(pagination?.totalPages || 1)}
-              disabled={!pagination || pagination.page === pagination.totalPages}
-            >
-              <span className="sr-only">Go to last page</span>
-              <HugeiconsIcon icon={ArrowRightDoubleIcon} strokeWidth={2} />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+      </TabsContent>
+    </Tabs>
   )
 }

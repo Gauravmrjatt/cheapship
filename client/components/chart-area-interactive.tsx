@@ -140,7 +140,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function ChartAreaInteractive() {
+export function ChartAreaInteractive({ isLoading = false }: { isLoading?: boolean }) {
   const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState("90d")
 
@@ -149,6 +149,27 @@ export function ChartAreaInteractive() {
       setTimeRange("7d")
     }
   }, [isMobile])
+
+  if (isLoading) {
+    return (
+      <Card className="@container/card">
+        <CardHeader>
+          <CardTitle>
+            <div className="h-6 w-32 bg-muted rounded-md animate-pulse" />
+          </CardTitle>
+          <CardDescription>
+            <div className="h-4 w-48 bg-muted rounded-md animate-pulse" />
+          </CardDescription>
+          <CardAction>
+            <div className="h-9 w-40 bg-muted rounded-md animate-pulse" />
+          </CardAction>
+        </CardHeader>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <div className="aspect-auto h-[250px] w-full bg-muted rounded-md animate-pulse" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   const filteredData = chartData.filter((item) => {
     const date = new Date(item.date)

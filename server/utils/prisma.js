@@ -9,4 +9,8 @@ const prisma = new PrismaClient({
   adapter,
 });
 
+BigInt.prototype.toJSON = function () {
+  return this.toString();
+};
+
 module.exports = prisma;

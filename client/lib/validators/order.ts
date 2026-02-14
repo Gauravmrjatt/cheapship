@@ -10,11 +10,22 @@ export const addressSchema = z.object({
   pincode: z.string().min(6, "Pincode must be at least 6 characters"),
 });
 
+export const productSchema = z.object({
+  name: z.string().min(1, "Product name is required"),
+  quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
+  price: z.coerce.number().min(1, "Price must be at least 1"),
+});
+
 export const createOrderSchema = z.object({
   order_type: z.enum(["SURFACE", "EXPRESS"]),
   shipment_type: z.enum(["DOMESTIC", "INTERNATIONAL"]),
   payment_mode: z.enum(["PREPAID", "COD"]),
+  weight: z.coerce.number().min(0.1, "Weight is required"),
+  length: z.coerce.number().min(1, "Length is required"),
+  width: z.coerce.number().min(1, "Width is required"),
+  height: z.coerce.number().min(1, "Height is required"),
   total_amount: z.coerce.number().min(1, "Total amount is required"),
   pickup_address: addressSchema,
   receiver_address: addressSchema,
+  products: z.array(productSchema).min(1, "At least one product is required"),
 });

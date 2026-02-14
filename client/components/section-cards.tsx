@@ -28,10 +28,8 @@ import { DashboardData } from "@/types/dashboard"
 
 export function SectionCards({
   data,
-  isLoading,
 }: {
   data: DashboardData
-  isLoading: boolean
 }) {
   const cards = [
     {
@@ -131,8 +129,11 @@ export function SectionCards({
             </CardDescription>
 
             <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              {isLoading ? (
-                <Skeleton className="h-8 w-24" />
+              {card.value ?? "-"}
+            </CardTitle>
+
+            {/* {isLoading ? (
+              <Skeleton className="h-8 w-24" />
               ) : (
                 card.value ?? "-"
               )}
@@ -167,16 +168,9 @@ export function SectionCards({
           </CardHeader>
 
           <CardFooter className="flex-col items-start gap-1.5 text-sm">
-            {isLoading ? (
-              <>
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-3 w-32" />
-              </>
-            ) : (
-              <div className="text-muted-foreground">
-                {card.footer}
-              </div>
-            )}
+            <div className="text-muted-foreground">
+              {card.footer}
+            </div>
           </CardFooter>
         </Card>
       ))}

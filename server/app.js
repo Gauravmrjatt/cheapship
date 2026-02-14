@@ -23,7 +23,11 @@ app.use(logger('dev'));
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
+
 app.use('/api/v1', require("./routes/v1.route"));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 /* ==============================
    Health Check Route

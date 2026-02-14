@@ -1,13 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { useOrders } from "@/lib/hooks/use-orders";
+import { useOrders, OrderFilters } from "@/lib/hooks/use-orders";
 import { OrdersDataTable } from "@/components/orders-data-table";
 
 export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const { data, isLoading, isError } = useOrders(page, pageSize);
+  const [filters, setFilters] = useState<OrderFilters>({
+    order_type: "ALL",
+    shipment_status: "ALL",
+    payment_mode: "ALL",
+    shipment_type: "ALL",
+    from: "",
+    to: "",
+    search: "",
+  });
+
+  const { data, isLoading, isError } = useOrders(page, pageSize, filters);
+
+  const handleFilterChange = (newFilters: OrderFilters) => {
+    setFilters(newFilters);
+    setPage(1); // Reset to first page when filters change
+  };
 
   if (isError) return (
     <div className="flex flex-1 flex-col items-center justify-center">
@@ -22,6 +37,8 @@ export default function OrdersPage() {
           <OrdersDataTable
             data={data?.data ?? []}
             isLoading={isLoading}
+            filters={filters}
+            onFilterChange={handleFilterChange}
             pagination={{
               page,
               pageSize,
