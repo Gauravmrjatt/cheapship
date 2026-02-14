@@ -16,6 +16,18 @@ export const productSchema = z.object({
   price: z.coerce.number().min(1, "Price must be at least 1"),
 });
 
+export const calculateRateSchema = z.object({
+  pickupPincode: z.string().min(6, "Pickup pincode is required"),
+  deliveryPincode: z.string().min(6, "Delivery pincode is required"),
+  actualWeight: z.coerce.number().min(0.1, "Weight must be at least 0.1kg"),
+  length: z.coerce.number().min(1, "Length is required"),
+  width: z.coerce.number().min(1, "Width is required"),
+  height: z.coerce.number().min(1, "Height is required"),
+  paymentType: z.enum(["PREPAID", "COD"]),
+  shipmentValue: z.coerce.number().min(1, "Value is required"),
+  dangerousGoods: z.boolean().default(false),
+});
+
 export const createOrderSchema = z.object({
   order_type: z.enum(["SURFACE", "EXPRESS"]),
   shipment_type: z.enum(["DOMESTIC", "INTERNATIONAL"]),

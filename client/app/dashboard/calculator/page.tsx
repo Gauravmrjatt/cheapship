@@ -1,91 +1,120 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { 
-  Calculator01Icon, 
   InformationCircleIcon, 
   Location01Icon, 
-  WeightScale01Icon,
-  Package01Icon,
   FlashIcon,
   RotateLeft01Icon,
   Alert01Icon,
   StarIcon,
   TruckIcon,
   Loading03Icon,
-  ArtificialIntelligence01Icon,
-  SquareRootSquareIcon,
   Navigation01Icon,
-  CheckmarkCircle01Icon
+  Search01Icon,
+  AiCloudIcon,
+  RocketIcon
 } from "@hugeicons/core-free-icons";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useHttp } from "@/lib/hooks/use-http";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { calculateRateSchema } from "@/lib/validators/order";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+
+interface LocationInfo {
+  city: string;
+  state: string;
+  postcode: string;
+}
+
+interface ShipmentInfo {
+  value: string;
+  payment_mode: string;
+  applicable_weight: string;
+  dangerous_goods: string;
+}
 
 interface CourierPartner {
-  courier_company_id: number;
   courier_name: string;
-  rate: number;
-  rating: string;
-  etd: string;
-  etd_hours: number;
+  courier_company_id: number;
+  rating: number;
+  estimated_delivery: string;
+  delivery_in_days: string;
   chargeable_weight: number;
-  cod: number;
+  rate: number;
+  is_surface: boolean;
   mode: string;
+  is_recommended: boolean;
+  is_flagged?: boolean;
+}
+
+interface RateResponse {
+  pickup_location: LocationInfo;
+  delivery_location: LocationInfo;
+  shipment_info: ShipmentInfo;
+  serviceable_couriers: CourierPartner[];
 }
 
 export default function RateCalculatorPage() {
   const [showRates, setShowRates] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
-  const [formData, setFormData] = useState({
-    pickupPincode: "281306",
-    deliveryPincode: "281308",
-    actualWeight: "25",
-    length: "50",
-    width: "50",
-    height: "50",
-    paymentType: "PREPAID",
-    shipmentValue: "500",
-    dangerousGoods: false,
+  
+  const form = useForm<z.infer<typeof calculateRateSchema>>({
+    resolver: zodResolver(calculateRateSchema),
+    defaultValues: {
+      pickupPincode: "281306",
+      deliveryPincode: "281308",
+      actualWeight: 25,
+      length: 50,
+      width: 50,
+      height: 50,
+      paymentType: "PREPAID",
+      shipmentValue: 500,
+      dangerousGoods: false,
+    },
   });
+
+  const { errors } = form.formState;
+  const formValues = form.watch();
 
   const http = useHttp();
 
   const volumetricWeight = useMemo(() => {
-    const l = parseFloat(formData.length) || 0;
-    const w = parseFloat(formData.width) || 0;
-    const h = parseFloat(formData.height) || 0;
+    const l = Number(formValues.length) || 0;
+    const w = Number(formValues.width) || 0;
+    const h = Number(formValues.height) || 0;
     return (l * w * h) / 5000;
-  }, [formData.length, formData.width, formData.height]);
+  }, [formValues.length, formValues.width, formValues.height]);
 
-  const queryParams = new URLSearchParams({
-    pickup_postcode: formData.pickupPincode,
-    delivery_postcode: formData.deliveryPincode,
-    weight: formData.actualWeight,
-    cod: formData.paymentType === "COD" ? "1" : "0",
-    declared_value: formData.shipmentValue,
-    length: formData.length,
-    breadth: formData.width,
-    height: formData.height,
-  }).toString();
+  const chargeableWeight = useMemo(() => {
+    return Math.max(formValues.actualWeight || 0, volumetricWeight);
+  }, [formValues.actualWeight, volumetricWeight]);
 
-  const { data, isLoading, isError, refetch } = useQuery<{
-    success: boolean;
-    data: {
-      available_courier_companies: CourierPartner[];
-    };
-  }>(
+  const queryParams = useMemo(() => new URLSearchParams({
+    pickup_postcode: formValues.pickupPincode,
+    delivery_postcode: formValues.deliveryPincode,
+    weight: formValues.actualWeight?.toString(),
+    cod: formValues.paymentType === "COD" ? "1" : "0",
+    declared_value: formValues.shipmentValue?.toString(),
+    length: formValues.length?.toString(),
+    breadth: formValues.width?.toString(),
+    height: formValues.height?.toString(),
+  }).toString(), [formValues]);
+
+  const { data, isLoading, isError, refetch } = useQuery<RateResponse>(
     http.get(
       ["calculate-rates", queryParams],
       `/orders/calculate-rates?${queryParams}`,
@@ -93,318 +122,382 @@ export default function RateCalculatorPage() {
     )
   );
 
-  const handleCalculate = () => {
-    setShowRates(true);
-    refetch();
+  const handleCalculate = (e: React.FormEvent) => {
+    e.preventDefault();
+    form.handleSubmit(() => {
+      setShowRates(true);
+      refetch();
+    })(e);
   };
 
   const handleReset = () => {
     setShowRates(false);
-    setFormData({
+    form.reset({
       pickupPincode: "",
       deliveryPincode: "",
-      actualWeight: "",
-      length: "",
-      width: "",
-      height: "",
+      actualWeight: 0,
+      length: 0,
+      width: 0,
+      height: 0,
       paymentType: "PREPAID",
-      shipmentValue: "",
+      shipmentValue: 0,
       dangerousGoods: false,
     });
   };
 
-  const partners = data?.data?.available_courier_companies ?? [];
+  const partners = data?.serviceable_couriers ?? [];
   const filteredPartners = partners.filter(p => {
     if (activeTab === "all") return true;
     return p.mode.toLowerCase() === activeTab.toLowerCase();
   });
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-500 pb-20">
-      <div className="flex flex-col gap-1 px-2">
-        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-          <HugeiconsIcon icon={Calculator01Icon} size={24} className="text-primary" />
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 space-y-10 animate-in fade-in duration-700 pb-32">
+      {/* Header Section */}
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-extrabold tracking-tight lg:text-4xl text-foreground">
           Rate Calculator
         </h1>
-        <p className="text-sm text-muted-foreground">Estimate shipping costs and compare partners in real-time</p>
+        <p className="text-muted-foreground text-lg max-w-2xl">
+          Instantly compare shipping rates from India&apos;s leading courier partners and optimize your delivery costs.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 space-y-6">
-          <Card className="overflow-hidden border shadow-sm">
-            <CardHeader className="bg-muted/50 border-b">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+        
+        {/* Left Column: Form & Real-time Stats */}
+        <div className="lg:col-span-4 space-y-8">
+          <Card className="shadow-sm border-border/50">
+            <CardHeader className="space-y-1.5 px-6 pt-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg">Shipment Details</CardTitle>
-                  <CardDescription>Provide package parameters for accurate pricing</CardDescription>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={handleReset}>
-                  <HugeiconsIcon icon={RotateLeft01Icon} size={18} />
+                <CardTitle className="text-xl font-bold">Shipment Parameters</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="rounded-full h-8 w-8 text-muted-foreground"
+                  onClick={handleReset}
+                  title="Reset Form"
+                >
+                  <HugeiconsIcon icon={RotateLeft01Icon} size={16} />
                 </Button>
               </div>
+              <CardDescription>Enter details to get accurate shipping estimates.</CardDescription>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Addresses</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input 
-                      value={formData.pickupPincode}
-                      onChange={(e) => setFormData({...formData, pickupPincode: e.target.value})}
-                      placeholder="Pickup Pin"
-                      className="h-9"
-                    />
-                    <Input 
-                      value={formData.deliveryPincode}
-                      onChange={(e) => setFormData({...formData, deliveryPincode: e.target.value})}
-                      placeholder="Delivery Pin"
-                      className="h-9"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Package Weight (KG)</Label>
-                  <Input 
-                    value={formData.actualWeight}
-                    onChange={(e) => setFormData({...formData, actualWeight: e.target.value})}
-                    placeholder="25"
-                    className="h-9"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dimensions (CM)</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {["length", "width", "height"].map((dim) => (
-                    <Input 
-                      key={dim}
-                      value={formData[dim as keyof typeof formData] as string} 
-                      onChange={(e) => setFormData({...formData, [dim]: e.target.value})} 
-                      className="h-9 text-center" 
-                      placeholder={dim.charAt(0).toUpperCase() + dim.slice(1)} 
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transaction</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Select value={formData.paymentType} onValueChange={(v) => setFormData({...formData, paymentType: v})}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PREPAID">Prepaid</SelectItem>
-                        <SelectItem value="COD">COD</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+            <CardContent className="px-6 pb-6">
+              <form onSubmit={handleCalculate} className="space-y-6">
+                <div className="space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pickup Pincode</FieldLabel>
                       <Input 
-                        value={formData.shipmentValue}
-                        onChange={(e) => setFormData({...formData, shipmentValue: e.target.value})}
-                        className="h-9 pl-6"
-                        placeholder="Value"
+                        {...form.register("pickupPincode")}
+                        placeholder="281306"
+                        className="font-medium"
                       />
+                      <FieldError errors={[errors.pickupPincode]} />
+                    </Field>
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Delivery Pincode</FieldLabel>
+                      <Input 
+                        {...form.register("deliveryPincode")}
+                        placeholder="281308"
+                        className="font-medium"
+                      />
+                      <FieldError errors={[errors.deliveryPincode]} />
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actual Weight (KG)</FieldLabel>
+                      <Input 
+                        {...form.register("actualWeight", { valueAsNumber: true })}
+                        placeholder="25"
+                        className="font-medium"
+                      />
+                      <FieldError errors={[errors.actualWeight]} />
+                    </Field>
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Value (₹)</FieldLabel>
+                      <Input 
+                        {...form.register("shipmentValue", { valueAsNumber: true })}
+                        placeholder="500"
+                        className="font-medium"
+                      />
+                      <FieldError errors={[errors.shipmentValue]} />
+                    </Field>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dimensions (L x W x H in cm)</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Input 
+                        {...form.register("length", { valueAsNumber: true })}
+                        placeholder="L"
+                        className="text-center font-medium"
+                      />
+                      <Input 
+                        {...form.register("width", { valueAsNumber: true })}
+                        placeholder="W"
+                        className="text-center font-medium"
+                      />
+                      <Input 
+                        {...form.register("height", { valueAsNumber: true })}
+                        placeholder="H"
+                        className="text-center font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Mode</FieldLabel>
+                    <Controller
+                      control={form.control}
+                      name="paymentType"
+                      render={({ field }) => (
+                        <Tabs value={field.value} onValueChange={field.onChange} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="PREPAID">Prepaid</TabsTrigger>
+                            <TabsTrigger value="COD">COD</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      )}
+                    />
+                  </Field>
+
+                  <div className="flex items-center space-x-2 rounded-lg border p-4 bg-muted/30">
+                    <Controller
+                      control={form.control}
+                      name="dangerousGoods"
+                      render={({ field }) => (
+                        <Checkbox 
+                          id="dangerous-goods"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="dangerous-goods"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Contains Dangerous Goods
+                      </label>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold">
+                        Liquids, Batteries, Powders
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col justify-end">
-                  <div className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-border bg-muted/30">
-                    <Checkbox 
-                      id="dangerous" 
-                      checked={formData.dangerousGoods}
-                      onCheckedChange={(checked) => setFormData({...formData, dangerousGoods: !!checked})}
-                    />
-                    <Label htmlFor="dangerous" className="text-xs font-medium cursor-pointer text-muted-foreground">
-                      Contains Dangerous / Liquid?
-                    </Label>
-                  </div>
-                </div>
-              </div>
-
-              <Button className="w-full h-10 font-semibold gap-2" onClick={handleCalculate} disabled={isLoading}>
-                {isLoading ? (
-                  <HugeiconsIcon icon={Loading03Icon} size={18} className="animate-spin" />
-                ) : (
-                  <HugeiconsIcon icon={FlashIcon} size={18} />
-                )}
-                {isLoading ? "CALCULATING..." : "Get Instant Rates"}
-              </Button>
+                <Button 
+                  type="submit" 
+                  className="w-full h-11 font-bold shadow-sm"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <HugeiconsIcon icon={Loading03Icon} className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <HugeiconsIcon icon={FlashIcon} className="mr-2 h-4 w-4" />
+                  )}
+                  Calculate Rates
+                </Button>
+              </form>
             </CardContent>
           </Card>
-        </div>
 
-        <div className="lg:col-span-4 space-y-6">
-          <Card className="overflow-hidden border shadow-sm">
-            <CardHeader className="bg-muted/50 border-b">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={SquareRootSquareIcon} size={18} className="text-primary" />
-                <CardTitle className="text-sm font-semibold">Volumetric Weight</CardTitle>
+          {/* Real-time Summary Card */}
+          <Card className="bg-primary/5 border-primary/10 shadow-none">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-widest text-primary/80">Weight Summary</span>
               </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-2">
-                <div className="flex justify-between items-end">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Result</p>
-                    <p className="text-3xl font-bold tracking-tight">{volumetricWeight.toFixed(2)} <span className="text-sm font-medium">KG</span></p>
-                  </div>
-                  <Badge variant="outline" className="text-muted-foreground">SURFACE</Badge>
-                </div>
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${Math.min(volumetricWeight * 2, 100)}%` }} />
-                </div>
-              </div>
-
               <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Calculation Formula</p>
-                  <div className="p-3 bg-muted rounded-lg font-mono text-[10px] text-muted-foreground break-all">
-                    ({formData.length || 0}L × {formData.width || 0}W × {formData.height || 0}H) / 5000 = {volumetricWeight.toFixed(2)} KG
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Volumetric Weight</span>
+                  <span className="text-sm font-bold">{volumetricWeight.toFixed(2)} KG</span>
                 </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} className="text-primary" />
-                    <span>Standard Divisor: 5000</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} className="text-primary" />
-                    <span>Higher weight priority</span>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Actual Weight</span>
+                  <span className="text-sm font-bold">{formValues.actualWeight || 0} KG</span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border shadow-sm">
-            <CardContent className="p-6 flex gap-3">
-              <HugeiconsIcon icon={InformationCircleIcon} size={18} className="text-primary shrink-0" />
-              <div className="space-y-1">
-                <h4 className="font-semibold text-sm">Quick Insights</h4>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  We compare Dead Weight vs Volumetric Weight and automatically recommend the most cost-effective path.
-                </p>
+                <Separator className="bg-primary/10" />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">Chargeable Weight</span>
+                  <span className="text-lg font-black text-primary">{chargeableWeight.toFixed(2)} KG</span>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {showRates && (
-          <div className="lg:col-span-12 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-            <Separator />
-            
-            {isLoading ? (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2">
-                    <Skeleton className="h-7 w-48" />
-                    <Skeleton className="h-4 w-64" />
+        {/* Right Column: Results */}
+        <div className="lg:col-span-8 space-y-6">
+          {showRates ? (
+            <div className="space-y-6 animate-in slide-in-from-bottom-5 duration-700">
+              
+              {/* Active Route Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl border bg-card flex items-center gap-4">
+                  <div className="bg-primary/10 p-2.5 rounded-lg">
+                    <HugeiconsIcon icon={Location01Icon} className="h-5 w-5 text-primary" />
                   </div>
-                  <Skeleton className="h-9 w-32" />
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Origin</p>
+                    <p className="font-bold">{data?.pickup_location?.city || "Detecting..."} {formValues.pickupPincode}</p>
+                  </div>
                 </div>
-                <Card className="border shadow-sm overflow-hidden">
-                  <div className="bg-muted h-10 w-full border-b" />
-                  <div className="p-0">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="flex items-center justify-between p-6 border-b last:border-0">
-                        <div className="space-y-2">
-                          <Skeleton className="h-5 w-32" />
-                          <Skeleton className="h-3 w-24" />
+                <div className="p-4 rounded-xl border bg-card flex items-center gap-4">
+                  <div className="bg-primary/10 p-2.5 rounded-lg">
+                    <HugeiconsIcon icon={Navigation01Icon} className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Destination</p>
+                    <p className="font-bold">{data?.delivery_location?.city || "Detecting..."} {formValues.deliveryPincode}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters & Tabs */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <h2 className="text-xl font-bold tracking-tight">
+                  Available Partners <span className="text-muted-foreground ml-1 font-normal text-base">({filteredPartners.length})</span>
+                </h2>
+                
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+                  <TabsList className="grid grid-cols-3 w-full sm:w-[300px]">
+                    <TabsTrigger value="all">All</TabsTrigger>
+                    <TabsTrigger value="air">Air</TabsTrigger>
+                    <TabsTrigger value="surface">Surface</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              {/* Courier List */}
+              <div className="space-y-4">
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <Card key={i} className="p-6"><Skeleton className="h-20 w-full" /></Card>
+                  ))
+                ) : isError ? (
+                  <Card className="p-12 text-center border-dashed">
+                    <HugeiconsIcon icon={Cancel01Icon} className="h-12 w-12 text-destructive mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-bold">Calculation Failed</h3>
+                    <p className="text-muted-foreground mt-1">We couldn&apos;t fetch rates right now. Please try again.</p>
+                    <Button onClick={() => refetch()} variant="outline" className="mt-6">Retry Connection</Button>
+                  </Card>
+                ) : filteredPartners.length === 0 ? (
+                  <Card className="p-12 text-center border-dashed">
+                    <HugeiconsIcon icon={Search01Icon} className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-bold">No Routes Found</h3>
+                    <p className="text-muted-foreground mt-1">Try adjusting your pincodes or weight parameters.</p>
+                  </Card>
+                ) : (
+                  filteredPartners.map((courier, idx) => (
+                    <Card 
+                      key={idx} 
+                      className={cn(
+                        "transition-all duration-200 border-l-4",
+                        courier.is_recommended ? "border-l-primary shadow-md" : "border-l-transparent"
+                      )}
+                    >
+                      <div className="p-6 flex flex-col md:flex-row items-center gap-6">
+                        <div className="flex-1 flex items-center gap-5 w-full">
+                          <div className={cn(
+                            "h-14 w-14 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+                            courier.is_recommended ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          )}>
+                            <HugeiconsIcon icon={courier.mode.toLowerCase() === "surface" ? TruckIcon : RocketIcon} size={28} />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-lg font-bold">{courier.courier_name}</h3>
+                              {courier.is_recommended && (
+                                <Badge variant="default" className="text-[10px] px-2 py-0 uppercase">Best Match</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                              <span className="flex items-center gap-1 text-yellow-600">
+                                <HugeiconsIcon icon={StarIcon} className="h-3 w-3 fill-yellow-600" />
+                                {courier.rating.toFixed(1)}
+                              </span>
+                              <span>•</span>
+                              <span>{courier.mode}</span>
+                              <span>•</span>
+                              <span>{courier.chargeable_weight} KG</span>
+                            </div>
+                          </div>
                         </div>
-                        <Skeleton className="h-5 w-16" />
-                        <div className="space-y-1 text-right">
-                          <Skeleton className="h-6 w-20 ml-auto" />
-                          <Skeleton className="h-3 w-16 ml-auto" />
+
+                        <div className="flex items-center justify-between md:justify-end gap-8 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
+                          <div className="text-left md:text-right">
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Delivery ETA</p>
+                            <p className="text-sm font-bold">{courier.estimated_delivery}</p>
+                            <p className="text-[10px] text-green-600 font-bold uppercase">{courier.delivery_in_days} Days</p>
+                          </div>
+                          <div className="text-right min-w-[100px]">
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rate</p>
+                            <p className="text-2xl font-black tabular-nums">₹{courier.rate.toFixed(2)}</p>
+                            <p className="text-[9px] text-muted-foreground font-bold uppercase">Incl. GST</p>
+                          </div>
+                          <Button size="sm" className="hidden sm:flex font-bold">Ship Now</Button>
                         </div>
                       </div>
+                      {courier.is_flagged && (
+                        <div className="px-6 py-2 bg-amber-50 border-t text-[10px] font-bold text-amber-800 flex items-center gap-2">
+                          <HugeiconsIcon icon={Alert01Icon} className="h-3 w-3" />
+                          RADAR WARNING: Higher operational stress at destination. Delivery may be delayed.
+                        </div>
+                      )}
+                    </Card>
+                  ))
+                )}
+              </div>
+
+              {/* T&C Section */}
+              <Card className="bg-muted/30 border-none shadow-none">
+                <CardHeader className="pb-3 px-6 pt-6">
+                  <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <HugeiconsIcon icon={InformationCircleIcon} className="h-4 w-4" />
+                    Calculation Guidelines
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-6 pb-6">
+                  <ul className="space-y-2">
+                    {[
+                      "Rates are calculated based on the higher of dead weight or volumetric weight.",
+                      "Volumetric Weight Formula: (L x W x H) / 5000.",
+                      "Estimated delivery dates are provided by partners and may vary based on conditions.",
+                      "Taxes and surcharges are included in the final displayed rate."
+                    ].map((text, i) => (
+                      <li key={i} className="flex gap-3 text-[11px] text-muted-foreground leading-relaxed">
+                        <span className="h-1 w-1 rounded-full bg-muted-foreground/30 mt-1.5 shrink-0" />
+                        {text}
+                      </li>
                     ))}
-                  </div>
-                </Card>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="h-full min-h-[500px] border-2 border-dashed rounded-3xl bg-muted/20 flex flex-col items-center justify-center p-12 text-center animate-in zoom-in-95 duration-1000">
+              <div className="bg-background p-6 rounded-2xl shadow-sm border mb-6">
+                <HugeiconsIcon icon={AiCloudIcon} className="h-12 w-12 text-primary opacity-40" />
               </div>
-            ) : isError ? (
-              <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-12 text-center shadow-sm">
-                <HugeiconsIcon icon={Alert01Icon} size={32} className="text-destructive mx-auto mb-4" />
-                <h3 className="font-semibold text-destructive">Pricing Service Offline</h3>
-                <p className="text-xs text-muted-foreground mt-2 max-w-xs mx-auto">We couldn't reach the real-time rate service. Please check your network and retry.</p>
-                <Button variant="outline" size="sm" className="mt-6 border-destructive/20 text-destructive hover:bg-destructive/10" onClick={() => refetch()}>Retry Connection</Button>
+              <h3 className="text-xl font-bold tracking-tight">Ready to Calculate</h3>
+              <p className="text-muted-foreground max-w-sm mt-2">
+                Enter your shipment details on the left to see instant rates from our courier partners.
+              </p>
+              <div className="flex gap-2 mt-8">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary/20 animate-bounce" />
+                <div className="h-1.5 w-1.5 rounded-full bg-primary/20 animate-bounce [animation-delay:0.2s]" />
+                <div className="h-1.5 w-1.5 rounded-full bg-primary/20 animate-bounce [animation-delay:0.4s]" />
               </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <h2 className="text-xl font-semibold tracking-tight">Available Couriers</h2>
-                    <p className="text-xs text-muted-foreground">Found {filteredPartners.length} optimized results for your route</p>
-                  </div>
-                  
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-fit">
-                    <TabsList className="h-9">
-                      <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-                      <TabsTrigger value="air" className="text-xs">Air</TabsTrigger>
-                      <TabsTrigger value="surface" className="text-xs">Surface</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-
-                <div className="rounded-lg border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-muted sticky top-0 z-10">
-                        <tr className="border-b">
-                          <th className="px-6 py-3 text-xs font-semibold text-muted-foreground">Logistics Partner</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-muted-foreground">Rating</th>
-                          <th className="px-6 py-3 text-xs font-semibold text-muted-foreground text-right">Final Price</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {filteredPartners.map((courier, idx) => (
-                          <tr key={idx} className="hover:bg-muted/50 transition-colors">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <span className="font-medium">{courier.courier_name}</span>
-                                {idx === 0 && <Badge variant="outline" className="text-[10px] px-1.5">BEST VALUE</Badge>}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-medium text-muted-foreground uppercase">{courier.mode}</span>
-                                <span className="text-[10px] text-muted-foreground/60">• {courier.etd}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-1">
-                                <HugeiconsIcon icon={StarIcon} size={12} className="fill-yellow-500 text-yellow-500" />
-                                <span className="font-semibold text-sm">{courier.rating || "4.2"}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex flex-col items-end">
-                                <span className="font-bold text-lg">₹{courier.rate}</span>
-                                <span className="text-[10px] text-muted-foreground">All-Inclusive</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-lg bg-muted border flex gap-3">
-                  <HugeiconsIcon icon={Alert01Icon} size={16} className="text-muted-foreground shrink-0 mt-0.5" />
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Note: Rates are calculated using our latest pricing engine. Dimensional accuracy is vital to prevent weight disputes. Inclusive of fuel surcharges.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

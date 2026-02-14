@@ -1,4 +1,5 @@
 const map =  new Map();
+map.set('token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjk1MTk0OTQsInNvdXJjZSI6InNyLWF1dGgtaW50IiwiZXhwIjoxNzcxOTMyOTYzLCJqdGkiOiJwcm5rdmVmSWtqWG9OYzVKIiwiaWF0IjoxNzcxMDY4OTYzLCJpc3MiOiJodHRwczovL3NyLWF1dGguc2hpcHJvY2tldC5pbi9hdXRob3JpemUvdXNlciIsIm5iZiI6MTc3MTA2ODk2MywiY2lkIjo1NjUxMjk0LCJ0YyI6MzYwLCJ2ZXJib3NlIjpmYWxzZSwidmVuZG9yX2lkIjowLCJ2ZW5kb3JfY29kZSI6IiJ9.yOAzqEHY4DirI6mrB-wCvCD2ekHnCY6VJO3xA-XTfoA');
 const getShiprocketToken = async () => {
   const email = process.env.SHIPROCKET_EMAIL;
   const password = process.env.SHIPROCKET_PASSWORD;

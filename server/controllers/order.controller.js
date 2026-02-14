@@ -17,7 +17,7 @@ const calculateRates = async (req, res) => {
     length,
     breadth,
     height,
-    mode
+    mode = 'Surface'
   } = req.query;
 
   try {
