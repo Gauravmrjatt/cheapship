@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const authController = require('../controllers/auth.controller');
+const authMiddleware = require('../middleware/auth.middleware');
 
 /**
  * @swagger
@@ -9,6 +10,22 @@ const authController = require('../controllers/auth.controller');
  *   name: Auth
  *   description: Authentication endpoints
  */
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user details
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user details
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/me', authMiddleware, authController.getMe);
 
 /**
  * @swagger

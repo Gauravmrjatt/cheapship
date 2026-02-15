@@ -59,6 +59,6 @@ export const shiprocketPickupSchema = z.object({
     .regex(/.*[0-9].*/, "Address must include a House, Flat, or Road number"),
   city: z.string().min(1, "City is required"),
   state: z.string().min(1, "State is required"),
-  pincode: z.string().min(6, "Pincode must be 6 digits"),
+  pin_code: z.string().min(6, "Pincode must be 6 digits"),
   country: z.string().default("India"),
 });

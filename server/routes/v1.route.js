@@ -6,6 +6,7 @@ const addressRoute = require("./address.route");
 const franchiseRoute = require("./franchise.route");
 const orderRoute = require("./order.route");
 const dashboardRoute = require("./dashboard.route");
+const transactionRoute = require("./transaction.route");
 
 route.use('/users', userRoute);
 route.use('/auth', authRoute);
@@ -13,6 +14,7 @@ route.use('/addresses', addressRoute);
 route.use('/orders', orderRoute);
 route.use('/franchise', franchiseRoute);
 route.use('/dashboard', dashboardRoute);
+route.use('/transactions', transactionRoute);
 
 route.get('/test-db', async (req, res) => {
   try {

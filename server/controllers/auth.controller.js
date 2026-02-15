@@ -138,8 +138,44 @@ const forgotPassword = async (req, res) => {
   res.status(200).json({ message: 'Password reset link sent to your email.' });
 };
 
+const getMe = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        mobile: true,
+        wallet_balance: true,
+        user_type: true,
+        referer_code: true,
+        referred_by: true,
+        commission_rate: true,
+        franchise_type: true,
+        is_active: true,
+        created_at: true,
+        updated_at: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   register,
   login,
   forgotPassword,
+  getMe
 };

@@ -79,7 +79,7 @@ interface SavedAddress {
   complete_address: string;
   city: string;
   state: string;
-  pincode: string;
+  pin_code: string;
   address_label?: string;
   is_default: boolean;
 }
@@ -135,7 +135,7 @@ export default function CreateOrderPage() {
       name: "",
       phone: "",
       email: "",
-      pincode: "",
+      pin_code: "",
       address: "",
       city: "",
       state: "",
@@ -188,7 +188,7 @@ export default function CreateOrderPage() {
 
     const { mutate: saveShiprocketPickupMutation, isPending: isSavingShiprocketPickup } = useMutation(
 
-      http.post("/addresses/shiprocket-pickup", {
+      http.post("/addresses/pickup", {
 
         onSuccess: (data: any) => {
 
@@ -288,7 +288,7 @@ export default function CreateOrderPage() {
   );
 
   const { data: shiprocketPickups } = useQuery<any>(
-    http.get(["shiprocket-pickup-locations"], "/addresses/shiprocket-pickup", true)
+    http.get(["shiprocket-pickup-locations"], "/addresses/pickup", true)
   );
 
   const shiprocketPickupLocations = shiprocketPickups?.data?.shipping_address || [];
@@ -310,7 +310,7 @@ export default function CreateOrderPage() {
     )
   );
 
-  const sheetPincode = pickupForm.watch("pincode");
+  const sheetPincode = pickupForm.watch("pin_code");
   const { data: sheetPincodeData, isLoading: isLoadingSheetPincode } = useQuery<any>(
     http.get(
       ["pincode-details-sheet", sheetPincode],
@@ -474,7 +474,7 @@ export default function CreateOrderPage() {
     pickupForm.setValue("name", addr.name);
     pickupForm.setValue("phone", addr.phone);
     pickupForm.setValue("email", addr.email || "");
-    pickupForm.setValue("pincode", addr.pincode);
+    pickupForm.setValue("pin_code", addr.pincode);
     pickupForm.setValue("address", addr.address);
     pickupForm.setValue("city", addr.city);
     pickupForm.setValue("state", addr.state);
@@ -686,13 +686,13 @@ export default function CreateOrderPage() {
                           <Input {...pickupForm.register("email")} />
                           <FieldError errors={[pickupForm.formState.errors.email]} />
                         </Field>
-                        <Field data-invalid={!!pickupForm.formState.errors.pincode}>
+                        <Field data-invalid={!!pickupForm.formState.errors.pin_code}>
                           <FieldLabel className="text-xs">Pincode</FieldLabel>
                           <div className="relative">
-                            <Input {...pickupForm.register("pincode")} />
+                            <Input {...pickupForm.register("pin_code")} />
                             {isLoadingSheetPincode && <div className="absolute right-3 top-1/2 -translate-y-1/2"><HugeiconsIcon icon={Loading03Icon} className="animate-spin text-muted-foreground" size={16} /></div>}
                           </div>
-                          <FieldError errors={[pickupForm.formState.errors.pincode]} />
+                          <FieldError errors={[pickupForm.formState.errors.pin_code]} />
                         </Field>
                         <Field data-invalid={!!pickupForm.formState.errors.address}>
                           <FieldLabel className="text-xs">Full Address</FieldLabel>
@@ -1031,6 +1031,7 @@ export default function CreateOrderPage() {
                         form.setValue("courier_id", courier.courier_company_id);
                         form.setValue("courier_name", courier.courier_name);
                         form.setValue("shipping_charge", courier.rate);
+                        form.setValue("base_shipping_charge", (courier as any).base_rate);
                       }}
                       className={cn(
                         "transition-all duration-200 border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-accent/10",

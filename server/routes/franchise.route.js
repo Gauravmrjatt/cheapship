@@ -133,6 +133,44 @@ router.get('/:franchiseId/orders', authMiddleware, franchiseController.getFranch
 
 /**
  * @swagger
+ * /franchise/{franchiseId}/withdraw:
+ *   post:
+ *     summary: Withdraw commission earned from a specific franchise
+ *     tags: [Franchise]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: franchiseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Withdrawal request submitted
+ */
+router.post(
+  '/:franchiseId/withdraw',
+  [
+    authMiddleware,
+    check('amount', 'Valid amount is required').isNumeric().custom(val => val > 0),
+  ],
+  franchiseController.withdrawCommission
+);
+
+/**
+ * @swagger
  * /franchise/verify:
  *   get:
  *     summary: Verify a referral code (public endpoint)

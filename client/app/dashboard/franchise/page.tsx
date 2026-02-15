@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { useFranchisesList, useMyReferralCode, useUpdateFranchiseRate, useFranchiseOrders, FranchiseOrder } from "@/lib/hooks/use-franchise";
+import { 
+  useFranchisesList, 
+  useMyReferralCode, 
+  useUpdateFranchiseRate, 
+  useFranchiseOrders, 
+  useWithdrawCommission,
+  FranchiseOrder 
+} from "@/lib/hooks/use-franchise";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -20,7 +27,9 @@ import {
   ArrowRight01Icon,
   ArrowRightDoubleIcon,
   Loading03Icon,
-  DeliveryTruck01Icon
+  DeliveryTruck01Icon,
+  Wallet01Icon,
+  MoneyReceiveCircleIcon
 } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -59,11 +68,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-
-const serviceProviders = [
-  { id: 1, name: "Delhivery", logo: "/assets/svg/Delivery.svg", type: "Domestic" },
-  { id: 2, name: "Amazon Surface", logo: "/assets/svg/delivery2.svg", type: "Domestic" },
-];
 
 function FranchiseOrdersDataTable({ franchiseId, franchiseName }: { franchiseId: string, franchiseName: string }) {
   const [page, setPage] = useState(1);
@@ -232,12 +236,13 @@ export default function FranchisePage() {
   const { data: franchises, isLoading: loadingFranchises } = useFranchisesList();
   const { data: myReferral, isLoading: loadingReferral } = useMyReferralCode();
   const updateRateMutation = useUpdateFranchiseRate();
+  const withdrawMutation = useWithdrawCommission();
   
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<string | null>(null);
   const [showOrdersSheet, setShowOrdersSheet] = useState(false);
   const [showRatesSheet, setShowRatesSheet] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [tempRates, setTempRates] = useState<Record<string, { rate: number; slab: number }>>({});
+  const [tempCommissionRate, setTempCommissionRate] = useState<number>(5);
 
   const copyReferralLink = () => {
     if (myReferral?.referral_link) {
@@ -253,20 +258,21 @@ export default function FranchisePage() {
     setShowOrdersSheet(true);
   };
 
+  const handleWithdraw = (id: string, balance: number) => {
+    if (balance <= 0) {
+      toast.error("No balance available to withdraw");
+      return;
+    }
+    
+    if (confirm(`Are you sure you want to withdraw ₹${balance}?`)) {
+      withdrawMutation.mutate({ franchiseId: id, amount: balance });
+    }
+  };
+
   const handleAssignRates = (id: string) => {
     setSelectedFranchiseId(id);
     const franchise = franchises?.find(f => f.id === id);
-    // Initialize tempRates with existing assigned_rates or defaults
-    const initialRates: Record<string, { rate: number; slab: number }> = {};
-    serviceProviders.forEach(p => {
-      const providerId = p.id.toString();
-      const existing = franchise?.assigned_rates?.[providerId] || (franchise?.assigned_rates as any)?.[p.name] || { rate: undefined, slab: undefined };
-      initialRates[providerId] = {
-        rate: existing.rate !== undefined ? existing.rate : (Number(franchise?.commission_rate) || 5),
-        slab: existing.slab || 500
-      };
-    });
-    setTempRates(initialRates);
+    setTempCommissionRate(Number(franchise?.commission_rate) || 5);
     setShowRatesSheet(true);
   };
 
@@ -274,20 +280,10 @@ export default function FranchisePage() {
     if (selectedFranchiseId) {
       updateRateMutation.mutate({
         franchiseId: selectedFranchiseId,
-        assigned_rates: tempRates
+        commission_rate: tempCommissionRate
       });
       setShowRatesSheet(false);
     }
-  };
-
-  const handleRateChange = (providerId: number, field: 'rate' | 'slab', value: string) => {
-    setTempRates(prev => ({
-      ...prev,
-      [providerId]: {
-        ...prev[providerId],
-        [field]: parseFloat(value) || 0
-      }
-    }));
   };
 
   const selectedFranchise = franchises?.find(f => f.id === selectedFranchiseId);
@@ -371,18 +367,26 @@ export default function FranchisePage() {
                 </div>
               </CardHeader>
               <CardContent className="p-5 pt-0 space-y-4">
-                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <span className="opacity-60">Email:</span>
-                    <span className="text-foreground font-medium">{f.email}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-60">Email:</span>
+                      <span className="text-foreground font-medium truncate max-w-[120px]">{f.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-60">Mobile:</span>
+                      <span className="text-foreground font-medium">{f.mobile}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-60">Rate:</span>
+                      <Badge variant="secondary" className="text-[10px] h-4 font-bold">{Number(f.commission_rate) ||0}%</Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="opacity-60">Mobile:</span>
-                    <span className="text-foreground font-medium">{f.mobile}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="opacity-60">Current Rate:</span>
-                    <Badge variant="secondary" className="text-[10px] h-4 font-bold">{Number(f.commission_rate) || 5}%</Badge>
+
+                  <div className="bg-primary/5 rounded-xl p-3 flex flex-col justify-center items-end border border-primary/10">
+                    <p className="text-[10px] uppercase font-bold text-primary/60 tracking-wider">Balance</p>
+                    <p className="text-lg font-bold text-primary">₹{Number(f.balance || 0).toLocaleString("en-IN")}</p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">Profit: ₹{Number(f.total_profit || 0).toFixed(1)}</p>
                   </div>
                 </div>
 
@@ -391,9 +395,18 @@ export default function FranchisePage() {
                     <HugeiconsIcon icon={Store01Icon} size={14} />
                     MANAGE
                   </Button>
-                  <Button size="sm" className="flex-1 rounded-xl text-[10px] font-bold h-9" onClick={() => handleAssignRates(f.id)}>
+                  <Button variant="outline" size="sm" className="flex-1 rounded-xl text-[10px] font-bold h-9" onClick={() => handleAssignRates(f.id)}>
                     <HugeiconsIcon icon={PercentIcon} size={14} />
-                    ASSIGN RATES
+                    RATES
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="flex-1 rounded-xl text-[10px] font-bold h-9 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20" 
+                    onClick={() => handleWithdraw(f.id, f.balance)}
+                    disabled={withdrawMutation.isPending || !f.balance || f.balance <= 0}
+                  >
+                    <HugeiconsIcon icon={MoneyReceiveCircleIcon} size={14} />
+                    {withdrawMutation.isPending ? "..." : "WITHDRAW"}
                   </Button>
                 </div>
               </CardContent>
@@ -426,81 +439,81 @@ export default function FranchisePage() {
 
       {/* Assign Rates Sheet */}
       <Sheet open={showRatesSheet} onOpenChange={setShowRatesSheet}>
-        <SheetContent side="right" className="sm:max-w-xl flex flex-col h-full p-0 min-w-[50dvw]">
-          <SheetHeader className="p-6 pb-2">
-            <SheetTitle className="flex items-center gap-2">
-              <HugeiconsIcon icon={PercentIcon} size={20} className="text-primary" />
-              Protocol Configuration: {selectedFranchise?.name}
-            </SheetTitle>
-            <SheetDescription>Set how much extra (%) you will charge to this Franchise</SheetDescription>
+        <SheetContent side="right" className="sm:max-w-xl flex flex-col h-full p-0">
+          <SheetHeader className="p-6 border-b">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <HugeiconsIcon icon={PercentIcon} size={20} />
+              </div>
+              <div>
+                <SheetTitle className="text-xl">Protocol Configuration</SheetTitle>
+                <SheetDescription>Configure commission for {selectedFranchise?.name}</SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto px-6 space-y-6 my-4 custom-scrollbar">
-            <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
-              <h4 className="text-sm font-bold flex items-center gap-2 text-primary">
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
-                Yield Optimization
-              </h4>
-              <p className="text-xs mt-1 text-muted-foreground leading-relaxed">
-                If you set 20% extra, and a courier charges ₹50, the Franchise will be charged ₹60. 
-                The extra ₹10 (20%) will be your commission. Default is 5%.
-              </p>
-            </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <Card className="border-none bg-muted/30 shadow-none">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2 text-primary">
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} />
+                  <span className="text-sm font-semibold uppercase tracking-wider">Yield Optimization</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  The commission rate is a markup percentage added to the base courier charges. 
+                  For example, if the courier charges ₹50 and you set a 20% commission, 
+                  the franchise will be charged ₹60, and your profit will be ₹10.
+                </p>
+              </CardContent>
+            </Card>
 
-            <div className="rounded-2xl border overflow-hidden">
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider w-12"></TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Provider</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider w-24">Markup (%)</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider w-24">Slab (g)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {serviceProviders.map((provider) => (
-                    <TableRow key={provider.id}>
-                      <TableCell>
-                        <div className="w-8 h-8 relative grayscale hover:grayscale-0 transition-all">
-                          <Image src={provider.logo} alt={provider.name} fill className="object-contain" />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs font-semibold">{provider.name}</TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          value={tempRates[provider.id.toString()]?.rate || 5} 
-                          onChange={(e) => handleRateChange(provider.id, 'rate', e.target.value)}
-                          className="h-8 text-xs font-bold rounded-lg bg-muted/30 border-none ring-1 ring-border focus-visible:ring-primary"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          value={tempRates[provider.id.toString()]?.slab || 500} 
-                          onChange={(e) => handleRateChange(provider.id, 'slab', e.target.value)}
-                          placeholder="500" 
-                          className="h-8 text-xs font-bold rounded-lg bg-muted/30 border-none ring-1 ring-border focus-visible:ring-primary"
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="commission-rate" className="text-sm font-medium">
+                  Commission Rate (%)
+                </Label>
+                <div className="relative">
+                  <Input 
+                    id="commission-rate"
+                    type="number" 
+                    value={tempCommissionRate} 
+                    onChange={(e) => setTempCommissionRate(parseFloat(e.target.value) || 0)}
+                    placeholder="5"
+                    className="h-12 text-lg font-semibold pr-12 focus-visible:ring-1"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                    <HugeiconsIcon icon={PercentIcon} size={18} />
+                  </div>
+                </div>
+                <p className="text-[0.8rem] text-muted-foreground">
+                  Default rate is 5%. This applies to all service providers for this franchise.
+                </p>
+              </div>
             </div>
           </div>
 
           <SheetFooter className="p-6 border-t mt-auto">
             <div className="flex gap-3 w-full">
-              <Button variant="outline" className="flex-1 rounded-xl font-bold h-11" onClick={() => setShowRatesSheet(false)}>
-                DISCARD
+              <Button 
+                variant="outline" 
+                className="flex-1 h-11" 
+                onClick={() => setShowRatesSheet(false)}
+              >
+                Cancel
               </Button>
               <Button 
-                className="flex-1 rounded-xl font-bold h-11 shadow-lg shadow-primary/20" 
+                className="flex-1 h-11" 
                 onClick={saveRates}
                 disabled={updateRateMutation.isPending}
               >
-                {updateRateMutation.isPending ? "UPLOADING..." : "UPDATE PROTOCOL"}
+                {updateRateMutation.isPending ? (
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon icon={Loading03Icon} size={16} className="animate-spin" />
+                    Updating...
+                  </div>
+                ) : (
+                  "Save Changes"
+                )}
               </Button>
             </div>
           </SheetFooter>

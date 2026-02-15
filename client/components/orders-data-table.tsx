@@ -469,11 +469,12 @@ export function OrdersDataTable({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <Button size="sm" render={<Link href="/dashboard/orders/new" />}>
+<Link href="/dashboard/orders/new">
+          <Button size="sm">
             <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
             <span className="hidden lg:inline">New Order</span>
           </Button>
+          </Link>
         </div>
       </div>
 
@@ -510,7 +511,7 @@ export function OrdersDataTable({
         value={filters?.shipment_status ?? "ALL"}
         className="relative flex flex-col gap-4 overflow-auto px-4 rounded-2xl lg:px-6"
       >
-        <div className="overflow-hidden rounded-lg border rounded-2xl">
+        <div className="overflow-hidden  border rounded-2xl">
           <Table>
             <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
               {table.getHeaderGroups().map((headerGroup) => (

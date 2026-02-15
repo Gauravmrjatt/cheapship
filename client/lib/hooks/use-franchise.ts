@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
 import { toast } from "sonner";
+import { useAuthStore } from "@/lib/store/auth";
 
 export interface Franchise {
   id: string;
@@ -19,6 +20,9 @@ export interface Franchise {
   franchise_state: string | null;
   is_active: boolean;
   created_at: string;
+  total_profit: number;
+  total_withdrawn: number;
+  balance: number;
   _count?: {
     orders: number;
   };
@@ -85,33 +89,19 @@ interface UpdateFranchiseRateParams {
 // Update franchise commission rate
 export const useUpdateFranchiseRate = () => {
   const queryClient = useQueryClient();
+  const http = useHttp();
 
   return useMutation({
-    mutationFn: async ({ 
-      franchiseId, 
-      commission_rate, 
-      assigned_rates 
-    }: UpdateFranchiseRateParams) => {
-      const response = await fetch(`http://localhost:3001/api/v1/franchise/${franchiseId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({ commission_rate, assigned_rates }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update commission rate");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      toast.success("Franchise settings updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["franchises"] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
+    ...http.put<any, UpdateFranchiseRateParams>("/franchise", {
+      onSuccess: () => {
+        toast.success("Franchise settings updated successfully");
+        queryClient.invalidateQueries({ queryKey: ["franchises"] });
+      },
+    }),
+    mutationFn: async ({ franchiseId, ...data }: UpdateFranchiseRateParams) => {
+      // Use the internal mutationFn from http.put but with custom URL
+      const mutator = http.put<any, any>(`/franchise/${franchiseId}`).mutationFn;
+      return mutator(data);
     }
   });
 };
@@ -154,5 +144,24 @@ export const useVerifyReferralCode = () => {
       }
       return response.json();
     },
+  });
+};
+
+// Withdraw commission
+export const useWithdrawCommission = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+
+  return useMutation({
+    ...http.post<any, { franchiseId: string; amount: number }>("/franchise", {
+      onSuccess: (data) => {
+        toast.success(data.message || "Withdrawal request submitted successfully");
+        queryClient.invalidateQueries({ queryKey: ["franchises"] });
+      },
+    }),
+    mutationFn: async ({ franchiseId, amount }: { franchiseId: string; amount: number }) => {
+      const mutator = http.post<any, any>(`/franchise/${franchiseId}/withdraw`).mutationFn;
+      return mutator({ amount });
+    }
   });
 };

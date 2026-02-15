@@ -8,7 +8,7 @@ const addressController = require('../controllers/address.controller');
 router.use(authMiddleware);
 
 router.get('/', addressController.getAddresses);
-router.get('/shiprocket-pickup', addressController.getShiprocketPickupLocations);
+router.get('/pickup', addressController.getShiprocketPickupLocations);
 
 router.post(
   '/',
@@ -24,7 +24,7 @@ router.post(
 );
 
 router.post(
-  '/shiprocket-pickup',
+  '/pickup',
   [
     check('pickup_location', 'Pickup location nickname is required').not().isEmpty(),
     check('name', 'Shipper name is required').not().isEmpty(),

@@ -170,10 +170,41 @@ const createOrder = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const newOrder = await prisma.$transaction(async (prisma) => {
+    const newOrder = await prisma.$transaction(async (tx) => {
+      // 1. Check wallet balance
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { wallet_balance: true }
+      });
+
+      const orderAmount = Number(shipping_charge || 0);
+
+      if (Number(user.wallet_balance) < orderAmount) {
+        throw new Error(`Insufficient wallet balance. Required: ₹${orderAmount}, Available: ₹${user.wallet_balance}`);
+      }
+
+      // 2. Debit the wallet
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          wallet_balance: { decrement: orderAmount }
+        }
+      });
+
+      // 3. Create transaction record
+      const transaction = await tx.transaction.create({
+        data: {
+          user_id: userId,
+          amount: orderAmount,
+          type: 'DEBIT',
+          status: 'SUCCESS',
+          description: `Shipping charge for Order ${order_type}`,
+        }
+      });
+
       // Save addresses if requested
       if (save_pickup_address) {
-        await prisma.address.create({
+        await tx.address.create({
           data: {
             user_id: userId,
             name: pickup_address.name,
@@ -189,7 +220,7 @@ const createOrder = async (req, res) => {
       }
 
       if (save_receiver_address) {
-        await prisma.address.create({
+        await tx.address.create({
           data: {
             user_id: userId,
             name: receiver_address.name,
@@ -204,7 +235,7 @@ const createOrder = async (req, res) => {
         });
       }
 
-      const order = await prisma.order.create({
+      const order = await tx.order.create({
         data: {
           user_id: userId,
           order_type,
@@ -218,14 +249,23 @@ const createOrder = async (req, res) => {
         }
       });
 
-      await prisma.orderPickupAddress.create({
+      // 4. Update transaction with order ID
+      await tx.transaction.update({
+        where: { id: transaction.id },
+        data: {
+          description: `Shipping charge for Order #${order.id}`,
+          reference_id: order.id.toString()
+        }
+      });
+
+      await tx.orderPickupAddress.create({
         data: {
           order_id: order.id,
           ...pickup_address
         }
       });
 
-      await prisma.orderReceiverAddress.create({
+      await tx.orderReceiverAddress.create({
         data: {
           order_id: order.id,
           ...receiver_address
@@ -354,23 +394,51 @@ const cancelOrder = async (req, res) => {
       });
     }
 
-    // Update the order status to CANCELLED
-    const updatedOrder = await prisma.order.update({
-      where: {
-        id: BigInt(id)
-      },
-      data: {
-        shipment_status: 'CANCELLED'
-      },
-      include: {
-        order_pickup_address: true,
-        order_receiver_address: true,
+    // Update the order status to CANCELLED and refund within a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: {
+          id: BigInt(id)
+        },
+        data: {
+          shipment_status: 'CANCELLED'
+        },
+        include: {
+          order_pickup_address: true,
+          order_receiver_address: true,
+        }
+      });
+
+      const refundAmount = Number(order.shipping_charge || 0);
+
+      if (refundAmount > 0) {
+        // Refund the wallet
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            wallet_balance: { increment: refundAmount }
+          }
+        });
+
+        // Create transaction record
+        await tx.transaction.create({
+          data: {
+            user_id: userId,
+            amount: refundAmount,
+            type: 'CREDIT',
+            status: 'SUCCESS',
+            description: `Refund for cancelled order #${id}`,
+            reference_id: id.toString()
+          }
+        });
       }
+
+      return updatedOrder;
     });
 
     res.json({
-      message: 'Order cancelled successfully',
-      order: updatedOrder
+      message: 'Order cancelled successfully and amount refunded to wallet',
+      order: result
     });
   } catch (error) {
     console.error(error);
