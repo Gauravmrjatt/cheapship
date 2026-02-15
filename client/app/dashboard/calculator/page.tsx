@@ -21,7 +21,8 @@ import {
   Navigation01Icon,
   Search01Icon,
   AiCloudIcon,
-  RocketIcon
+  RocketIcon,
+  Cancel01Icon
 } from "@hugeicons/core-free-icons";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +93,24 @@ export default function RateCalculatorPage() {
 
   const http = useHttp();
 
+  // Fetch Pickup Locality Details
+  const { data: pickupLocality, isLoading: isLoadingPickup } = useQuery(
+    http.get(
+      ["pincode-details", formValues.pickupPincode],
+      `/orders/pincode-details?postcode=${formValues.pickupPincode}`,
+      formValues.pickupPincode?.length === 6
+    )
+  );
+
+  // Fetch Delivery Locality Details
+  const { data: deliveryLocality, isLoading: isLoadingDelivery } = useQuery(
+    http.get(
+      ["pincode-details", formValues.deliveryPincode],
+      `/orders/pincode-details?postcode=${formValues.deliveryPincode}`,
+      formValues.deliveryPincode?.length === 6
+    )
+  );
+
   const volumetricWeight = useMemo(() => {
     const l = Number(formValues.length) || 0;
     const w = Number(formValues.width) || 0;
@@ -151,6 +170,10 @@ export default function RateCalculatorPage() {
     return p.mode.toLowerCase() === activeTab.toLowerCase();
   });
 
+  const isPickupValid = pickupLocality?.success || pickupLocality?.postcode_details;
+  const isDeliveryValid = deliveryLocality?.success || deliveryLocality?.postcode_details;
+  const canCalculate = isPickupValid && isDeliveryValid;
+
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 space-y-10 animate-in fade-in duration-700 pb-32">
       {/* Header Section */}
@@ -192,8 +215,17 @@ export default function RateCalculatorPage() {
                       <Input 
                         {...form.register("pickupPincode")}
                         placeholder="281306"
-                        className="font-medium"
+                        className={cn("font-medium", !isPickupValid && formValues.pickupPincode?.length === 6 && "border-destructive")}
                       />
+                      {isLoadingPickup ? (
+                        <p className="text-[10px] text-muted-foreground mt-1 animate-pulse">Verifying...</p>
+                      ) : isPickupValid ? (
+                        <p className="text-[10px] text-green-600 font-bold mt-1 uppercase tracking-tight">
+                          {pickupLocality?.data?.postcode_details?.city || pickupLocality?.postcode_details?.city}, {pickupLocality?.data?.postcode_details?.state || pickupLocality?.postcode_details?.state}
+                        </p>
+                      ) : formValues.pickupPincode?.length === 6 && (
+                        <p className="text-[10px] text-destructive font-bold mt-1 uppercase tracking-tight">Invalid Pincode</p>
+                      )}
                       <FieldError errors={[errors.pickupPincode]} />
                     </Field>
                     <Field>
@@ -201,8 +233,17 @@ export default function RateCalculatorPage() {
                       <Input 
                         {...form.register("deliveryPincode")}
                         placeholder="281308"
-                        className="font-medium"
+                        className={cn("font-medium", !isDeliveryValid && formValues.deliveryPincode?.length === 6 && "border-destructive")}
                       />
+                      {isLoadingDelivery ? (
+                        <p className="text-[10px] text-muted-foreground mt-1 animate-pulse">Verifying...</p>
+                      ) : isDeliveryValid ? (
+                        <p className="text-[10px] text-green-600 font-bold mt-1 uppercase tracking-tight">
+                          {deliveryLocality?.data?.postcode_details?.city || deliveryLocality?.postcode_details?.city}, {deliveryLocality?.data?.postcode_details?.state || deliveryLocality?.postcode_details?.state}
+                        </p>
+                      ) : formValues.deliveryPincode?.length === 6 && (
+                        <p className="text-[10px] text-destructive font-bold mt-1 uppercase tracking-tight">Invalid Pincode</p>
+                      )}
                       <FieldError errors={[errors.deliveryPincode]} />
                     </Field>
                   </div>
@@ -294,7 +335,7 @@ export default function RateCalculatorPage() {
                 <Button 
                   type="submit" 
                   className="w-full h-11 font-bold shadow-sm"
-                  disabled={isLoading}
+                  disabled={isLoading || !canCalculate}
                 >
                   {isLoading ? (
                     <HugeiconsIcon icon={Loading03Icon} className="mr-2 h-4 w-4 animate-spin" />

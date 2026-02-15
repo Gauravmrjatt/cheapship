@@ -29,7 +29,8 @@ import {
   Settings05Icon, 
   HelpCircleIcon, 
   SearchIcon,
-  ShippingTruck01Icon
+  ShippingTruck01Icon,
+  AddressBookIcon
 } from "@hugeicons/core-free-icons"
 
 const data = {
@@ -64,6 +65,13 @@ const data = {
       url: "/dashboard/calculator",
       icon: (
         <HugeiconsIcon icon={Calculator01Icon} strokeWidth={2} />
+      ),
+    },
+    {
+      title: "Address Book",
+      url: "/dashboard/addresses",
+      icon: (
+        <HugeiconsIcon icon={AddressBookIcon} strokeWidth={2} />
       ),
     },
     {

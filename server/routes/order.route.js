@@ -168,6 +168,31 @@ router.get('/', orderController.getOrders);
 
 /**
  * @swagger
+ * /orders/pincode-details:
+ *   get:
+ *     summary: Get locality details for a pincode
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: postcode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The pincode to get details for
+ *     responses:
+ *       200:
+ *         description: Locality details
+ *       400:
+ *         description: Missing postcode
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/pincode-details', orderController.getPincodeDetails);
+
+/**
+ * @swagger
  * /orders/calculate-rates:
  *   get:
  *     summary: Calculate shipping rates using Shiprocket

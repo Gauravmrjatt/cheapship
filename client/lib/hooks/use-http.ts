@@ -65,10 +65,18 @@ export const useHttp = () => {
   const put = <TData, TVariables>(endpoint: string, options?: HttpOptions<TData>) => {
     return {
       mutationFn: async (variables: TVariables) => {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        let url = `${API_BASE_URL}${endpoint}`;
+        let body = JSON.stringify(variables);
+
+        if (typeof variables === "string") {
+          url = `${url}/${variables}`;
+          body = JSON.stringify({});
+        }
+
+        const response = await fetch(url, {
           method: "PUT",
           headers: getHeaders(token),
-          body: JSON.stringify(variables),
+          body,
         });
         if (!response.ok) {
           const errorData = await response.json();
@@ -89,10 +97,13 @@ export const useHttp = () => {
   const del = <TData, TVariables>(endpoint: string, options?: HttpOptions<TData>) => {
     return {
       mutationFn: async (variables: TVariables) => {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const url = typeof variables === "string" 
+          ? `${API_BASE_URL}${endpoint}/${variables}` 
+          : `${API_BASE_URL}${endpoint}`;
+
+        const response = await fetch(url, {
           method: "DELETE",
           headers: getHeaders(token),
-          body: JSON.stringify(variables),
         });
         if (!response.ok) {
           const errorData = await response.json();

@@ -1,62 +1,94 @@
 "use client";
 
+import * as React from "react";
 import { useOrder } from "@/lib/hooks/use-order";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export default function OrderDetailsPage({
   params,
 }: {
-  params: { orderId: string };
+  params: Promise<{ orderId: string }>;
 }) {
-  const { data: order, isLoading, isError } = useOrder(params.orderId);
+  const { orderId } = React.use(params);
+  const { data: order, isLoading, isError } = useOrder(orderId);
 
-  if (isLoading) return <div>Loading...</div>;
-  if (isError) return <div>Error fetching order details</div>;
+  if (isLoading) return <div className="max-w-7xl mx-auto py-10 px-4">Loading...</div>;
+  if (isError) return <div className="max-w-7xl mx-auto py-10 px-4">Error fetching order details</div>;
+  if (!order) return <div className="max-w-7xl mx-auto py-10 px-4">Order not found</div>;
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-4">Order Details</h1>
+    <div className="max-w-7xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-700">
+      <h1 className="text-3xl font-bold tracking-tight">Order Details</h1>
       <div className="space-y-8">
-        <Card>
+        <Card className="rounded-xl shadow-sm">
           <CardHeader>
-            <CardTitle>Order Information</CardTitle>
+            <CardTitle className="text-lg">Order Information</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p><strong>Order ID:</strong> {order.id}</p>
-            <p><strong>Order Type:</strong> {order.order_type}</p>
-            <p><strong>Shipment Type:</strong> {order.shipment_type}</p>
-            <p><strong>Payment Mode:</strong> {order.payment_mode}</p>
-            <p><strong>Total Amount:</strong> {order.total_amount}</p>
-            <p><strong>Shipment Status:</strong> {order.shipment_status}</p>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">Order ID</p>
+              <p className="font-semibold">#{order.id}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">Status</p>
+              <p className="font-semibold">{order.shipment_status}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">Amount</p>
+              <p className="font-semibold">₹{order.total_amount}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">Order Type</p>
+              <p className="font-semibold">{order.order_type}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">Service Type</p>
+              <p className="font-semibold">{order.shipment_type}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase">Payment</p>
+              <p className="font-semibold">{order.payment_mode}</p>
+            </div>
           </CardContent>
         </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Card>
+          <Card className="rounded-xl shadow-sm">
             <CardHeader>
-              <CardTitle>Pickup Address</CardTitle>
+              <CardTitle className="text-lg">Pickup Address</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p><strong>Name:</strong> {order.order_pickup_address.name}</p>
-              <p><strong>Phone:</strong> {order.order_pickup_address.phone}</p>
-              <p><strong>Email:</strong> {order.order_pickup_address.email}</p>
-              <p><strong>Address:</strong> {order.order_pickup_address.address}</p>
-              <p><strong>City:</strong> {order.order_pickup_address.city}</p>
-              <p><strong>State:</strong> {order.order_pickup_address.state}</p>
-              <p><strong>Pincode:</strong> {order.order_pickup_address.pincode}</p>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="font-bold">{order.order_pickup_address.name}</p>
+                <p className="text-sm text-muted-foreground">{order.order_pickup_address.phone}</p>
+                {order.order_pickup_address.email && <p className="text-sm text-muted-foreground">{order.order_pickup_address.email}</p>}
+              </div>
+              <Separator />
+              <div className="text-sm">
+                <p>{order.order_pickup_address.address}</p>
+                <p>{order.order_pickup_address.city}, {order.order_pickup_address.state}</p>
+                <p className="font-medium">{order.order_pickup_address.pincode}</p>
+              </div>
             </CardContent>
           </Card>
-          <Card>
+
+          <Card className="rounded-xl shadow-sm">
             <CardHeader>
-              <CardTitle>Receiver Address</CardTitle>
+              <CardTitle className="text-lg">Receiver Address</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p><strong>Name:</strong> {order.order_receiver_address.name}</p>
-              <p><strong>Phone:</strong> {order.order_receiver_address.phone}</p>
-              <p><strong>Email:</strong> {order.order_receiver_address.email}</p>
-              <p><strong>Address:</strong> {order.order_receiver_address.address}</p>
-              <p><strong>City:</strong> {order.order_receiver_address.city}</p>
-              <p><strong>State:</strong> {order.order_receiver_address.state}</p>
-              <p><strong>Pincode:</strong> {order.order_receiver_address.pincode}</p>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="font-bold">{order.order_receiver_address.name}</p>
+                <p className="text-sm text-muted-foreground">{order.order_receiver_address.phone}</p>
+                {order.order_receiver_address.email && <p className="text-sm text-muted-foreground">{order.order_receiver_address.email}</p>}
+              </div>
+              <Separator />
+              <div className="text-sm">
+                <p>{order.order_receiver_address.address}</p>
+                <p>{order.order_receiver_address.city}, {order.order_receiver_address.state}</p>
+                <p className="font-medium">{order.order_receiver_address.pincode}</p>
+              </div>
             </CardContent>
           </Card>
         </div>

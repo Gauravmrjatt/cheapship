@@ -2,11 +2,13 @@ const express = require("express")
 const route = express.Router();
 const userRoute = require("./users.route");
 const authRoute = require("./auth.route");
+const addressRoute = require("./address.route");
 
 route.use('/users/', userRoute);
 const orderRoute = require("./order.route");
 
 route.use('/auth', authRoute);
+route.use('/addresses', addressRoute);
 route.use('/orders', orderRoute);
 const dashboardRoute = require("./dashboard.route");
 route.use('/dashboard', dashboardRoute);

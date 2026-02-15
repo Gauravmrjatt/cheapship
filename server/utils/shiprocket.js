@@ -78,8 +78,29 @@ const getPostcodeDetails = async (postcode) => {
   }
 };
 
+const getLocalityDetails = async (postcode) => {
+  const token = map.get('token') || await getShiprocketToken();
+  
+  try {
+    const response = await fetch(`https://apiv2.shiprocket.in/v1/external/open/postcode/details?postcode=${postcode}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Shiprocket locality details error:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   getShiprocketToken,
   getServiceability,
   getPostcodeDetails,
+  getLocalityDetails,
 };

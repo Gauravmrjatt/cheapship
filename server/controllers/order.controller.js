@@ -1,5 +1,21 @@
 const { validationResult } = require('express-validator');
-const { getServiceability, getPostcodeDetails } = require('../utils/shiprocket');
+const { getServiceability, getLocalityDetails } = require('../utils/shiprocket');
+
+const getPincodeDetails = async (req, res) => {
+  const { postcode } = req.query;
+
+  if (!postcode) {
+    return res.status(400).json({ success: false, message: 'Postcode is required' });
+  }
+
+  try {
+    const data = await getLocalityDetails(postcode);
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching pincode details:', error);
+    res.status(500).json({ success: false, message: 'Error fetching pincode details' });
+  }
+};
 
 const calculateRates = async (req, res) => {
   const errors = validationResult(req);
@@ -21,23 +37,41 @@ const calculateRates = async (req, res) => {
   } = req.query;
 
   try {
-    // Fetch serviceability and postcode details in parallel
-    const [serviceabilityData, pickupDetails, deliveryDetails] = await Promise.all([
-      getServiceability({
-        pickup_postcode,
-        delivery_postcode,
-        weight,
-        cod,
-        declared_value,
-        is_return,
-        length,
-        breadth,
-        height,
-        mode
-      }),
-      getPostcodeDetails(pickup_postcode),
-      getPostcodeDetails(delivery_postcode)
+    // First fetch both destination and origin locality details to validate
+    const [pickupLocality, deliveryLocality] = await Promise.all([
+      getLocalityDetails(pickup_postcode),
+      getLocalityDetails(delivery_postcode)
     ]);
+
+    if (!pickupLocality?.success && !pickupLocality?.postcode_details) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid pickup postcode: ${pickup_postcode}`,
+        error: pickupLocality
+      });
+    }
+
+    if (!deliveryLocality?.success && !deliveryLocality?.postcode_details) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid delivery postcode: ${delivery_postcode}`,
+        error: deliveryLocality
+      });
+    }
+
+    // If both are valid, then get prices
+    const serviceabilityData = await getServiceability({
+      pickup_postcode,
+      delivery_postcode,
+      weight,
+      cod,
+      declared_value,
+      is_return,
+      length,
+      breadth,
+      height,
+      mode
+    });
 
     if (!serviceabilityData || serviceabilityData.status !== 200) {
       return res.status(serviceabilityData?.status || 400).json({
@@ -52,13 +86,13 @@ const calculateRates = async (req, res) => {
     // Format the response to match the user's requested structure
     const formattedResponse = {
       pickup_location: {
-        city: pickupDetails?.data?.city || '',
-        state: pickupDetails?.data?.state || '',
+        city: pickupLocality?.data?.postcode_details?.city || pickupLocality?.data?.city || '',
+        state: pickupLocality?.data?.postcode_details?.state || pickupLocality?.data?.state || '',
         postcode: pickup_postcode
       },
       delivery_location: {
-        city: deliveryDetails?.data?.city || '',
-        state: deliveryDetails?.data?.state || '',
+        city: deliveryLocality?.data?.postcode_details?.city || deliveryLocality?.data?.city || '',
+        state: deliveryLocality?.data?.postcode_details?.state || deliveryLocality?.data?.state || '',
         postcode: delivery_postcode
       },
       shipment_info: {
@@ -100,20 +134,61 @@ const createOrder = async (req, res) => {
     payment_mode,
     total_amount,
     pickup_address,
-    receiver_address
+    receiver_address,
+    save_pickup_address,
+    save_receiver_address,
+    courier_id,
+    courier_name,
+    shipping_charge
   } = req.body;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
 
   try {
     const newOrder = await prisma.$transaction(async (prisma) => {
+      // Save addresses if requested
+      if (save_pickup_address) {
+        await prisma.address.create({
+          data: {
+            user_id: userId,
+            name: pickup_address.name,
+            phone: pickup_address.phone,
+            email: pickup_address.email,
+            complete_address: pickup_address.address,
+            city: pickup_address.city,
+            state: pickup_address.state,
+            pincode: pickup_address.pincode,
+            address_label: 'Pickup',
+          }
+        });
+      }
+
+      if (save_receiver_address) {
+        await prisma.address.create({
+          data: {
+            user_id: userId,
+            name: receiver_address.name,
+            phone: receiver_address.phone,
+            email: receiver_address.email,
+            complete_address: receiver_address.address,
+            city: receiver_address.city,
+            state: receiver_address.state,
+            pincode: receiver_address.pincode,
+            address_label: 'Receiver',
+          }
+        });
+      }
+
       const order = await prisma.order.create({
         data: {
           user_id: userId,
           order_type,
           shipment_type,
           payment_mode,
-          total_amount
+          total_amount,
+          courier_id,
+          courier_name,
+          shipping_charge
         }
       });
 
@@ -227,5 +302,6 @@ module.exports = {
   createOrder,
   getOrders,
   getOrderById,
-  calculateRates
+  calculateRates,
+  getPincodeDetails
 };
