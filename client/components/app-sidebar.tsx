@@ -30,9 +30,40 @@ import {
   HelpCircleIcon, 
   SearchIcon,
   ShippingTruck01Icon,
-  AddressBookIcon
+  AddressBookIcon,
+  UserCircle02Icon,
+  MoneyReceiveCircleIcon,
+  Globe02Icon
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/hooks/use-auth"
+
+const adminNav = [
+  {
+    title: "Overview",
+    url: "/admin",
+    icon: <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "User Management",
+    url: "/admin/users",
+    icon: <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />,
+  },
+  {
+    title: "All Orders",
+    url: "/admin/orders",
+    icon: <HugeiconsIcon icon={ShoppingBasket01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "Finance & Withdrawals",
+    url: "/admin/withdrawals",
+    icon: <HugeiconsIcon icon={MoneyReceiveCircleIcon} strokeWidth={2} />,
+  },
+  {
+    title: "Global Settings",
+    url: "/admin/settings",
+    icon: <HugeiconsIcon icon={Globe02Icon} strokeWidth={2} />,
+  },
+];
 
 const data = {
   navMain: [
@@ -133,13 +164,20 @@ const data = {
     },
   ],
 }
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  isAdmin?: boolean;
+}
+
+export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
   const { user } = useAuth();
 
   const displayUser = {
     name: user?.name || "User",
     email: user?.email || "",
   }
+
+  const mainNavItems = isAdmin ? adminNav : data.navMain;
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -148,17 +186,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<a href="/dashboard" />}
+              render={<a href={isAdmin ? "/admin" : "/dashboard"} />}
             >
               <HugeiconsIcon icon={ShippingTruck01Icon} strokeWidth={2} className="size-5!" />
-              <span className="text-base font-semibold">Cheap Ship</span>
+              <span className="text-base font-semibold">{isAdmin ? "Admin Panel" : "Cheap Ship"}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
+        <NavMain items={mainNavItems} />
+        {!isAdmin && <NavDocuments items={data.documents} />}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

@@ -85,12 +85,18 @@ const calculateRates = async (req, res) => {
 
     const availableCouriers = serviceabilityData.data.available_courier_companies || [];
     
-    // Get user's commission settings
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: { commission_rate: true, assigned_rates: true, referred_by: true }
-    });
+    // Get user's commission settings and Global Settings
+    const [user, globalSetting] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { commission_rate: true, assigned_rates: true, referred_by: true }
+      }),
+      prisma.systemSetting.findUnique({
+        where: { key: 'global_commission_rate' }
+      })
+    ]);
 
+    const globalCommission = globalSetting ? parseFloat(globalSetting.value) : 0;
     const defaultRate = user?.commission_rate ? parseFloat(user.commission_rate.toString()) : (user?.referred_by ? 5 : 0);
     const assignedRates = user?.assigned_rates || {};
 
@@ -119,8 +125,13 @@ const calculateRates = async (req, res) => {
         const markupPercent = courierConfig.rate !== undefined ? parseFloat(courierConfig.rate) : defaultRate;
         
         const baseRate = parseFloat(courier.rate);
-        const markupAmount = (baseRate * markupPercent) / 100;
-        const finalRate = baseRate + markupAmount;
+        
+        // Apply Global Commission first (Base + Global%)
+        const rateWithGlobal = baseRate + (baseRate * globalCommission / 100);
+
+        // Apply User Markup on top of (Base + Global)
+        const markupAmount = (rateWithGlobal * markupPercent) / 100;
+        const finalRate = rateWithGlobal + markupAmount;
 
         return {
           courier_name: courier.courier_name,
@@ -132,6 +143,7 @@ const calculateRates = async (req, res) => {
           rate: finalRate,
           base_rate: baseRate, // Keeping base_rate for internal use if needed
           markup_amount: markupAmount,
+          global_commission: (baseRate * globalCommission / 100), // Expose this if needed for transparency or debugging
           is_surface: courier.is_surface,
           mode: courier.mode === 1 ? 'Air' : 'Surface',
           is_recommended: courier.courier_company_id === serviceabilityData.data.recommended_courier_company_id

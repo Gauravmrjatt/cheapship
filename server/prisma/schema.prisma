@@ -64,6 +64,16 @@ enum TransactionStatus {
   FAILED
 }
 
+model SystemSetting {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique @db.VarChar(50)
+  value       String   @db.Text
+  description String?  @db.VarChar(255)
+  updated_at  DateTime @default(now()) @db.Timestamp()
+
+  @@map("system_settings")
+}
+
 model Address {
   id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id          String   @db.Uuid

@@ -34,6 +34,7 @@ export const useUser = () => {
         name: query.data.name,
         email: query.data.email,
         wallet_balance: Number(query.data.wallet_balance),
+        user_type: query.data.user_type,
       });
     }
   }, [query.data, setUser]);

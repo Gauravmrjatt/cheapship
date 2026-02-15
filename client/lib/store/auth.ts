@@ -6,6 +6,7 @@ export interface User {
   email: string;
   name: string;
   wallet_balance?: number;
+  user_type?: string;
 }
 
 interface AuthState {
