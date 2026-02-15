@@ -586,7 +586,7 @@ export default function CreateOrderPage() {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium leading-none">Pickup Location (Shiprocket)</Label>
+                    <Label className="text-sm font-medium leading-none">Pickup Location</Label>
                     <Button 
                       type="button" 
                       variant="outline" 
@@ -627,7 +627,7 @@ export default function CreateOrderPage() {
                       </Select>
                     )}
                   />
-                  <p className="text-[0.8rem] text-muted-foreground">Select where the package will be picked up from. Registered in Shiprocket.</p>
+                  <p className="text-[0.8rem] text-muted-foreground">Select where the package will be picked up from</p>
                   <FieldError errors={[errors.pickup_location]} />
                 </div>
 
@@ -636,7 +636,7 @@ export default function CreateOrderPage() {
                     <SheetHeader>
                       <SheetTitle>Add Pickup Location</SheetTitle>
                       <SheetDescription>
-                        Register a new pickup location with Shiprocket. This nickname will be used for your shipments.
+                        Register a new pickup location
                       </SheetDescription>
                     </SheetHeader>
                     <div className="space-y-4 py-6">
@@ -804,17 +804,17 @@ export default function CreateOrderPage() {
                 </Popover>
               )}
 
-              {isPickup && shiprocketPickupLocations.length > 0 && (
+              {/* {isPickup && shiprocketPickupLocations.length > 0 && (
                 <Popover open={openShiprocketPopover} onOpenChange={setOpenShiprocketPopover}>
                   <PopoverTrigger asChild>
                     <Button onClick={(e) => e.preventDefault()} variant="outline" size="sm" className="h-9 gap-2">
                       <HugeiconsIcon icon={RocketIcon} size={16} />
-                      Shiprocket Pickups
+                       Pickup Locations
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-0" align="end">
                     <div className="p-4 border-b">
-                      <p className="text-sm font-medium leading-none">Shiprocket Pickup Locations</p>
+                      <p className="text-sm font-medium leading-none">Pickup Locations</p>
                     </div>
                     <div className="max-h-[300px] overflow-y-auto">
                       {shiprocketPickupLocations.map((addr: ShiprocketPickupLocation) => (
@@ -836,7 +836,7 @@ export default function CreateOrderPage() {
                     </div>
                   </PopoverContent>
                 </Popover>
-              )}
+              )} */}
             </div>
 
             <Card className="p-6">
@@ -901,9 +901,9 @@ export default function CreateOrderPage() {
                 <div className="mt-6 pt-6 border-t space-y-4">
                   <div className="flex items-center gap-2">
                     <HugeiconsIcon icon={RocketIcon} size={18} className="text-primary" />
-                    <h3 className="text-sm font-semibold">Shiprocket Pickup Registration</h3>
+                    <h3 className="text-sm font-semibold">Pickup Registration</h3>
                   </div>
-                  <p className="text-xs text-muted-foreground">Register this location with Shiprocket to enable pickups. You must provide a unique nickname.</p>
+                  <p className="text-xs text-muted-foreground">Register this location to enable pickups. You must provide a unique nickname.</p>
                   <div className="flex gap-4 items-end">
                     <div className="flex-1">
                       <Label className="text-[10px] uppercase font-bold text-muted-foreground">Location Nickname</Label>
