@@ -13,7 +13,7 @@ import {
   FieldError,
   FieldLabel,
 } from "@/components/ui/field";
-import { createOrderSchema } from "@/lib/validators/order";
+import { createOrderSchema, shiprocketPickupSchema } from "@/lib/validators/order";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -124,19 +124,25 @@ export default function CreateOrderPage() {
   const [isShipped, setShipped] = useState(false);
   const [openReceiverPopover, setOpenReceiverPopover] = useState(false);
   const [openAddPickupSheet, setOpenAddPickupSheet] = useState(false);
-  const [pickupNickname, setPickupNickname] = useState("");
-  const [newPickupData, setNewPickupData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    pincode: "",
-    address: "",
-    city: "",
-    state: "",
-  });
   const router = useRouter();
   const http = useHttp();
   const queryClient = useQueryClient();
+
+  const pickupForm = useForm<z.infer<typeof shiprocketPickupSchema>>({
+    resolver: zodResolver(shiprocketPickupSchema),
+    defaultValues: {
+      pickup_location: "",
+      name: "",
+      phone: "",
+      email: "",
+      pincode: "",
+      address: "",
+      city: "",
+      state: "",
+      country: "India",
+    },
+    mode: "onChange",
+  });
 
   const { mutate, isPending } = useMutation(
     http.post("/orders", {
@@ -180,36 +186,49 @@ export default function CreateOrderPage() {
     })
   );
 
-  const { mutate: saveShiprocketPickupMutation, isPending: isSavingShiprocketPickup } = useMutation(
-    http.post("/addresses/shiprocket-pickup", {
-      onSuccess: (data: any) => {
-        if (data.success) {
-          toast.success("Shiprocket pickup location created");
-          queryClient.invalidateQueries({ queryKey: ["shiprocket-pickup-locations"] });
-          setOpenAddPickupSheet(false);
-          setPickupNickname("");
-          setNewPickupData({
-            name: "",
-            phone: "",
-            email: "",
-            pincode: "",
-            address: "",
-            city: "",
-            state: "",
-          });
-        } else {
-          let errorMsg = data.message || "Failed to create Shiprocket pickup location";
-          try {
-            const parsed = JSON.parse(data.message);
-            if (typeof parsed === "object") {
-              errorMsg = Object.values(parsed).flat().join(", ");
-            }
-          } catch (e) { }
-          toast.error(errorMsg);
-        }
-      },
-    })
-  );
+    const { mutate: saveShiprocketPickupMutation, isPending: isSavingShiprocketPickup } = useMutation(
+
+      http.post("/addresses/shiprocket-pickup", {
+
+        onSuccess: (data: any) => {
+
+          if (data.success) {
+
+            toast.success("Shiprocket pickup location created");
+
+            queryClient.invalidateQueries({ queryKey: ["shiprocket-pickup-locations"] });
+
+            setOpenAddPickupSheet(false);
+
+            pickupForm.reset();
+
+          } else {
+
+            let errorMsg = data.message || "Failed to create Shiprocket pickup location";
+
+            try {
+
+              const parsed = JSON.parse(data.message);
+
+              if (typeof parsed === "object") {
+
+                errorMsg = Object.values(parsed).flat().join(", ");
+
+              }
+
+            } catch (e) {}
+
+            toast.error(errorMsg);
+
+          }
+
+        },
+
+      })
+
+    );
+
+  
 
   const { mutate: deleteAddressMutation } = useMutation(
     http.del("/addresses", {
@@ -291,30 +310,25 @@ export default function CreateOrderPage() {
     )
   );
 
+  const sheetPincode = pickupForm.watch("pincode");
   const { data: sheetPincodeData, isLoading: isLoadingSheetPincode } = useQuery<any>(
     http.get(
-      ["pincode-details-sheet", newPickupData.pincode],
-      `/orders/pincode-details?postcode=${newPickupData.pincode}`,
-      newPickupData.pincode?.length === 6
+      ["pincode-details-sheet", sheetPincode],
+      `/orders/pincode-details?postcode=${sheetPincode}`,
+      sheetPincode?.length === 6
     )
   );
 
   useEffect(() => {
     if (sheetPincodeData?.success || !!sheetPincodeData?.postcode_details) {
       const details = sheetPincodeData.postcode_details;
-      setNewPickupData(prev => ({
-        ...prev,
-        city: details.city,
-        state: details.state
-      }));
+      pickupForm.setValue("city", details.city, { shouldValidate: true });
+      pickupForm.setValue("state", details.state, { shouldValidate: true });
     } else {
-      setNewPickupData(prev => ({
-        ...prev,
-        city: "",
-        state: ""
-      }));
+      pickupForm.setValue("city", "");
+      pickupForm.setValue("state", "");
     }
-  }, [sheetPincodeData, newPickupData.pincode]);
+  }, [sheetPincodeData, pickupForm]);
 
   const isPickupPincodeValid = pickupLocality?.success || !!pickupLocality?.postcode_details;
   const isDeliveryPincodeValid = deliveryLocality?.success || !!deliveryLocality?.postcode_details;
@@ -446,43 +460,25 @@ export default function CreateOrderPage() {
     } as any);
   };
 
-  const handleRegisterShiprocketPickup = () => {
-    const addr = newPickupData;
-
-    // Comprehensive validation schema
-    const schema = z.object({
-      pickup_location: z.string().min(1, "Nickname is required").max(36, "Max 36 characters"),
-      name: z.string().min(1, "Name is required"),
-      email: z.string().email("Invalid email address"),
-      phone: z.string().min(10, "Phone number must be at least 10 digits"),
-      address: z.string()
-        .min(10, "Address must be at least 10 characters")
-        .regex(/.*[0-9].*/, "Address must include a House, Flat, or Road number (at least one digit)"),
-      city: z.string().min(1, "City is required"),
-      state: z.string().min(1, "State is required"),
-      pin_code: z.string().min(6, "Pincode must be 6 digits"),
-      country: z.string().default("India"),
-    });
-
-    const validation = schema.safeParse({
-      pickup_location: pickupNickname,
-      ...addr,
-      pin_code: addr.pincode,
-      country: "India"
-    });
-
-    if (!validation.success) {
-      const firstError = validation.error.errors[0].message;
-      toast.error(firstError);
-      return;
-    }
-
+  const handleRegisterShiprocketPickup = pickupForm.handleSubmit((data) => {
     if (!(sheetPincodeData?.success || !!sheetPincodeData?.postcode_details)) {
       toast.error("Please provide a valid pincode");
       return;
     }
 
-    saveShiprocketPickupMutation(validation.data as any);
+    saveShiprocketPickupMutation(data as any);
+  });
+
+  const syncPickupFromMain = () => {
+    const addr = formValues.pickup_address;
+    pickupForm.setValue("name", addr.name);
+    pickupForm.setValue("phone", addr.phone);
+    pickupForm.setValue("email", addr.email || "");
+    pickupForm.setValue("pincode", addr.pincode);
+    pickupForm.setValue("address", addr.address);
+    pickupForm.setValue("city", addr.city);
+    pickupForm.setValue("state", addr.state);
+    toast.success("Details copied from sender address");
   };
 
   const handleDeleteSavedAddress = (e: React.MouseEvent, id: string) => {
@@ -611,11 +607,11 @@ export default function CreateOrderPage() {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium leading-none">Pickup Location</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
+                    <Label className="text-sm font-medium leading-none">Pickup Location (Shiprocket)</Label>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
                       className="h-8 gap-2"
                       onClick={() => setOpenAddPickupSheet(true)}
                     >
@@ -661,45 +657,63 @@ export default function CreateOrderPage() {
                     <SheetHeader>
                       <SheetTitle>Add Pickup Location</SheetTitle>
                       <SheetDescription>
-                        Register a new pickup location
+                        Register a new pickup location with Shiprocket.
                       </SheetDescription>
                     </SheetHeader>
                     <div className="space-y-4 py-6 p-7">
-                      <Field>
+                      <Field data-invalid={!!pickupForm.formState.errors.pickup_location}>
                         <FieldLabel className="text-xs">Location Nickname</FieldLabel>
                         <Input
                           placeholder="e.g. Warehouse-1"
-                          value={pickupNickname}
-                          onChange={(e) => setPickupNickname(e.target.value)}
+                          {...pickupForm.register("pickup_location")}
                         />
+                        <FieldError errors={[pickupForm.formState.errors.pickup_location]} />
                       </Field>
                       <Separator />
                       <div className="grid grid-cols-1 gap-4">
-                        <Field><FieldLabel className="text-xs">Contact Name</FieldLabel><Input value={newPickupData.name} onChange={(e) => setNewPickupData({ ...newPickupData, name: e.target.value })} /></Field>
-                        <Field><FieldLabel className="text-xs">Phone Number</FieldLabel><Input value={newPickupData.phone} onChange={(e) => setNewPickupData({ ...newPickupData, phone: e.target.value })} /></Field>
-                        <Field><FieldLabel className="text-xs">Email Address</FieldLabel><Input value={newPickupData.email} onChange={(e) => setNewPickupData({ ...newPickupData, email: e.target.value })} /></Field>
-                        <Field>
+                        <Field data-invalid={!!pickupForm.formState.errors.name}>
+                          <FieldLabel className="text-xs">Contact Name</FieldLabel>
+                          <Input {...pickupForm.register("name")} />
+                          <FieldError errors={[pickupForm.formState.errors.name]} />
+                        </Field>
+                        <Field data-invalid={!!pickupForm.formState.errors.phone}>
+                          <FieldLabel className="text-xs">Phone Number</FieldLabel>
+                          <Input {...pickupForm.register("phone")} />
+                          <FieldError errors={[pickupForm.formState.errors.phone]} />
+                        </Field>
+                        <Field data-invalid={!!pickupForm.formState.errors.email}>
+                          <FieldLabel className="text-xs">Email Address</FieldLabel>
+                          <Input {...pickupForm.register("email")} />
+                          <FieldError errors={[pickupForm.formState.errors.email]} />
+                        </Field>
+                        <Field data-invalid={!!pickupForm.formState.errors.pincode}>
                           <FieldLabel className="text-xs">Pincode</FieldLabel>
                           <div className="relative">
-                            <Input
-                              value={newPickupData.pincode}
-                              onChange={(e) => setNewPickupData({ ...newPickupData, pincode: e.target.value })}
-                            />
+                            <Input {...pickupForm.register("pincode")} />
                             {isLoadingSheetPincode && <div className="absolute right-3 top-1/2 -translate-y-1/2"><HugeiconsIcon icon={Loading03Icon} className="animate-spin text-muted-foreground" size={16} /></div>}
                           </div>
+                          <FieldError errors={[pickupForm.formState.errors.pincode]} />
                         </Field>
-                        <Field>
+                        <Field data-invalid={!!pickupForm.formState.errors.address}>
                           <FieldLabel className="text-xs">Full Address</FieldLabel>
                           <Input
-                            value={newPickupData.address}
-                            onChange={(e) => setNewPickupData({ ...newPickupData, address: e.target.value })}
+                            {...pickupForm.register("address")}
                             placeholder="Include House/Flat No, Building, Road etc."
                           />
                           <p className="text-[10px] text-muted-foreground mt-1">Min 10 chars. Must include House/Flat/Road No.</p>
+                          <FieldError errors={[pickupForm.formState.errors.address]} />
                         </Field>
                         <div className="grid grid-cols-2 gap-4">
-                          <Field><FieldLabel className="text-xs">City</FieldLabel><Input className="bg-muted" value={newPickupData.city} disabled /></Field>
-                          <Field><FieldLabel className="text-xs">State</FieldLabel><Input className="bg-muted" value={newPickupData.state} disabled /></Field>
+                          <Field data-invalid={!!pickupForm.formState.errors.city}>
+                            <FieldLabel className="text-xs">City</FieldLabel>
+                            <Input className="bg-muted" {...pickupForm.register("city")} disabled />
+                            <FieldError errors={[pickupForm.formState.errors.city]} />
+                          </Field>
+                          <Field data-invalid={!!pickupForm.formState.errors.state}>
+                            <FieldLabel className="text-xs">State</FieldLabel>
+                            <Input className="bg-muted" {...pickupForm.register("state")} disabled />
+                            <FieldError errors={[pickupForm.formState.errors.state]} />
+                          </Field>
                         </div>
                       </div>
                     </div>
@@ -924,8 +938,20 @@ export default function CreateOrderPage() {
 
               {isPickup && (
                 <div className="mt-6 pt-6 border-t space-y-4">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">Pickup Registration</h3>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <HugeiconsIcon icon={RocketIcon} size={18} className="text-primary" />
+                      <h3 className="text-sm font-semibold">Pickup Registration</h3>
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-[10px] uppercase font-bold text-primary"
+                      onClick={syncPickupFromMain}
+                    >
+                      Fill from Sender Address
+                    </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">Register this location to enable pickups. You must provide a unique nickname.</p>
                   <div className="flex gap-4 items-end">
@@ -933,8 +959,7 @@ export default function CreateOrderPage() {
                       <Label className="text-[10px] uppercase font-bold text-muted-foreground">Location Nickname</Label>
                       <Input
                         placeholder="e.g. Warehouse-1"
-                        value={pickupNickname}
-                        onChange={(e) => setPickupNickname(e.target.value)}
+                        {...pickupForm.register("pickup_location")}
                         className="h-9 mt-1"
                       />
                     </div>
@@ -944,12 +969,15 @@ export default function CreateOrderPage() {
                       size="sm"
                       className="h-9 gap-2"
                       onClick={handleRegisterShiprocketPickup}
-                      disabled={isSavingShiprocketPickup || !pickupNickname}
+                      disabled={isSavingShiprocketPickup || !pickupForm.watch("pickup_location")}
                     >
                       {isSavingShiprocketPickup ? <HugeiconsIcon icon={Loading03Icon} className="animate-spin" size={14} /> : <HugeiconsIcon icon={Add01Icon} size={14} />}
                       Register Location
                     </Button>
                   </div>
+                  {pickupForm.formState.errors.pickup_location && (
+                    <p className="text-[10px] text-destructive">{pickupForm.formState.errors.pickup_location.message}</p>
+                  )}
                 </div>
               )}
             </Card>

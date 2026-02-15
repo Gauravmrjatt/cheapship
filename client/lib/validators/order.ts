@@ -48,3 +48,17 @@ export const createOrderSchema = z.object({
   shipping_charge: z.number().optional(),
   base_shipping_charge: z.number().optional(),
 });
+
+export const shiprocketPickupSchema = z.object({
+  pickup_location: z.string().min(1, "Nickname is required").max(36, "Max 36 characters"),
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  address: z.string()
+    .min(10, "Address must be at least 10 characters")
+    .regex(/.*[0-9].*/, "Address must include a House, Flat, or Road number"),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  pincode: z.string().min(6, "Pincode must be 6 digits"),
+  country: z.string().default("India"),
+});
