@@ -1,5 +1,5 @@
 "use client";
-
+import confetti from "canvas-confetti"
 import { useState, useEffect, useMemo } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,9 +41,9 @@ import {
   TruckIcon,
   RocketIcon,
   Navigation01Icon,
-  Loading03Icon,
   Delete01Icon,
-  CheckmarkBadge01Icon
+  CheckmarkBadge01Icon,
+  Loading03Icon
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -51,13 +51,13 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetDescription, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetFooter 
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter
 } from "@/components/ui/sheet";
 
 const steps = [
@@ -121,6 +121,7 @@ export default function CreateOrderPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [openPickupPopover, setOpenPickupPopover] = useState(false);
   const [openShiprocketPopover, setOpenShiprocketPopover] = useState(false);
+  const [isShipped, setShipped] = useState(false);
   const [openReceiverPopover, setOpenReceiverPopover] = useState(false);
   const [openAddPickupSheet, setOpenAddPickupSheet] = useState(false);
   const [pickupNickname, setPickupNickname] = useState("");
@@ -140,8 +141,32 @@ export default function CreateOrderPage() {
   const { mutate, isPending } = useMutation(
     http.post("/orders", {
       onSuccess: () => {
+        setShipped(true);
         toast.success("Order created successfully");
-        router.push("/dashboard/orders");
+        const end = Date.now() + 3 * 1000 // 3 seconds
+        const colors = ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"]
+        const frame = () => {
+          if (Date.now() > end) return
+          confetti({
+            particleCount: 2,
+            angle: 60,
+            spread: 55,
+            startVelocity: 60,
+            origin: { x: 0, y: 0.5 },
+            colors: colors,
+          })
+          confetti({
+            particleCount: 2,
+            angle: 120,
+            spread: 55,
+            startVelocity: 60,
+            origin: { x: 1, y: 0.5 },
+            colors: colors,
+          })
+          requestAnimationFrame(frame)
+        }
+        frame()
+        // router.push("/dashboard/orders");
       },
     })
   );
@@ -179,7 +204,7 @@ export default function CreateOrderPage() {
             if (typeof parsed === "object") {
               errorMsg = Object.values(parsed).flat().join(", ");
             }
-          } catch (e) {}
+          } catch (e) { }
           toast.error(errorMsg);
         }
       },
@@ -335,16 +360,16 @@ export default function CreateOrderPage() {
 
   const nextStep = async () => {
     if (currentStep === 3 && !isPickupPincodeValid) {
-        toast.error("Please provide a valid pickup pincode");
-        return;
+      toast.error("Please provide a valid pickup pincode");
+      return;
     }
     if (currentStep === 4 && !isDeliveryPincodeValid) {
-        toast.error("Please provide a valid delivery pincode");
-        return;
+      toast.error("Please provide a valid delivery pincode");
+      return;
     }
     if (currentStep === 5 && !formValues.courier_id) {
-        toast.error("Please select a courier partner");
-        return;
+      toast.error("Please select a courier partner");
+      return;
     }
 
     const fieldsToValidate = getFieldsForStep(currentStep);
@@ -371,7 +396,7 @@ export default function CreateOrderPage() {
   };
 
   function onSubmit(values: z.infer<typeof createOrderSchema>) {
-    mutate(values as any);
+    mutate({...values , total_amount :  Number(values.shipping_charge || 0)} as any);
   }
 
   const selectSavedAddress = (address: SavedAddress, prefix: "pickup_address" | "receiver_address") => {
@@ -382,7 +407,7 @@ export default function CreateOrderPage() {
     form.setValue(`${prefix}.address`, address.complete_address);
     form.setValue(`${prefix}.city`, address.city);
     form.setValue(`${prefix}.state`, address.state);
-    
+
     // Close the corresponding popover
     if (prefix === "pickup_address") {
       setOpenPickupPopover(false);
@@ -423,7 +448,7 @@ export default function CreateOrderPage() {
 
   const handleRegisterShiprocketPickup = () => {
     const addr = newPickupData;
-    
+
     // Comprehensive validation schema
     const schema = z.object({
       pickup_location: z.string().min(1, "Nickname is required").max(36, "Max 36 characters"),
@@ -476,7 +501,7 @@ export default function CreateOrderPage() {
               <h2 className="text-xl font-semibold tracking-tight">Service Configuration</h2>
               <p className="text-sm text-muted-foreground">Select delivery speed and type</p>
             </div>
-            
+
             <div className="space-y-6">
               <div className="space-y-3 mb-8">
                 <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Delivery Speed</Label>
@@ -587,10 +612,10 @@ export default function CreateOrderPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium leading-none">Pickup Location</Label>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       className="h-8 gap-2"
                       onClick={() => setOpenAddPickupSheet(true)}
                     >
@@ -632,42 +657,42 @@ export default function CreateOrderPage() {
                 </div>
 
                 <Sheet open={openAddPickupSheet} onOpenChange={setOpenAddPickupSheet}>
-                  <SheetContent className="sm:max-w-md overflow-y-auto">
+                  <SheetContent className="sm:w-full overflow-y-auto min-w-[50dvw]">
                     <SheetHeader>
                       <SheetTitle>Add Pickup Location</SheetTitle>
                       <SheetDescription>
                         Register a new pickup location
                       </SheetDescription>
                     </SheetHeader>
-                    <div className="space-y-4 py-6">
+                    <div className="space-y-4 py-6 p-7">
                       <Field>
                         <FieldLabel className="text-xs">Location Nickname</FieldLabel>
-                        <Input 
-                          placeholder="e.g. Warehouse-1" 
-                          value={pickupNickname} 
+                        <Input
+                          placeholder="e.g. Warehouse-1"
+                          value={pickupNickname}
                           onChange={(e) => setPickupNickname(e.target.value)}
                         />
                       </Field>
                       <Separator />
                       <div className="grid grid-cols-1 gap-4">
-                        <Field><FieldLabel className="text-xs">Contact Name</FieldLabel><Input value={newPickupData.name} onChange={(e) => setNewPickupData({...newPickupData, name: e.target.value})} /></Field>
-                        <Field><FieldLabel className="text-xs">Phone Number</FieldLabel><Input value={newPickupData.phone} onChange={(e) => setNewPickupData({...newPickupData, phone: e.target.value})} /></Field>
-                        <Field><FieldLabel className="text-xs">Email Address</FieldLabel><Input value={newPickupData.email} onChange={(e) => setNewPickupData({...newPickupData, email: e.target.value})} /></Field>
+                        <Field><FieldLabel className="text-xs">Contact Name</FieldLabel><Input value={newPickupData.name} onChange={(e) => setNewPickupData({ ...newPickupData, name: e.target.value })} /></Field>
+                        <Field><FieldLabel className="text-xs">Phone Number</FieldLabel><Input value={newPickupData.phone} onChange={(e) => setNewPickupData({ ...newPickupData, phone: e.target.value })} /></Field>
+                        <Field><FieldLabel className="text-xs">Email Address</FieldLabel><Input value={newPickupData.email} onChange={(e) => setNewPickupData({ ...newPickupData, email: e.target.value })} /></Field>
                         <Field>
                           <FieldLabel className="text-xs">Pincode</FieldLabel>
                           <div className="relative">
-                            <Input 
-                              value={newPickupData.pincode} 
-                              onChange={(e) => setNewPickupData({...newPickupData, pincode: e.target.value})} 
+                            <Input
+                              value={newPickupData.pincode}
+                              onChange={(e) => setNewPickupData({ ...newPickupData, pincode: e.target.value })}
                             />
                             {isLoadingSheetPincode && <div className="absolute right-3 top-1/2 -translate-y-1/2"><HugeiconsIcon icon={Loading03Icon} className="animate-spin text-muted-foreground" size={16} /></div>}
                           </div>
                         </Field>
                         <Field>
                           <FieldLabel className="text-xs">Full Address</FieldLabel>
-                          <Input 
-                            value={newPickupData.address} 
-                            onChange={(e) => setNewPickupData({...newPickupData, address: e.target.value})} 
+                          <Input
+                            value={newPickupData.address}
+                            onChange={(e) => setNewPickupData({ ...newPickupData, address: e.target.value })}
                             placeholder="Include House/Flat No, Building, Road etc."
                           />
                           <p className="text-[10px] text-muted-foreground mt-1">Min 10 chars. Must include House/Flat/Road No.</p>
@@ -679,8 +704,8 @@ export default function CreateOrderPage() {
                       </div>
                     </div>
                     <SheetFooter>
-                      <Button 
-                        className="w-full gap-2" 
+                      <Button
+                        className="w-full gap-2"
                         onClick={handleRegisterShiprocketPickup}
                         disabled={isSavingShiprocketPickup}
                       >
@@ -741,12 +766,12 @@ export default function CreateOrderPage() {
         const isPickup = currentStep === 3;
         const prefix = isPickup ? "pickup_address" : "receiver_address";
         const addrErrors = errors[prefix as keyof typeof errors] as any;
-        
+
         const currentPincode = isPickup ? formValues.pickup_address.pincode : formValues.receiver_address.pincode;
         const currentLocality = isPickup ? pickupLocality : deliveryLocality;
         const isCurrentLoading = isPickup ? isLoadingPickup : isLoadingDelivery;
         const isCurrentValid = isPickup ? isPickupPincodeValid : isDeliveryPincodeValid;
-        
+
         const openPopover = isPickup ? openPickupPopover : openReceiverPopover;
         const setOpenPopover = isPickup ? setOpenPickupPopover : setOpenReceiverPopover;
 
@@ -757,7 +782,7 @@ export default function CreateOrderPage() {
                 <h2 className="text-xl font-semibold tracking-tight">{isPickup ? "Sender" : "Receiver"} Address</h2>
                 <p className="text-sm text-muted-foreground">{isPickup ? "Pickup location details" : "Delivery destination details"}</p>
               </div>
-              
+
               {savedAddresses && savedAddresses.length > 0 && (
                 <Popover open={openPopover} onOpenChange={setOpenPopover}>
                   <PopoverTrigger asChild>
@@ -772,8 +797,8 @@ export default function CreateOrderPage() {
                     </div>
                     <div className="max-h-[300px] overflow-y-auto">
                       {savedAddresses.map((addr) => (
-                        <div 
-                          key={addr.id} 
+                        <div
+                          key={addr.id}
                           className="group p-4 hover:bg-muted cursor-pointer border-b last:border-0 relative"
                           onClick={() => selectSavedAddress(addr, prefix)}
                         >
@@ -783,9 +808,9 @@ export default function CreateOrderPage() {
                               {addr.address_label && (
                                 <Badge variant="secondary" className="text-[10px] h-5">{addr.address_label}</Badge>
                               )}
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={(e) => handleDeleteSavedAddress(e, addr.id)}
                               >
@@ -874,7 +899,7 @@ export default function CreateOrderPage() {
                     control={form.control}
                     name={isPickup ? "save_pickup_address" : "save_receiver_address"}
                     render={({ field }) => (
-                      <Checkbox 
+                      <Checkbox
                         id={`save-${prefix}`}
                         checked={field.value}
                         onCheckedChange={field.onChange}
@@ -883,11 +908,11 @@ export default function CreateOrderPage() {
                   />
                   <Label htmlFor={`save-${prefix}`} className="text-sm font-medium">Save to address book</Label>
                 </div>
-                
-                <Button 
-                  type="button" 
-                  variant="secondary" 
-                  size="sm" 
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
                   className="h-8 gap-2"
                   onClick={() => handleSaveAddressNow(prefix)}
                   disabled={isSavingAddress}
@@ -900,24 +925,23 @@ export default function CreateOrderPage() {
               {isPickup && (
                 <div className="mt-6 pt-6 border-t space-y-4">
                   <div className="flex items-center gap-2">
-                    <HugeiconsIcon icon={RocketIcon} size={18} className="text-primary" />
                     <h3 className="text-sm font-semibold">Pickup Registration</h3>
                   </div>
                   <p className="text-xs text-muted-foreground">Register this location to enable pickups. You must provide a unique nickname.</p>
                   <div className="flex gap-4 items-end">
                     <div className="flex-1">
                       <Label className="text-[10px] uppercase font-bold text-muted-foreground">Location Nickname</Label>
-                      <Input 
-                        placeholder="e.g. Warehouse-1" 
-                        value={pickupNickname} 
+                      <Input
+                        placeholder="e.g. Warehouse-1"
+                        value={pickupNickname}
                         onChange={(e) => setPickupNickname(e.target.value)}
                         className="h-9 mt-1"
                       />
                     </div>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       className="h-9 gap-2"
                       onClick={handleRegisterShiprocketPickup}
                       disabled={isSavingShiprocketPickup || !pickupNickname}
@@ -973,8 +997,8 @@ export default function CreateOrderPage() {
               ) : (
                 <div className="grid gap-3">
                   {rateData.serviceable_couriers.map((courier, idx) => (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       onClick={() => {
                         form.setValue("courier_id", courier.courier_company_id);
                         form.setValue("courier_name", courier.courier_name);
@@ -1130,10 +1154,10 @@ export default function CreateOrderPage() {
               <Card className="p-6 bg-muted/30 border-primary/20 space-y-6">
                 <h3 className="font-semibold text-sm text-primary">Cost Breakdown</h3>
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
+                  {/* <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipment Value</span>
                     <span>₹{values.total_amount}</span>
-                  </div>
+                  </div> */}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping Charges</span>
                     <span className="text-green-600 font-medium">+ ₹{values.shipping_charge}</span>
@@ -1141,7 +1165,7 @@ export default function CreateOrderPage() {
                   <Separator className="my-2" />
                   <div className="flex justify-between items-end">
                     <span className="font-semibold">Total Payable</span>
-                    <span className="text-2xl font-bold text-primary">₹{(Number(values.total_amount) + Number(values.shipping_charge || 0)).toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-primary">₹{ Number(values.shipping_charge || 0).toFixed(2)}</span>
                   </div>
                 </div>
               </Card>
@@ -1187,19 +1211,34 @@ export default function CreateOrderPage() {
       case 8:
         return (
           <div className="space-y-8 animate-in zoom-in-95 duration-500 text-center py-16">
-            <div className="mx-auto w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={40} />
-            </div>
-            
-            <div className="space-y-2 max-w-md mx-auto">
-              <h2 className="text-2xl font-bold tracking-tight">Ready to Ship!</h2>
-              <p className="text-muted-foreground">Your order details are confirmed. Proceed to generate the label and initiate the shipment.</p>
+            {!isShipped ? <> <div className="mx-auto w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+              {isPending ? <HugeiconsIcon icon={Loading03Icon} size={40} /> : <HugeiconsIcon icon={CheckmarkCircle01Icon} size={40} />}
             </div>
 
-            <Card className="max-w-xs mx-auto p-6 bg-muted/30 border-dashed">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Final Amount</p>
-              <p className="text-4xl font-bold text-foreground">₹{(Number(formValues.total_amount) + Number(formValues.shipping_charge || 0)).toFixed(2)}</p>
-            </Card>
+              <div className="space-y-2 max-w-md mx-auto">
+                <h2 className="text-2xl font-bold tracking-tight">Ready to Ship!</h2>
+                <p className="text-muted-foreground">Your order is ready to ship. Proceed to generate the label and initiate the shipment.</p>
+              </div>
+
+              <Card className="max-w-xs mx-auto p-6 bg-muted/30 border-dashed">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Final Amount</p>
+                <p className="text-4xl font-bold text-foreground">₹{(Number(formValues.total_amount) + Number(formValues.shipping_charge || 0)).toFixed(2)}</p>
+              </Card></> : <>
+              <div className="mx-auto w-20 h-20 bg-green-600 text-green-100 rounded-full flex items-center justify-center mb-6">
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={40} />
+              </div>
+
+              <div className="space-y-2 max-w-md mx-auto">
+                <h2 className="text-2xl font-bold tracking-tight">Shipped!</h2>
+                <p className="text-muted-foreground">Your order is shipped. Proceed to generate the label and initiate the shipment.</p>
+              </div>
+
+              <Card className="max-w-xs mx-auto p-6 bg-muted/30 border-dashed">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Final Amount</p>
+                <p className="text-4xl font-bold text-foreground">₹{(Number(formValues.total_amount) + Number(formValues.shipping_charge || 0)).toFixed(2)}</p>
+              </Card>
+            </>}
+
           </div>
         );
       default:
@@ -1208,10 +1247,10 @@ export default function CreateOrderPage() {
   };
 
   const isCurrentStepValid = () => {
-      if (currentStep === 3) return isPickupPincodeValid;
-      if (currentStep === 4) return isDeliveryPincodeValid;
-      if (currentStep === 5) return !!formValues.courier_id;
-      return true;
+    if (currentStep === 3) return isPickupPincodeValid;
+    if (currentStep === 4) return isDeliveryPincodeValid;
+    if (currentStep === 5) return !!formValues.courier_id;
+    return true;
   }
 
   return (
@@ -1276,7 +1315,7 @@ export default function CreateOrderPage() {
                 <Button
                   type="button"
                   className="gap-2 px-8"
-                  onClick={nextStep}
+                  onClick={(e) => { nextStep(); e.preventDefault() }}
                   disabled={!isCurrentStepValid()}
                 >
                   Continue <HugeiconsIcon icon={ArrowRight01Icon} size={18} />
@@ -1284,11 +1323,12 @@ export default function CreateOrderPage() {
               ) : (
                 <Button
                   type="submit"
-                  disabled={isPending}
-                  className="gap-2 px-8"
+                  disabled={isPending || isShipped}
+                  className={cn("gap-2 px-8", isShipped && "bg-muted text-muted-foreground hover:bg-muted coursor-disabled")}
                 >
-                  {isPending ? "Processing..." : "Create Order"}
+                  {isPending ? "Processing..." : !isShipped ? "Create Order" : "Shipped!"}
                   {!isPending && <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} />}
+                  
                 </Button>
               )}
             </div>

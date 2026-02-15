@@ -12,6 +12,8 @@
   },
   "iconLibrary": "hugeicons",
   "rtl": false,
+  "menuColor": "default",
+  "menuAccent": "bold",
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils",
@@ -19,9 +21,8 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "menuColor": "default",
-  "menuAccent": "bold",
-   "registries": {
-    "@acme": "https://acme.com/r/{name}.json"
+  "registries": {
+    "@acme": "https://acme.com/r/{name}.json",
+    "@magicui": "https://magicui.design/r/{name}"
   }
 }

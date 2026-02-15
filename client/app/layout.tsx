@@ -40,6 +40,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Providers>
+            <Toaster />
             {children}
           </Providers>
         </ThemeProvider>
