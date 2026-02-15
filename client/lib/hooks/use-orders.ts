@@ -62,3 +62,23 @@ export const useOrders = (page: number, pageSize: number, filters: OrderFilters 
     enabled: !!token,
   });
 };
+
+export const useCancelOrder = () => {
+  const { token } = useAuth();
+
+  return async (orderId: string) => {
+    const response = await fetch(`http://localhost:3001/api/v1/orders/${orderId}/cancel`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || "Failed to cancel order");
+    }
+
+    return response.json();
+  };
+};

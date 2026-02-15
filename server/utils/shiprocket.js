@@ -98,9 +98,52 @@ const getLocalityDetails = async (postcode) => {
   }
 };
 
+const addPickupLocation = async (params) => {
+  const token = map.get('token') || await getShiprocketToken();
+  
+  try {
+    const response = await fetch('https://apiv2.shiprocket.in/v1/external/settings/company/addpickup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Shiprocket add pickup location error:', error);
+    throw error;
+  }
+};
+
+const getPickupLocations = async () => {
+  const token = map.get('token') || await getShiprocketToken();
+  
+  try {
+    const response = await fetch('https://apiv2.shiprocket.in/v1/external/settings/company/pickup', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Shiprocket get pickup locations error:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   getShiprocketToken,
   getServiceability,
   getPostcodeDetails,
   getLocalityDetails,
+  addPickupLocation,
+  getPickupLocations,
 };

@@ -293,4 +293,33 @@ router.get(
  */
 router.get('/:id', orderController.getOrderById);
 
+/**
+ * @swagger
+ * /orders/{id}/cancel:
+ *   put:
+ *     summary: Cancel an order (only if status is PENDING)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The order ID
+ *     responses:
+ *       200:
+ *         description: Order cancelled successfully
+ *       400:
+ *         description: Order cannot be cancelled (not in PENDING status)
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Not authorized to cancel this order
+ *       404:
+ *         description: Order not found
+ */
+router.put('/:id/cancel', orderController.cancelOrder);
+
 module.exports = router;

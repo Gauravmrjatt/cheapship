@@ -3,15 +3,17 @@ const route = express.Router();
 const userRoute = require("./users.route");
 const authRoute = require("./auth.route");
 const addressRoute = require("./address.route");
-
-route.use('/users/', userRoute);
+const franchiseRoute = require("./franchise.route");
 const orderRoute = require("./order.route");
+const dashboardRoute = require("./dashboard.route");
 
+route.use('/users', userRoute);
 route.use('/auth', authRoute);
 route.use('/addresses', addressRoute);
 route.use('/orders', orderRoute);
-const dashboardRoute = require("./dashboard.route");
+route.use('/franchise', franchiseRoute);
 route.use('/dashboard', dashboardRoute);
+
 route.get('/test-db', async (req, res) => {
   try {
     const prisma = req.app.locals.prisma;

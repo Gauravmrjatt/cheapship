@@ -8,7 +8,7 @@ const register = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { name, email, password, mobile } = req.body;
+  const { name, email, password, mobile, referred_by, franchise_type, franchise_address, franchise_pincode, franchise_city, franchise_state } = req.body;
   const prisma = req.app.locals.prisma;
 
   try {
@@ -25,7 +25,35 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'User with this email or mobile already exists.' });
     }
 
+    // Generate a unique referer code for the new user
+    const generateRefererCode = () => {
+      const prefix = 'VXVF';
+      const random = Math.random().toString(36).substr(2, 6).toUpperCase();
+      return `${prefix}${random}`;
+    };
+
     const hashedPassword = await bcrypt.hash(password, 10);
+    let refererCode = generateRefererCode();
+
+    // Check if referer code already exists (unlikely but possible)
+    const existingRefererCode = await prisma.user.findUnique({
+      where: { referer_code: refererCode }
+    });
+    if (existingRefererCode) {
+      refererCode = generateRefererCode();
+    }
+
+    // Check if the referred_by code is valid (if provided)
+    let referredByUser = null;
+    if (referred_by) {
+      referredByUser = await prisma.user.findUnique({
+        where: { referer_code: referred_by }
+      });
+      
+      if (!referredByUser) {
+        return res.status(400).json({ message: 'Invalid referral code.' });
+      }
+    }
 
     const user = await prisma.user.create({
       data: {
@@ -33,6 +61,15 @@ const register = async (req, res) => {
         email,
         password_hash: hashedPassword,
         mobile,
+        referer_code: refererCode,
+        referred_by: referred_by || null,
+        franchise_type: franchise_type || null,
+        franchise_address: franchise_address || null,
+        franchise_pincode: franchise_pincode || null,
+        franchise_city: franchise_city || null,
+        franchise_state: franchise_state || null,
+        // Default 5% commission rate if user is registering via franchise
+        commission_rate: referred_by ? 5.00 : null,
       }
     });
 

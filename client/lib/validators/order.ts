@@ -37,6 +37,7 @@ export const createOrderSchema = z.object({
   width: z.coerce.number().min(1, "Width is required"),
   height: z.coerce.number().min(1, "Height is required"),
   total_amount: z.coerce.number().min(1, "Total amount is required"),
+  pickup_location: z.string().min(1, "Pickup location is required"),
   pickup_address: addressSchema,
   receiver_address: addressSchema,
   products: z.array(productSchema).min(1, "At least one product is required"),
@@ -45,4 +46,5 @@ export const createOrderSchema = z.object({
   courier_id: z.number().optional(),
   courier_name: z.string().optional(),
   shipping_charge: z.number().optional(),
+  base_shipping_charge: z.number().optional(),
 });

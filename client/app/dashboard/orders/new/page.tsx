@@ -51,6 +51,14 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetDescription, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetFooter 
+} from "@/components/ui/sheet";
 
 const steps = [
   { id: 1, title: "Service", icon: Package01Icon },
@@ -76,6 +84,20 @@ interface SavedAddress {
   is_default: boolean;
 }
 
+interface ShiprocketPickupLocation {
+  pickup_location: string;
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  address_2?: string;
+  city: string;
+  state: string;
+  country: string;
+  pin_code: string | number;
+}
+
 interface CourierPartner {
   courier_name: string;
   courier_company_id: number;
@@ -98,7 +120,19 @@ interface RateResponse {
 export default function CreateOrderPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [openPickupPopover, setOpenPickupPopover] = useState(false);
+  const [openShiprocketPopover, setOpenShiprocketPopover] = useState(false);
   const [openReceiverPopover, setOpenReceiverPopover] = useState(false);
+  const [openAddPickupSheet, setOpenAddPickupSheet] = useState(false);
+  const [pickupNickname, setPickupNickname] = useState("");
+  const [newPickupData, setNewPickupData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    pincode: "",
+    address: "",
+    city: "",
+    state: "",
+  });
   const router = useRouter();
   const http = useHttp();
   const queryClient = useQueryClient();
@@ -117,6 +151,37 @@ export default function CreateOrderPage() {
       onSuccess: () => {
         toast.success("Address saved to address book");
         queryClient.invalidateQueries({ queryKey: ["saved-addresses"] });
+      },
+    })
+  );
+
+  const { mutate: saveShiprocketPickupMutation, isPending: isSavingShiprocketPickup } = useMutation(
+    http.post("/addresses/shiprocket-pickup", {
+      onSuccess: (data: any) => {
+        if (data.success) {
+          toast.success("Shiprocket pickup location created");
+          queryClient.invalidateQueries({ queryKey: ["shiprocket-pickup-locations"] });
+          setOpenAddPickupSheet(false);
+          setPickupNickname("");
+          setNewPickupData({
+            name: "",
+            phone: "",
+            email: "",
+            pincode: "",
+            address: "",
+            city: "",
+            state: "",
+          });
+        } else {
+          let errorMsg = data.message || "Failed to create Shiprocket pickup location";
+          try {
+            const parsed = JSON.parse(data.message);
+            if (typeof parsed === "object") {
+              errorMsg = Object.values(parsed).flat().join(", ");
+            }
+          } catch (e) {}
+          toast.error(errorMsg);
+        }
       },
     })
   );
@@ -141,6 +206,7 @@ export default function CreateOrderPage() {
       length: 0,
       width: 0,
       height: 0,
+      pickup_location: "",
       pickup_address: {
         name: "",
         phone: "",
@@ -173,10 +239,15 @@ export default function CreateOrderPage() {
     name: "products",
   });
 
-  // Fetch Saved Addresses
   const { data: savedAddresses } = useQuery<SavedAddress[]>(
     http.get(["saved-addresses"], "/addresses", true)
   );
+
+  const { data: shiprocketPickups } = useQuery<any>(
+    http.get(["shiprocket-pickup-locations"], "/addresses/shiprocket-pickup", true)
+  );
+
+  const shiprocketPickupLocations = shiprocketPickups?.data?.shipping_address || [];
 
   // Fetch Pickup Locality Details
   const { data: pickupLocality, isLoading: isLoadingPickup } = useQuery<any>(
@@ -187,7 +258,6 @@ export default function CreateOrderPage() {
     )
   );
 
-  // Fetch Delivery Locality Details
   const { data: deliveryLocality, isLoading: isLoadingDelivery } = useQuery<any>(
     http.get(
       ["pincode-details", formValues.receiver_address.pincode],
@@ -195,6 +265,31 @@ export default function CreateOrderPage() {
       formValues.receiver_address.pincode?.length === 6
     )
   );
+
+  const { data: sheetPincodeData, isLoading: isLoadingSheetPincode } = useQuery<any>(
+    http.get(
+      ["pincode-details-sheet", newPickupData.pincode],
+      `/orders/pincode-details?postcode=${newPickupData.pincode}`,
+      newPickupData.pincode?.length === 6
+    )
+  );
+
+  useEffect(() => {
+    if (sheetPincodeData?.success || !!sheetPincodeData?.postcode_details) {
+      const details = sheetPincodeData.postcode_details;
+      setNewPickupData(prev => ({
+        ...prev,
+        city: details.city,
+        state: details.state
+      }));
+    } else {
+      setNewPickupData(prev => ({
+        ...prev,
+        city: "",
+        state: ""
+      }));
+    }
+  }, [sheetPincodeData, newPickupData.pincode]);
 
   const isPickupPincodeValid = pickupLocality?.success || !!pickupLocality?.postcode_details;
   const isDeliveryPincodeValid = deliveryLocality?.success || !!deliveryLocality?.postcode_details;
@@ -266,7 +361,7 @@ export default function CreateOrderPage() {
   const getFieldsForStep = (step: number) => {
     switch (step) {
       case 1: return ["order_type", "shipment_type", "payment_mode"];
-      case 2: return ["weight", "length", "width", "height", "total_amount"];
+      case 2: return ["weight", "length", "width", "height", "total_amount", "pickup_location"];
       case 3: return ["pickup_address.name", "pickup_address.phone", "pickup_address.pincode", "pickup_address.address"];
       case 4: return ["receiver_address.name", "receiver_address.phone", "receiver_address.pincode", "receiver_address.address"];
       case 5: return ["courier_id"];
@@ -296,6 +391,17 @@ export default function CreateOrderPage() {
     }
   };
 
+  const selectShiprocketPickup = (addr: ShiprocketPickupLocation) => {
+    form.setValue("pickup_address.name", addr.name);
+    form.setValue("pickup_address.phone", addr.phone);
+    form.setValue("pickup_address.email", addr.email || "");
+    form.setValue("pickup_address.pincode", addr.pin_code.toString());
+    form.setValue("pickup_address.address", addr.address);
+    form.setValue("pickup_address.city", addr.city);
+    form.setValue("pickup_address.state", addr.state);
+    setOpenShiprocketPopover(false);
+  };
+
   const handleSaveAddressNow = (prefix: "pickup_address" | "receiver_address") => {
     const addr = formValues[prefix];
     if (!addr.name || !addr.phone || !addr.address || !addr.pincode || !addr.city || !addr.state) {
@@ -313,6 +419,45 @@ export default function CreateOrderPage() {
       address_label: prefix === "pickup_address" ? "Pickup" : "Receiver",
       is_default: false
     } as any);
+  };
+
+  const handleRegisterShiprocketPickup = () => {
+    const addr = newPickupData;
+    
+    // Comprehensive validation schema
+    const schema = z.object({
+      pickup_location: z.string().min(1, "Nickname is required").max(36, "Max 36 characters"),
+      name: z.string().min(1, "Name is required"),
+      email: z.string().email("Invalid email address"),
+      phone: z.string().min(10, "Phone number must be at least 10 digits"),
+      address: z.string()
+        .min(10, "Address must be at least 10 characters")
+        .regex(/.*[0-9].*/, "Address must include a House, Flat, or Road number (at least one digit)"),
+      city: z.string().min(1, "City is required"),
+      state: z.string().min(1, "State is required"),
+      pin_code: z.string().min(6, "Pincode must be 6 digits"),
+      country: z.string().default("India"),
+    });
+
+    const validation = schema.safeParse({
+      pickup_location: pickupNickname,
+      ...addr,
+      pin_code: addr.pincode,
+      country: "India"
+    });
+
+    if (!validation.success) {
+      const firstError = validation.error.errors[0].message;
+      toast.error(firstError);
+      return;
+    }
+
+    if (!(sheetPincodeData?.success || !!sheetPincodeData?.postcode_details)) {
+      toast.error("Please provide a valid pincode");
+      return;
+    }
+
+    saveShiprocketPickupMutation(validation.data as any);
   };
 
   const handleDeleteSavedAddress = (e: React.MouseEvent, id: string) => {
@@ -440,26 +585,135 @@ export default function CreateOrderPage() {
             <Card className="p-6">
               <div className="space-y-6">
                 <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium leading-none">Pickup Location (Shiprocket)</Label>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 gap-2"
+                      onClick={() => setOpenAddPickupSheet(true)}
+                    >
+                      <HugeiconsIcon icon={Add01Icon} size={14} />
+                      Add New
+                    </Button>
+                  </div>
+                  <Controller
+                    control={form.control}
+                    name="pickup_location"
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          const selected = shiprocketPickupLocations.find((loc: ShiprocketPickupLocation) => loc.pickup_location === value);
+                          if (selected) {
+                            selectShiprocketPickup(selected);
+                          }
+                        }}
+                        value={field.value}
+                      >
+                        <SelectTrigger className={cn(errors.pickup_location && "border-destructive")}>
+                          <SelectValue placeholder="Select a registered pickup location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {shiprocketPickupLocations.map((loc: ShiprocketPickupLocation) => (
+                              <SelectItem key={loc.id} value={loc.pickup_location}>
+                                {loc.pickup_location} ({loc.city})
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <p className="text-[0.8rem] text-muted-foreground">Select where the package will be picked up from. Registered in Shiprocket.</p>
+                  <FieldError errors={[errors.pickup_location]} />
+                </div>
+
+                <Sheet open={openAddPickupSheet} onOpenChange={setOpenAddPickupSheet}>
+                  <SheetContent className="sm:max-w-md overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Add Pickup Location</SheetTitle>
+                      <SheetDescription>
+                        Register a new pickup location with Shiprocket. This nickname will be used for your shipments.
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="space-y-4 py-6">
+                      <Field>
+                        <FieldLabel className="text-xs">Location Nickname</FieldLabel>
+                        <Input 
+                          placeholder="e.g. Warehouse-1" 
+                          value={pickupNickname} 
+                          onChange={(e) => setPickupNickname(e.target.value)}
+                        />
+                      </Field>
+                      <Separator />
+                      <div className="grid grid-cols-1 gap-4">
+                        <Field><FieldLabel className="text-xs">Contact Name</FieldLabel><Input value={newPickupData.name} onChange={(e) => setNewPickupData({...newPickupData, name: e.target.value})} /></Field>
+                        <Field><FieldLabel className="text-xs">Phone Number</FieldLabel><Input value={newPickupData.phone} onChange={(e) => setNewPickupData({...newPickupData, phone: e.target.value})} /></Field>
+                        <Field><FieldLabel className="text-xs">Email Address</FieldLabel><Input value={newPickupData.email} onChange={(e) => setNewPickupData({...newPickupData, email: e.target.value})} /></Field>
+                        <Field>
+                          <FieldLabel className="text-xs">Pincode</FieldLabel>
+                          <div className="relative">
+                            <Input 
+                              value={newPickupData.pincode} 
+                              onChange={(e) => setNewPickupData({...newPickupData, pincode: e.target.value})} 
+                            />
+                            {isLoadingSheetPincode && <div className="absolute right-3 top-1/2 -translate-y-1/2"><HugeiconsIcon icon={Loading03Icon} className="animate-spin text-muted-foreground" size={16} /></div>}
+                          </div>
+                        </Field>
+                        <Field>
+                          <FieldLabel className="text-xs">Full Address</FieldLabel>
+                          <Input 
+                            value={newPickupData.address} 
+                            onChange={(e) => setNewPickupData({...newPickupData, address: e.target.value})} 
+                            placeholder="Include House/Flat No, Building, Road etc."
+                          />
+                          <p className="text-[10px] text-muted-foreground mt-1">Min 10 chars. Must include House/Flat/Road No.</p>
+                        </Field>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Field><FieldLabel className="text-xs">City</FieldLabel><Input className="bg-muted" value={newPickupData.city} disabled /></Field>
+                          <Field><FieldLabel className="text-xs">State</FieldLabel><Input className="bg-muted" value={newPickupData.state} disabled /></Field>
+                        </div>
+                      </div>
+                    </div>
+                    <SheetFooter>
+                      <Button 
+                        className="w-full gap-2" 
+                        onClick={handleRegisterShiprocketPickup}
+                        disabled={isSavingShiprocketPickup}
+                      >
+                        {isSavingShiprocketPickup ? <HugeiconsIcon icon={Loading03Icon} className="animate-spin" size={16} /> : <HugeiconsIcon icon={FloppyDiskIcon} size={16} />}
+                        Register & Save
+                      </Button>
+                    </SheetFooter>
+                  </SheetContent>
+                </Sheet>
+
+                <Separator />
+
+                <div className="space-y-4">
                   <Label className="text-sm font-medium leading-none">Dimensions & Weight</Label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <Field data-invalid={!!errors.weight}>
                       <FieldLabel className="text-xs">Weight (kg)</FieldLabel>
-                      <Input type="number" step="0.1" className="bg-background" aria-invalid={!!errors.weight} {...form.register("weight", { valueAsNumber: true })} />
+                      <Input type="number" step="0.1" className="" aria-invalid={!!errors.weight} {...form.register("weight", { valueAsNumber: true })} />
                       <FieldError errors={[errors.weight]} />
                     </Field>
                     <Field data-invalid={!!errors.length}>
                       <FieldLabel className="text-xs">Length (cm)</FieldLabel>
-                      <Input type="number" className="bg-background" aria-invalid={!!errors.length} {...form.register("length", { valueAsNumber: true })} />
+                      <Input type="number" className="" aria-invalid={!!errors.length} {...form.register("length", { valueAsNumber: true })} />
                       <FieldError errors={[errors.length]} />
                     </Field>
                     <Field data-invalid={!!errors.width}>
                       <FieldLabel className="text-xs">Width (cm)</FieldLabel>
-                      <Input type="number" className="bg-background" aria-invalid={!!errors.width} {...form.register("width", { valueAsNumber: true })} />
+                      <Input type="number" className="" aria-invalid={!!errors.width} {...form.register("width", { valueAsNumber: true })} />
                       <FieldError errors={[errors.width]} />
                     </Field>
                     <Field data-invalid={!!errors.height}>
                       <FieldLabel className="text-xs">Height (cm)</FieldLabel>
-                      <Input type="number" className="bg-background" aria-invalid={!!errors.height} {...form.register("height", { valueAsNumber: true })} />
+                      <Input type="number" className="" aria-invalid={!!errors.height} {...form.register("height", { valueAsNumber: true })} />
                       <FieldError errors={[errors.height]} />
                     </Field>
                   </div>
@@ -472,7 +726,7 @@ export default function CreateOrderPage() {
                   <Field data-invalid={!!errors.total_amount}>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">₹</span>
-                      <Input type="number" className="pl-7 bg-background" aria-invalid={!!errors.total_amount} {...form.register("total_amount", { valueAsNumber: true })} />
+                      <Input type="number" className="pl-7 " aria-invalid={!!errors.total_amount} {...form.register("total_amount", { valueAsNumber: true })} />
                     </div>
                     <p className="text-[0.8rem] text-muted-foreground mt-1.5">Used for insurance and liability coverage.</p>
                     <FieldError errors={[errors.total_amount]} />
@@ -549,17 +803,51 @@ export default function CreateOrderPage() {
                   </PopoverContent>
                 </Popover>
               )}
+
+              {isPickup && shiprocketPickupLocations.length > 0 && (
+                <Popover open={openShiprocketPopover} onOpenChange={setOpenShiprocketPopover}>
+                  <PopoverTrigger asChild>
+                    <Button onClick={(e) => e.preventDefault()} variant="outline" size="sm" className="h-9 gap-2">
+                      <HugeiconsIcon icon={RocketIcon} size={16} />
+                      Shiprocket Pickups
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-0" align="end">
+                    <div className="p-4 border-b">
+                      <p className="text-sm font-medium leading-none">Shiprocket Pickup Locations</p>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {shiprocketPickupLocations.map((addr: ShiprocketPickupLocation) => (
+                        <div 
+                          key={addr.id} 
+                          className="group p-4 hover:bg-muted cursor-pointer border-b last:border-0 relative"
+                          onClick={() => selectShiprocketPickup(addr)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-sm">{addr.pickup_location}</span>
+                            <Badge variant="outline" className="text-[10px] h-5">{addr.name}</Badge>
+                          </div>
+                          <div className="flex gap-2 text-xs text-muted-foreground">
+                            <HugeiconsIcon icon={Location01Icon} size={14} className="shrink-0 mt-0.5" />
+                            <span className="line-clamp-2">{addr.address}, {addr.city}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
 
             <Card className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field data-invalid={!!addrErrors?.name}><FieldLabel className="text-xs">Contact Name</FieldLabel><Input className="bg-background" aria-invalid={!!addrErrors?.name} {...form.register(`${prefix}.name` as any)} /><FieldError errors={[addrErrors?.name]} /></Field>
-                <Field data-invalid={!!addrErrors?.phone}><FieldLabel className="text-xs">Phone Number</FieldLabel><Input className="bg-background" aria-invalid={!!addrErrors?.phone} {...form.register(`${prefix}.phone` as any)} /><FieldError errors={[addrErrors?.phone]} /></Field>
-                <Field data-invalid={!!addrErrors?.email}><FieldLabel className="text-xs">Email Address</FieldLabel><Input className="bg-background" aria-invalid={!!addrErrors?.email} {...form.register(`${prefix}.email` as any)} /><FieldError errors={[addrErrors?.email]} /></Field>
+                <Field data-invalid={!!addrErrors?.name}><FieldLabel className="text-xs">Contact Name</FieldLabel><Input className="" aria-invalid={!!addrErrors?.name} {...form.register(`${prefix}.name` as any)} /><FieldError errors={[addrErrors?.name]} /></Field>
+                <Field data-invalid={!!addrErrors?.phone}><FieldLabel className="text-xs">Phone Number</FieldLabel><Input className="" aria-invalid={!!addrErrors?.phone} {...form.register(`${prefix}.phone` as any)} /><FieldError errors={[addrErrors?.phone]} /></Field>
+                <Field data-invalid={!!addrErrors?.email}><FieldLabel className="text-xs">Email Address</FieldLabel><Input className="" aria-invalid={!!addrErrors?.email} {...form.register(`${prefix}.email` as any)} /><FieldError errors={[addrErrors?.email]} /></Field>
                 <Field data-invalid={!!addrErrors?.pincode}>
                   <FieldLabel className="text-xs">Pincode</FieldLabel>
                   <div className="relative">
-                    <Input className={cn("bg-background", !isCurrentValid && currentPincode?.length === 6 && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!addrErrors?.pincode} {...form.register(`${prefix}.pincode` as any)} />
+                    <Input className={cn("", !isCurrentValid && currentPincode?.length === 6 && "border-destructive focus-visible:ring-destructive")} aria-invalid={!!addrErrors?.pincode} {...form.register(`${prefix}.pincode` as any)} />
                     {isCurrentLoading && <div className="absolute right-3 top-1/2 -translate-y-1/2"><HugeiconsIcon icon={Loading03Icon} className="animate-spin text-muted-foreground" size={16} /></div>}
                   </div>
                   {isCurrentValid && (
@@ -574,7 +862,7 @@ export default function CreateOrderPage() {
                   <FieldError errors={[addrErrors?.pincode]} />
                 </Field>
                 <div className="md:col-span-2">
-                  <Field data-invalid={!!addrErrors?.address}><FieldLabel className="text-xs">Full Address</FieldLabel><Input className="bg-background" aria-invalid={!!addrErrors?.address} {...form.register(`${prefix}.address` as any)} /><FieldError errors={[addrErrors?.address]} /></Field>
+                  <Field data-invalid={!!addrErrors?.address}><FieldLabel className="text-xs">Full Address</FieldLabel><Input className="" aria-invalid={!!addrErrors?.address} {...form.register(`${prefix}.address` as any)} /><FieldError errors={[addrErrors?.address]} /></Field>
                 </div>
                 <Field data-invalid={!!addrErrors?.city}><FieldLabel className="text-xs">City</FieldLabel><Input className="bg-muted" aria-invalid={!!addrErrors?.city} {...form.register(`${prefix}.city` as any)} disabled={true} /><FieldError errors={[addrErrors?.city]} /></Field>
                 <Field data-invalid={!!addrErrors?.state}><FieldLabel className="text-xs">State</FieldLabel><Input className="bg-muted" aria-invalid={!!addrErrors?.state} {...form.register(`${prefix}.state` as any)} disabled={true} /><FieldError errors={[addrErrors?.state]} /></Field>
@@ -608,6 +896,38 @@ export default function CreateOrderPage() {
                   {isSavingAddress ? "Saving..." : "Save Now"}
                 </Button>
               </div>
+
+              {isPickup && (
+                <div className="mt-6 pt-6 border-t space-y-4">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon icon={RocketIcon} size={18} className="text-primary" />
+                    <h3 className="text-sm font-semibold">Shiprocket Pickup Registration</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Register this location with Shiprocket to enable pickups. You must provide a unique nickname.</p>
+                  <div className="flex gap-4 items-end">
+                    <div className="flex-1">
+                      <Label className="text-[10px] uppercase font-bold text-muted-foreground">Location Nickname</Label>
+                      <Input 
+                        placeholder="e.g. Warehouse-1" 
+                        value={pickupNickname} 
+                        onChange={(e) => setPickupNickname(e.target.value)}
+                        className="h-9 mt-1"
+                      />
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-9 gap-2"
+                      onClick={handleRegisterShiprocketPickup}
+                      disabled={isSavingShiprocketPickup || !pickupNickname}
+                    >
+                      {isSavingShiprocketPickup ? <HugeiconsIcon icon={Loading03Icon} className="animate-spin" size={14} /> : <HugeiconsIcon icon={Add01Icon} size={14} />}
+                      Register Location
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card>
           </div>
         );
@@ -742,21 +1062,21 @@ export default function CreateOrderPage() {
                       <div className="md:col-span-6">
                         <Field data-invalid={!!productError?.name}>
                           <FieldLabel className="text-xs">Item Name</FieldLabel>
-                          <Input className="bg-background" placeholder="e.g. Cotton Shirt" aria-invalid={!!productError?.name} {...form.register(`products.${index}.name` as const)} />
+                          <Input className="" placeholder="e.g. Cotton Shirt" aria-invalid={!!productError?.name} {...form.register(`products.${index}.name` as const)} />
                           <FieldError errors={[productError?.name]} />
                         </Field>
                       </div>
                       <div className="md:col-span-2">
                         <Field data-invalid={!!productError?.quantity}>
                           <FieldLabel className="text-xs">Qty</FieldLabel>
-                          <Input type="number" className="bg-background" aria-invalid={!!productError?.quantity} {...form.register(`products.${index}.quantity` as const, { valueAsNumber: true })} />
+                          <Input type="number" className="" aria-invalid={!!productError?.quantity} {...form.register(`products.${index}.quantity` as const, { valueAsNumber: true })} />
                           <FieldError errors={[productError?.quantity]} />
                         </Field>
                       </div>
                       <div className="md:col-span-3">
                         <Field data-invalid={!!productError?.price}>
                           <FieldLabel className="text-xs">Unit Price (₹)</FieldLabel>
-                          <Input type="number" className="bg-background" aria-invalid={!!productError?.price} {...form.register(`products.${index}.price` as const, { valueAsNumber: true })} />
+                          <Input type="number" className="" aria-invalid={!!productError?.price} {...form.register(`products.${index}.price` as const, { valueAsNumber: true })} />
                           <FieldError errors={[productError?.price]} />
                         </Field>
                       </div>
@@ -913,7 +1233,7 @@ export default function CreateOrderPage() {
               <div key={step.id} className="flex flex-col items-center gap-3 rounded-2xl">
                 <div
                   className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border bg-background",
+                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border ",
                     isActive ? "border-primary text-primary ring-4 ring-primary/10" :
                       isCompleted ? "bg-primary text-primary-foreground border-primary" :
                         "text-muted-foreground"

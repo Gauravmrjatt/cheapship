@@ -6,16 +6,14 @@ const getDashboardStats = async (req, res) => {
 
   try {
     const totalOrders = await prisma.order.count({ where: { user_id: userId } });
-    const deliveredOrders = await prisma.order.count({ where: { user_id: userId, shipment_status: 'DELIVERED' } });
-    const inTransitOrders = await prisma.order.count({ where: { user_id: userId, shipment_status: 'IN_TRANSIT' } });
-    const dispatchedOrders = await prisma.order.count({ where: { user_id: userId, shipment_status: 'DISPATCHED' } });
-    const manifestedOrders = await prisma.order.count({ where: { user_id: userId, shipment_status: 'MANIFESTED' } });
-    const rtoOrders = await prisma.order.count({ where: { user_id: userId, shipment_status: 'RTO' } });
-    const cancelledOrders = await prisma.order.count({ where: { user_id: userId, shipment_status: 'CANCELLED' } });
-
-    // Assuming 'RTO In Transit' is a subset of RTO or a specific status not directly mapped to RTO in enum
-    // For now, we'll assume it's a specific status or requires more complex query
-    const rtoInTransitOrders = 0; // Placeholder
+    const deliveredOrdersCount = await prisma.order.count({ where: { user_id: userId, shipment_status: 'DELIVERED' } });
+    const inTransitOrdersCount = await prisma.order.count({ where: { user_id: userId, shipment_status: 'IN_TRANSIT' } });
+    const dispatchedOrdersCount = await prisma.order.count({ where: { user_id: userId, shipment_status: 'DISPATCHED' } });
+    const manifestedOrdersCount = await prisma.order.count({ where: { user_id: userId, shipment_status: 'MANIFESTED' } });
+    const rtoOrdersCount = await prisma.order.count({ where: { user_id: userId, shipment_status: 'RTO' } });
+    const cancelledOrdersCount = await prisma.order.count({ where: { user_id: userId, shipment_status: 'CANCELLED' } });
+    const pendingOrdersCount = await prisma.order.count({ where: { user_id: userId, shipment_status: 'PENDING' } });
+    const notPickedOrdersCount = await prisma.order.count({ where: { user_id: userId, shipment_status: 'NOT_PICKED' } });
 
     const lastMonthOrders = await prisma.order.count({
       where: {
@@ -26,8 +24,7 @@ const getDashboardStats = async (req, res) => {
       }
     });
 
-    // Total Weight Shipped (requires 'weight' field on Order model)
-    // For now, returning a placeholder. If weight is stored as Decimal, sum it up.
+    // Total Weight Shipped
     const deliveredOrdersWithWeight = await prisma.order.findMany({
       where: {
         user_id: userId,
@@ -41,11 +38,9 @@ const getDashboardStats = async (req, res) => {
       },
     });
 
-    const totalWeightShipped = deliveredOrdersWithWeight.reduce((sum, order) => sum + (order.weight || 0), 0).toFixed(2);
+    const totalWeightShipped = deliveredOrdersWithWeight.reduce((sum, order) => sum + parseFloat(order.weight || 0), 0).toFixed(2);
 
-
-    // Avg Delivery Time (requires 'delivered_at' field)
-    // For now, returning a placeholder. Needs more complex calculation.
+    // Avg Delivery Time
     let avgDeliveryTimeDays = 0;
     const deliveredOrdersWithTimestamps = await prisma.order.findMany({
       where: {
@@ -64,38 +59,88 @@ const getDashboardStats = async (req, res) => {
     if (deliveredOrdersWithTimestamps.length > 0) {
       const totalDeliveryTimeMs = deliveredOrdersWithTimestamps.reduce((sum, order) => {
         if (order.delivered_at && order.created_at) {
-          return sum + (order.delivered_at.getTime() - order.created_at.getTime());
+          return sum + (new Date(order.delivered_at).getTime() - new Date(order.created_at).getTime());
         }
         return sum;
       }, 0);
       const avgDeliveryTimeMs = totalDeliveryTimeMs / deliveredOrdersWithTimestamps.length;
-      avgDeliveryTimeDays = (avgDeliveryTimeMs / (1000 * 60 * 60 * 24)).toFixed(0); // Convert milliseconds to days
+      avgDeliveryTimeDays = (avgDeliveryTimeMs / (1000 * 60 * 60 * 24)).toFixed(0);
     }
 
-    const deliverySuccessRate = totalOrders > 0 ? ((deliveredOrders / totalOrders) * 100).toFixed(0) : 0;
-    const returnRate = totalOrders > 0 ? ((rtoOrders / totalOrders) * 100).toFixed(0) : 0;
+    const deliverySuccessRate = totalOrders > 0 ? ((deliveredOrdersCount / totalOrders) * 100).toFixed(0) : 0;
+    const returnRate = totalOrders > 0 ? ((rtoOrdersCount / totalOrders) * 100).toFixed(0) : 0;
 
-    const monthlyGrowth = 0; // Placeholder, requires more historical data and complex logic
-    const actionRequired = 0; // Placeholder, requires specific logic defined by application
-    const weightDisputedOrders = 0; // Placeholder, requires specific status or flag
+    // Fetch data for the graph (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        user_id: userId,
+        created_at: {
+          gte: thirtyDaysAgo
+        }
+      },
+      select: {
+        created_at: true,
+        shipment_status: true
+      },
+      orderBy: {
+        created_at: 'asc'
+      }
+    });
+
+    // Group orders by date and status
+    const graphDataMap = {};
+    
+    // Initialize with all dates in the range
+    for (let i = 0; i <= 30; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      graphDataMap[dateStr] = {
+        date: dateStr,
+        DELIVERED: 0,
+        PENDING: 0,
+        CANCELLED: 0,
+        IN_TRANSIT: 0,
+        DISPATCHED: 0,
+        MANIFESTED: 0,
+        RTO: 0,
+        NOT_PICKED: 0,
+        TOTAL: 0
+      };
+    }
+
+    orders.forEach(order => {
+      const dateStr = new Date(order.created_at).toISOString().split('T')[0];
+      if (graphDataMap[dateStr]) {
+        graphDataMap[dateStr].TOTAL += 1;
+        const status = order.shipment_status;
+        if (graphDataMap[dateStr][status] !== undefined) {
+          graphDataMap[dateStr][status] += 1;
+        }
+      }
+    });
+
+    const graphData = Object.values(graphDataMap).sort((a, b) => a.date.localeCompare(b.date));
 
     res.json({
-      deliveredOrders,
-      inTransitOrders,
-      dispatchedOrders,
-      manifestedOrders,
-      rtoInTransitOrders,
-      rtoOrders,
+      deliveredOrders: deliveredOrdersCount,
+      inTransitOrders: inTransitOrdersCount,
+      dispatchedOrders: dispatchedOrdersCount,
+      manifestedOrders: manifestedOrdersCount,
+      rtoOrders: rtoOrdersCount,
+      pendingOrders: pendingOrdersCount,
+      notPickedOrders: notPickedOrdersCount,
       totalOrders,
       lastMonthOrders,
       totalWeightShipped: `${totalWeightShipped} kg`,
       avgDeliveryTime: `${avgDeliveryTimeDays} days`,
       deliverySuccessRate: `${deliverySuccessRate} %`,
       returnRate: `${returnRate} %`,
-      cancelledOrder: cancelledOrders,
-      weightDisputedOrders,
-      monthlyGrowth: `${monthlyGrowth} %`,
-      actionRequired,
+      cancelledOrder: cancelledOrdersCount,
+      graphData
     });
   } catch (error) {
     console.error(error);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,15 +20,19 @@ import {
   Field,
   FieldError,
   FieldLabel,
-} from "@/components/ui/field"; // Only import the existing Field components
-import { useRouter } from "next/navigation";
-import { useHttp } from "@/lib/hooks/use-http"; // Import useHttp
+} from "@/components/ui/field"; 
+import { useRouter, useSearchParams } from "next/navigation";
+import { useHttp } from "@/lib/hooks/use-http"; 
 import { useMutation } from "@tanstack/react-query";
 
 export default function SignUpPage() {
   const router = useRouter();
-  const http = useHttp(); // Initialize useHttp
-  const { mutate, isPending } = useMutation<void, Error, z.infer<typeof signUpSchema>>( // Use http.post
+  const searchParams = useSearchParams();
+  const http = useHttp(); 
+  
+  const refCode = searchParams.get("ref");
+
+  const { mutate, isPending } = useMutation<void, Error, z.infer<typeof signUpSchema>>(
     http.post<void, z.infer<typeof signUpSchema>>(
       "/auth/register",
       {
@@ -37,6 +42,7 @@ export default function SignUpPage() {
       }
     )
   );
+
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -45,8 +51,16 @@ export default function SignUpPage() {
       mobile: "",
       password: "",
       confirmPassword: "",
+      referred_by: refCode || "",
     },
   });
+
+  // Update referred_by when refCode changes
+  useEffect(() => {
+    if (refCode) {
+      form.setValue("referred_by", refCode);
+    }
+  }, [refCode, form]);
 
   function onSubmit(values: z.infer<typeof signUpSchema>) {
     mutate(values);
@@ -57,7 +71,11 @@ export default function SignUpPage() {
       <CardHeader>
         <CardTitle className="text-2xl">Sign Up</CardTitle>
         <CardDescription>
-          Enter your information to create an account.
+          {refCode ? (
+            <span className="text-primary font-semibold">Joining via referral code: {refCode}</span>
+          ) : (
+            "Enter your information to create an account."
+          )}
         </CardDescription>
       </CardHeader>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -97,6 +115,8 @@ export default function SignUpPage() {
                 <FieldError>{form.formState.errors.confirmPassword.message}</FieldError>
               )}
             </Field>
+            {/* Hidden field for referral code */}
+            <input type="hidden" {...form.register("referred_by")} />
           </CardContent>
           <CardFooter className="flex flex-col">
             <Button type="submit" className="w-full" disabled={isPending}>

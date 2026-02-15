@@ -19,6 +19,7 @@ app.use(cors());
 
 // Logging
 app.use(logger('dev'));
+console.log("CHEAPSHIP SERVER INITIALIZING WITH FRANCHISE ROUTES");
 
 // Body parsing
 app.use(express.json());

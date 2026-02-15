@@ -12,6 +12,7 @@ export const signUpSchema = z
     mobile: z.string().min(10, "Mobile number must be at least 10 characters"),
     password: z.string().min(6),
     confirmPassword: z.string().min(6),
+    referred_by: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

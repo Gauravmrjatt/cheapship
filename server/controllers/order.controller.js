@@ -36,6 +36,8 @@ const calculateRates = async (req, res) => {
     mode = 'Surface'
   } = req.query;
 
+  const prisma = req.app.locals.prisma;
+
   try {
     // First fetch both destination and origin locality details to validate
     const [pickupLocality, deliveryLocality] = await Promise.all([
@@ -83,6 +85,15 @@ const calculateRates = async (req, res) => {
 
     const availableCouriers = serviceabilityData.data.available_courier_companies || [];
     
+    // Get user's commission settings
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { commission_rate: true, assigned_rates: true, referred_by: true }
+    });
+
+    const defaultRate = user?.commission_rate ? parseFloat(user.commission_rate.toString()) : (user?.referred_by ? 5 : 0);
+    const assignedRates = user?.assigned_rates || {};
+
     // Format the response to match the user's requested structure
     const formattedResponse = {
       pickup_location: {
@@ -101,18 +112,31 @@ const calculateRates = async (req, res) => {
         applicable_weight: weight,
         dangerous_goods: serviceabilityData.dg_courier === 1 ? 'Yes' : 'No'
       },
-      serviceable_couriers: availableCouriers.map(courier => ({
-        courier_name: courier.courier_name,
-        courier_company_id: courier.courier_company_id,
-        rating: courier.rating,
-        estimated_delivery: courier.etd,
-        delivery_in_days: courier.estimated_delivery_days,
-        chargeable_weight: courier.charge_weight,
-        rate: courier.rate,
-        is_surface: courier.is_surface,
-        mode: courier.mode === 1 ? 'Air' : 'Surface',
-        is_recommended: courier.courier_company_id === serviceabilityData.data.recommended_courier_company_id
-      }))
+      serviceable_couriers: availableCouriers.map(courier => {
+        // Find commission for this courier
+        // assignedRates might look like { "Delhivery": { rate: 20, slab: 500 }, "123": { rate: 15 } }
+        const courierConfig = assignedRates[courier.courier_company_id] || assignedRates[courier.courier_name] || {};
+        const markupPercent = courierConfig.rate !== undefined ? parseFloat(courierConfig.rate) : defaultRate;
+        
+        const baseRate = parseFloat(courier.rate);
+        const markupAmount = (baseRate * markupPercent) / 100;
+        const finalRate = baseRate + markupAmount;
+
+        return {
+          courier_name: courier.courier_name,
+          courier_company_id: courier.courier_company_id,
+          rating: courier.rating,
+          estimated_delivery: courier.etd,
+          delivery_in_days: courier.estimated_delivery_days,
+          chargeable_weight: courier.charge_weight,
+          rate: finalRate,
+          base_rate: baseRate, // Keeping base_rate for internal use if needed
+          markup_amount: markupAmount,
+          is_surface: courier.is_surface,
+          mode: courier.mode === 1 ? 'Air' : 'Surface',
+          is_recommended: courier.courier_company_id === serviceabilityData.data.recommended_courier_company_id
+        };
+      })
     };
 
     res.json(formattedResponse);
@@ -139,7 +163,8 @@ const createOrder = async (req, res) => {
     save_receiver_address,
     courier_id,
     courier_name,
-    shipping_charge
+    shipping_charge,
+    base_shipping_charge
   } = req.body;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
@@ -188,7 +213,8 @@ const createOrder = async (req, res) => {
           total_amount,
           courier_id,
           courier_name,
-          shipping_charge
+          shipping_charge,
+          base_shipping_charge
         }
       });
 
@@ -298,10 +324,68 @@ const getOrderById = async (req, res) => {
   }
 };
 
+// Cancel an order (only if status is PENDING)
+const cancelOrder = async (req, res) => {
+  const { id } = req.params;
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: {
+        id: BigInt(id)
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Check if the order belongs to the user
+    if (order.user_id !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to cancel this order' });
+    }
+
+    // Only allow cancellation if status is PENDING
+    if (order.shipment_status !== 'PENDING') {
+      return res.status(400).json({ 
+        message: 'Order can only be cancelled if status is PENDING',
+        current_status: order.shipment_status
+      });
+    }
+
+    // Update the order status to CANCELLED
+    const updatedOrder = await prisma.order.update({
+      where: {
+        id: BigInt(id)
+      },
+      data: {
+        shipment_status: 'CANCELLED'
+      },
+      include: {
+        order_pickup_address: true,
+        order_receiver_address: true,
+      }
+    });
+
+    res.json({
+      message: 'Order cancelled successfully',
+      order: updatedOrder
+    });
+  } catch (error) {
+    console.error(error);
+    if (error.code === 'P2023') {
+      return res.status(404).json({ message: 'Invalid order ID format' });
+    }
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
   getOrderById,
   calculateRates,
-  getPincodeDetails
+  getPincodeDetails,
+  cancelOrder
 };

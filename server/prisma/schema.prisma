@@ -15,7 +15,15 @@ model User {
   email              String              @unique @db.VarChar(255)
   password_hash      String
   mobile             String              @unique @db.VarChar(15)
-  referer_code       String?             @db.VarChar(50)
+  referer_code       String?             @unique @db.VarChar(50)
+  referred_by        String?             @db.VarChar(50) // Franchise referral code
+  commission_rate    Decimal?            @db.Decimal(5, 2) // Commission rate % (default 5%)
+  assigned_rates     Json?               // Per-service provider commission rates
+  franchise_type     FranchiseType?      @default(DIRECT_SELLER)
+  franchise_address  String?              @db.VarChar(500)
+  franchise_pincode  String?              @db.VarChar(10)
+  franchise_city     String?              @db.VarChar(100)
+  franchise_state    String?              @db.VarChar(100)
   is_active          Boolean             @default(true)
   user_type          UserType            @default(NORMAL)
   created_at         DateTime            @default(now()) @db.Timestamp()
@@ -39,6 +47,8 @@ model Address {
   pincode          String   @db.VarChar(10)
   country          String   @default("India") @db.VarChar(100)
   address_label    String?  @db.VarChar(50) // e.g., Home, Office
+  is_shiprocket_pickup Boolean? @default(false)
+  pickup_nickname  String?  @db.VarChar(50)
   is_default       Boolean? @default(false)
   created_at       DateTime @default(now()) @db.Timestamp()
   updated_at       DateTime @default(now()) @db.Timestamp()
@@ -72,6 +82,7 @@ model Order {
   courier_id             Int?
   courier_name           String?                  @db.VarChar(100)
   shipping_charge        Decimal?                 @db.Decimal(12, 2)
+  base_shipping_charge   Decimal?                 @db.Decimal(12, 2)
   delivered_at           DateTime?                @db.Timestamp()    // Added delivered_at field
   created_at             DateTime                 @default(now()) @db.Timestamp()
   updated_at             DateTime                 @default(now()) @db.Timestamp()
@@ -143,4 +154,10 @@ enum ShipmentType {
 enum PaymentMode {
   PREPAID
   COD
+}
+
+enum FranchiseType {
+  DIRECT_SELLER
+  DISTRIBUTOR
+  PARTNER
 }

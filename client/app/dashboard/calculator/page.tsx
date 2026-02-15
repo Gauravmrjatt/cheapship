@@ -76,14 +76,14 @@ export default function RateCalculatorPage() {
   const form = useForm<z.infer<typeof calculateRateSchema>>({
     resolver: zodResolver(calculateRateSchema),
     defaultValues: {
-      pickupPincode: "281306",
-      deliveryPincode: "281308",
-      actualWeight: 25,
-      length: 50,
-      width: 50,
-      height: 50,
+      pickupPincode: "",
+      deliveryPincode: "",
+      actualWeight: 0,
+      length:  0,
+      width: 0,
+      height: 0,
       paymentType: "PREPAID",
-      shipmentValue: 500,
+      shipmentValue: 0,
       dangerousGoods: false,
     },
   });
@@ -214,7 +214,7 @@ export default function RateCalculatorPage() {
                       <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pickup Pincode</FieldLabel>
                       <Input 
                         {...form.register("pickupPincode")}
-                        placeholder="281306"
+                        placeholder="000000"
                         className={cn("font-medium", !isPickupValid && formValues.pickupPincode?.length === 6 && "border-destructive")}
                       />
                       {isLoadingPickup ? (
@@ -232,7 +232,7 @@ export default function RateCalculatorPage() {
                       <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Delivery Pincode</FieldLabel>
                       <Input 
                         {...form.register("deliveryPincode")}
-                        placeholder="281308"
+                        placeholder="0000000"
                         className={cn("font-medium", !isDeliveryValid && formValues.deliveryPincode?.length === 6 && "border-destructive")}
                       />
                       {isLoadingDelivery ? (

@@ -32,12 +32,9 @@ import {
   ShippingTruck01Icon,
   AddressBookIcon
 } from "@hugeicons/core-free-icons"
+import { useAuth } from "@/lib/hooks/use-auth"
 
 const data = {
-  user: {
-    name: "Gaurav Chaudhary",
-    email: "gaurav@gmail.com",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -89,8 +86,8 @@ const data = {
       ),
     },
     {
-      title: "Franchaise",
-      url: "/dashboard/franchaise",
+      title: "Franchise",
+      url: "/dashboard/franchise",
       icon: (
         <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />
       ),
@@ -137,6 +134,13 @@ const data = {
   ],
 }
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth();
+
+  const displayUser = {
+    name: user?.name || "User",
+    email: user?.email || "",
+  }
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -158,7 +162,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={displayUser} />
       </SidebarFooter>
     </Sidebar>
   )

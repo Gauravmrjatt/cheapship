@@ -66,9 +66,11 @@ import {
   Calendar01Icon,
   Cancel01Icon
 } from "@hugeicons/core-free-icons"
-import { OrderFilters } from "@/lib/hooks/use-orders"
+import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
+import { toast } from "sonner"
+import { useQueryClient } from "@tanstack/react-query"
 
 export type Order = {
   id: string
@@ -79,132 +81,6 @@ export type Order = {
   shipment_status: string
   created_at?: string
 }
-
-const columns: ColumnDef<Order>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          indeterminate={
-            table.getIsSomePageRowsSelected() &&
-            !table.getIsAllPageRowsSelected()
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "id",
-    header: "Shipment ID",
-    cell: ({ row }) => (
-      <Link
-        href={`/dashboard/orders/${row.original.id}`}
-        className="text-foreground hover:underline font-medium"
-      >
-        #{row.original.id.slice(0, 8)}
-      </Link>
-    ),
-    enableHiding: false,
-  },
-  {
-    accessorKey: "order_type",
-    header: "Type",
-    cell: ({ row }) => (
-      <div className="w-24">
-        <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
-          {row.original.order_type}
-        </Badge>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "shipment_type",
-    header: "Service",
-    cell: ({ row }) => (
-      <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
-        {row.original.shipment_type}
-      </Badge>
-    ),
-  },
-  {
-    accessorKey: "payment_mode",
-    header: "Payment",
-    cell: ({ row }) => (
-      <span className="capitalize">{row.original.payment_mode}</span>
-    ),
-  },
-  {
-    accessorKey: "total_amount",
-    header: () => <div className="text-right">Amount</div>,
-    cell: ({ row }) => (
-      <div className="text-right tabular-nums">
-        ₹{row.original.total_amount.toLocaleString("en-IN")}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "shipment_status",
-    header: "Status",
-    cell: ({ row }) => {
-      const status = row.original.shipment_status.toLowerCase();
-      return (
-        <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
-          {status === "delivered" ? (
-            <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400" />
-          ) : status === "pending" || status === "processing" ? (
-            <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} />
-          ) : (
-            <HugeiconsIcon icon={DeliveryTruck01Icon} strokeWidth={2} />
-          )}
-          {status.replace(/_/g, " ")}
-        </Badge>
-      );
-    },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              className="data-open:bg-muted text-muted-foreground flex size-8"
-              size="icon"
-            />
-          }
-        >
-          <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
-          <span className="sr-only">Open menu</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40">
-          <DropdownMenuItem render={<Link href={`/dashboard/orders/${row.original.id}`} />}>
-            View Details
-          </DropdownMenuItem>
-          <DropdownMenuItem>Track Shipment</DropdownMenuItem>
-          <DropdownMenuItem>Download Label</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">Cancel Order</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-]
 
 interface OrdersDataTableProps {
   data: Order[]
@@ -233,6 +109,154 @@ export function OrdersDataTable({
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [sorting, setSorting] = React.useState<SortingState>([])
+  
+  const cancelOrder = useCancelOrder();
+  const queryClient = useQueryClient();
+
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      await cancelOrder(orderId);
+      toast.success("Order cancelled successfully");
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    } catch (error: any) {
+      toast.error(error.message || "Failed to cancel order");
+    }
+  };
+
+  const columns = React.useMemo<ColumnDef<Order>[]>(() => [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            indeterminate={
+              table.getIsSomePageRowsSelected() &&
+              !table.getIsAllPageRowsSelected()
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "id",
+      header: "Shipment ID",
+      cell: ({ row }) => (
+        <Link
+          href={`/dashboard/orders/${row.original.id}`}
+          className="text-foreground hover:underline font-medium"
+        >
+          #{row.original.id.slice(0, 8)}
+        </Link>
+      ),
+      enableHiding: false,
+    },
+    {
+      accessorKey: "order_type",
+      header: "Type",
+      cell: ({ row }) => (
+        <div className="w-24">
+          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
+            {row.original.order_type}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "shipment_type",
+      header: "Service",
+      cell: ({ row }) => (
+        <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
+          {row.original.shipment_type}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "payment_mode",
+      header: "Payment",
+      cell: ({ row }) => (
+        <span className="capitalize">{row.original.payment_mode}</span>
+      ),
+    },
+    {
+      accessorKey: "total_amount",
+      header: () => <div className="text-right">Amount</div>,
+      cell: ({ row }) => (
+        <div className="text-right tabular-nums">
+          ₹{row.original.total_amount.toLocaleString("en-IN")}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "shipment_status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.original.shipment_status.toLowerCase();
+        return (
+          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
+            {status === "delivered" ? (
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400" />
+            ) : status === "pending" || status === "processing" ? (
+              <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} />
+            ) : (
+              <HugeiconsIcon icon={DeliveryTruck01Icon} strokeWidth={2} />
+            )}
+            {status.replace(/_/g, " ")}
+          </Badge>
+        );
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                className="data-open:bg-muted text-muted-foreground flex size-8"
+                size="icon"
+              />
+            }
+          >
+            <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
+            <span className="sr-only">Open menu</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem render={<Link href={`/dashboard/orders/${row.original.id}`} />}>
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuItem>Track Shipment</DropdownMenuItem>
+            <DropdownMenuItem>Download Label</DropdownMenuItem>
+            {row.original.shipment_status === "PENDING" && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  variant="destructive" 
+                  onClick={() => handleCancelOrder(row.original.id)}
+                >
+                  Cancel Order
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ], []);
 
   const table = useReactTable({
     data,
