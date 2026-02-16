@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "./use-auth";
-
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"; 
 export const useDashboard = () => {
   const { token } = useAuth();
 
@@ -10,7 +10,7 @@ export const useDashboard = () => {
     queryKey: ["dashboard"],
     queryFn: async () => {
       const response = await fetch(
-        `http://localhost:3001/api/v1/dashboard`,
+        `${BASE_URL}/api/v1/dashboard`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

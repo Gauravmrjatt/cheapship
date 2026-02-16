@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "./use-auth";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"; 
 
 export interface OrderFilters {
   order_type?: string;
@@ -47,7 +48,7 @@ export const useOrders = (page: number, pageSize: number, filters: OrderFilters 
       }
 
       const response = await fetch(
-        `http://localhost:3001/api/v1/orders?${params.toString()}`,
+        `${BASE_URL}/api/v1/orders?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -67,7 +68,7 @@ export const useCancelOrder = () => {
   const { token } = useAuth();
 
   return async (orderId: string) => {
-    const response = await fetch(`http://localhost:3001/api/v1/orders/${orderId}/cancel`, {
+    const response = await fetch(`${BASE_URL}/api/v1/orders/${orderId}/cancel`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/hooks/use-auth";
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 export const useOrder = (orderId: string) => {
   const { token } = useAuth();
 
@@ -10,7 +11,7 @@ export const useOrder = (orderId: string) => {
     queryKey: ["order", orderId],
     queryFn: async () => {
       const response = await fetch(
-        `http://localhost:3001/api/v1/orders/${orderId}`,
+        `${BASE_URL}/api/v1/orders/${orderId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

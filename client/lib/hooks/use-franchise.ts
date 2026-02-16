@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
 import { sileo } from "sileo";
 import { useAuthStore } from "@/lib/store/auth";
-
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"; 
 export interface Franchise {
   id: string;
   name: string;
@@ -143,7 +143,7 @@ export const useFranchiseOrders = (franchiseId: string, page: number = 1, pageSi
 export const useVerifyReferralCode = () => {
   return useMutation({
     mutationFn: async (code: string) => {
-      const response = await fetch(`http://localhost:3001/api/v1/franchise/verify?code=${code}`);
+      const response = await fetch(`${BASE_URL}/api/v1/franchise/verify?code=${code}`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to verify referral code");

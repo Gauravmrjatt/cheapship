@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
 import { sileo } from "sileo";
-
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"; 
 export interface DashboardStats {
   totalUsers: number;
   activeUsers: number;
@@ -38,7 +38,7 @@ export const useToggleUserStatus = () => {
         // Let's use custom fetch in mutationFn to match the route exactly if useHttp doesn't support patch easily
     }),
     mutationFn: async ({ userId, is_active }: { userId: string, is_active: boolean }) => {
-       const response = await fetch(`http://localhost:3001/api/v1/admin/users/${userId}/status`, {
+       const response = await fetch(`${BASE_URL}/api/v1/admin/users/${userId}/status`, {
          method: 'PATCH',
          headers: {
            'Content-Type': 'application/json',
