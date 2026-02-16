@@ -73,4 +73,60 @@ router.post(
   transactionController.topUpWallet
 );
 
+/**
+ * @swagger
+ * /transactions/razorpay/order:
+ *   post:
+ *     summary: Create Razorpay order
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Razorpay order created
+ */
+router.post(
+  '/razorpay/order',
+  [
+    check('amount', 'Valid amount is required').isNumeric().custom(v => v > 0)
+  ],
+  transactionController.createRazorpayOrder
+);
+
+/**
+ * @swagger
+ * /transactions/razorpay/verify:
+ *   post:
+ *     summary: Verify Razorpay payment
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - razorpay_order_id
+ *               - razorpay_payment_id
+ *               - razorpay_signature
+ *               - amount
+ *     responses:
+ *       200:
+ *         description: Payment verified
+ */
+router.post('/razorpay/verify', transactionController.verifyRazorpayPayment);
+
 module.exports = router;

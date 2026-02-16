@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, QueryKey } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { useAuth } from "./use-auth";
 
 const API_BASE_URL = "http://localhost:3001/api/v1";
@@ -54,7 +54,7 @@ export const useHttp = () => {
       },
       onSuccess: options?.onSuccess,
       onError: (error: Error) => {
-        toast.error(error.message);
+        sileo.error({ title: "Error" , description: error.message });
         if (options?.onError) {
           options.onError(error);
         }
@@ -86,7 +86,7 @@ export const useHttp = () => {
       },
       onSuccess: options?.onSuccess,
       onError: (error: Error) => {
-        toast.error(error.message);
+        sileo.error({ title: "Error" , description: error.message });
         if (options?.onError) {
           options.onError(error);
         }
@@ -113,7 +113,7 @@ export const useHttp = () => {
       },
       onSuccess: options?.onSuccess,
       onError: (error: Error) => {
-        toast.error(error.message);
+        sileo.error({ title: "Error" , description: error.message });
         if (options?.onError) {
           options.onError(error);
         }

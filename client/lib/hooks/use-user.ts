@@ -33,6 +33,7 @@ export const useUser = () => {
         id: query.data.id,
         name: query.data.name,
         email: query.data.email,
+        mobile: query.data.mobile,
         wallet_balance: Number(query.data.wallet_balance),
         user_type: query.data.user_type,
       });

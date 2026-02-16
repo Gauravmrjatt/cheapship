@@ -141,9 +141,6 @@ const calculateRates = async (req, res) => {
           delivery_in_days: courier.estimated_delivery_days,
           chargeable_weight: courier.charge_weight,
           rate: finalRate,
-          base_rate: baseRate, // Keeping base_rate for internal use if needed
-          markup_amount: markupAmount,
-          global_commission: (baseRate * globalCommission / 100), // Expose this if needed for transparency or debugging
           is_surface: courier.is_surface,
           mode: courier.mode === 1 ? 'Air' : 'Surface',
           is_recommended: courier.courier_company_id === serviceabilityData.data.recommended_courier_company_id
@@ -290,6 +287,9 @@ const createOrder = async (req, res) => {
     res.status(201).json(newOrder);
   } catch (error) {
     console.error(error);
+    if(error.message.includes('Insufficient wallet balance')) {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };

@@ -16,8 +16,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { 
-  DashboardSquare01Icon, 
+import {
+  DashboardSquare01Icon,
   ShoppingBasket01Icon,
   Add01Icon,
   Calculator01Icon,
@@ -26,8 +26,8 @@ import {
   UserGroupIcon,
   WeightScale01Icon,
   RotateLeft01Icon,
-  Settings05Icon, 
-  HelpCircleIcon, 
+  Settings05Icon,
+  HelpCircleIcon,
   SearchIcon,
   ShippingTruck01Icon,
   AddressBookIcon,
@@ -176,13 +176,12 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
   const { user } = useAuth();
-
   const displayUser = {
     name: user?.name || "User",
     email: user?.email || "",
   }
 
-  const mainNavItems = isAdmin ? [...adminNav, ...data.navMain] : data.navMain;
+  const mainNavItems = user?.user_type === "ADMIN" ? [...adminNav, ...data.navMain] : data.navMain;
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -194,7 +193,7 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
               render={<a href={isAdmin ? "/admin" : "/dashboard"} />}
             >
               <HugeiconsIcon icon={ShippingTruck01Icon} strokeWidth={2} className="size-5!" />
-              <span className="text-base font-semibold">{isAdmin ? "Admin Panel" : "Cheap Ship"}</span>
+              <span className="text-base font-semibold">{user?.user_type === "ADMIN"  ? "Admin Panel" : "Cheap Ship"}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

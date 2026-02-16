@@ -22,7 +22,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { useMutation } from "@tanstack/react-query";
 
 interface ForgotPasswordResponse {
@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
       "/auth/forgot-password",
       {
         onSuccess: (data) => {
-          toast.success(data.message);
+          sileo.success({ title: data.message });
           router.push("/auth/signin");
         },
       }

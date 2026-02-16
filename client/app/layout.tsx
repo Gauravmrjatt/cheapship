@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 import Providers from "./providers";
-import { Toaster } from "sonner";
+import { Toaster } from "sileo";
 import { ThemeProvider } from "./theme-provider";
 
 export const metadata: Metadata = {
@@ -40,7 +40,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Providers>
-            <Toaster />
+            <Toaster options={{
+              fill: "#171717",
+              styles: { description: "text-white/75!" },
+            }} position="top-center" />
             {children}
           </Providers>
         </ThemeProvider>

@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 
 export interface DashboardStats {
   totalUsers: number;
@@ -50,7 +50,7 @@ export const useToggleUserStatus = () => {
        return response.json();
     },
     onSuccess: () => {
-      toast.success("User status updated");
+      sileo.success({ title: "User status updated" });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     }
   });
@@ -100,7 +100,7 @@ export const useProcessWithdrawal = () => {
        return mutator({ status });
     },
     onSuccess: () => {
-      toast.success("Withdrawal processed");
+      sileo.success({ title: "Withdrawal processed" });
       queryClient.invalidateQueries({ queryKey: ["admin-withdrawals"] });
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
     }
@@ -118,7 +118,7 @@ export const useUpdateGlobalSettings = () => {
   return useMutation({
     ...http.post<any, { rate: number }>("/admin/settings/global-commission", {
       onSuccess: () => {
-        toast.success("Global commission updated");
+        sileo.success({ title: "Global commission updated" });
         queryClient.invalidateQueries({ queryKey: ["global-commission"] });
       }
     })

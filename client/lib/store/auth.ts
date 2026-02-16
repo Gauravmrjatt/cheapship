@@ -5,6 +5,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  mobile?: string;
   wallet_balance?: number;
   user_type?: string;
 }

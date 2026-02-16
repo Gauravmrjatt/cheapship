@@ -36,7 +36,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { toast } from "sonner"
+import { sileo } from "sileo"
 import { z } from "zod"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -196,10 +196,10 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
+          sileo.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
+            loading: { title: `Saving ${row.original.header}` },
+            success: { title: "Done" },
+            error: { title: "Error" },
           })
         }}
       >
@@ -221,10 +221,10 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
+          sileo.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
+            loading: { title: `Saving ${row.original.header}` },
+            success: { title: "Done" },
+            error: { title: "Error" },
           })
         }}
       >

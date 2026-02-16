@@ -183,7 +183,7 @@ const addShiprocketPickupLocation = async (req, res) => {
       });
     }
     
-    res.status(data.success ? 200 : 400).json(data);
+    res.status(data.success ? 200 : 400).json({...data , msg : "Pickup address successfully added"});
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });

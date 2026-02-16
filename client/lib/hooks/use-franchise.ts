@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { useAuthStore } from "@/lib/store/auth";
 
 export interface Franchise {
@@ -94,7 +94,7 @@ export const useUpdateFranchiseRate = () => {
   return useMutation({
     ...http.put<any, UpdateFranchiseRateParams>("/franchise", {
       onSuccess: () => {
-        toast.success("Franchise settings updated successfully");
+        sileo.success({ title: "Franchise settings updated successfully" });
         queryClient.invalidateQueries({ queryKey: ["franchises"] });
       },
     }),
@@ -155,7 +155,7 @@ export const useWithdrawCommission = () => {
   return useMutation({
     ...http.post<any, { franchiseId: string; amount: number }>("/franchise", {
       onSuccess: (data) => {
-        toast.success(data.message || "Withdrawal request submitted successfully");
+        sileo.success({ title: "Success" , description : data.message || "Withdrawal request submitted successfully" });
         queryClient.invalidateQueries({ queryKey: ["franchises"] });
       },
     }),

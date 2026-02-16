@@ -15,7 +15,7 @@ import {
   InformationCircleIcon
 } from "@hugeicons/core-free-icons";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface SavedAddress {
@@ -42,7 +42,7 @@ export default function AddressesPage() {
   const { mutate: deleteAddress } = useMutation(
     http.del("/addresses", {
       onSuccess: () => {
-        toast.success("Address deleted successfully");
+        sileo.success({ title: "Address deleted successfully" });
         queryClient.invalidateQueries({ queryKey: ["saved-addresses"] });
       },
     })

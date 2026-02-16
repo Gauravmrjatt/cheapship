@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 
 export interface Transaction {
   id: string;
@@ -46,10 +46,35 @@ export const useTopUpWallet = () => {
   return useMutation({
     ...http.post<any, { amount: number; reference_id?: string }>("/transactions/topup", {
       onSuccess: () => {
-        toast.success("Wallet topped up successfully");
+        sileo.success({ title: "Wallet topped up successfully" });
         queryClient.invalidateQueries({ queryKey: ["user-profile"] });
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
       },
+    })
+  });
+};
+
+export const useCreateRazorpayOrder = () => {
+  const http = useHttp();
+  return useMutation({
+    ...http.post<any, { amount: number }>("/transactions/razorpay/order")
+  });
+};
+
+export const useVerifyRazorpayPayment = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+
+  return useMutation({
+    ...http.post<any, { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string; amount: number }>("/transactions/razorpay/verify", {
+      onSuccess: () => {
+        sileo.success({ title: "Payment successful", description: "Wallet balance updated." });
+        queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      },
+      onError: () => {
+        sileo.error({ title: "Payment verification failed", description: "Please contact support if amount was deducted." });
+      }
     })
   });
 };

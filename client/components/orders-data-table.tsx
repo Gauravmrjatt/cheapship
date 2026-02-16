@@ -69,7 +69,7 @@ import {
 import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
-import { toast } from "sonner"
+import { sileo } from "sileo"
 import { useQueryClient } from "@tanstack/react-query"
 
 export type Order = {
@@ -116,10 +116,10 @@ export function OrdersDataTable({
   const handleCancelOrder = async (orderId: string) => {
     try {
       await cancelOrder(orderId);
-      toast.success("Order cancelled successfully");
+      sileo.success({ title: "Order cancelled successfully" });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
     } catch (error: any) {
-      toast.error(error.message || "Failed to cancel order");
+      sileo.error({ title: error.message || "Failed to cancel order" });
     }
   };
 

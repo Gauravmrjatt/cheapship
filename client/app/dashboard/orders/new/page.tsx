@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/field";
 import { createOrderSchema, shiprocketPickupSchema } from "@/lib/validators/order";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useHttp } from "@/lib/hooks/use-http";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -148,7 +148,7 @@ export default function CreateOrderPage() {
     http.post("/orders", {
       onSuccess: () => {
         setShipped(true);
-        toast.success("Order created successfully");
+        sileo.success({ title: "Success" , description: "Order created successfully" });
         const end = Date.now() + 3 * 1000 // 3 seconds
         const colors = ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"]
         const frame = () => {
@@ -180,7 +180,7 @@ export default function CreateOrderPage() {
   const { mutate: saveAddressMutation, isPending: isSavingAddress } = useMutation(
     http.post("/addresses", {
       onSuccess: () => {
-        toast.success("Address saved to address book");
+        sileo.success({ title: "Success" , description: "Address saved to address book" });
         queryClient.invalidateQueries({ queryKey: ["saved-addresses"] });
       },
     })
@@ -194,7 +194,7 @@ export default function CreateOrderPage() {
 
           if (data.success) {
 
-            toast.success("Shiprocket pickup location created");
+            sileo.success({ title: "Success" , description: "Shiprocket pickup location created" });
 
             queryClient.invalidateQueries({ queryKey: ["shiprocket-pickup-locations"] });
 
@@ -218,7 +218,7 @@ export default function CreateOrderPage() {
 
             } catch (e) {}
 
-            toast.error(errorMsg);
+            sileo.error({ title: "Error" , description: errorMsg });
 
           }
 
@@ -233,7 +233,7 @@ export default function CreateOrderPage() {
   const { mutate: deleteAddressMutation } = useMutation(
     http.del("/addresses", {
       onSuccess: () => {
-        toast.success("Address deleted");
+        sileo.success({ title: "Success" , description: "Address deleted" });
         queryClient.invalidateQueries({ queryKey: ["saved-addresses"] });
       },
     })
@@ -374,15 +374,15 @@ export default function CreateOrderPage() {
 
   const nextStep = async () => {
     if (currentStep === 3 && !isPickupPincodeValid) {
-      toast.error("Please provide a valid pickup pincode");
+      sileo.error({ title: "Error" , description: "Please provide a valid pickup pincode" });
       return;
     }
     if (currentStep === 4 && !isDeliveryPincodeValid) {
-      toast.error("Please provide a valid delivery pincode");
+      sileo.error({ title: "Error" , description: "Please provide a valid delivery pincode" });
       return;
     }
     if (currentStep === 5 && !formValues.courier_id) {
-      toast.error("Please select a courier partner");
+      sileo.error({ title: "Error" , description: "Please select a courier partner" });
       return;
     }
 
@@ -444,7 +444,7 @@ export default function CreateOrderPage() {
   const handleSaveAddressNow = (prefix: "pickup_address" | "receiver_address") => {
     const addr = formValues[prefix];
     if (!addr.name || !addr.phone || !addr.address || !addr.pincode || !addr.city || !addr.state) {
-      toast.error("Please fill all required address fields first");
+      sileo.error({ title: "Error" , description: "Please fill all required address fields first" });
       return;
     }
     saveAddressMutation({
@@ -462,7 +462,7 @@ export default function CreateOrderPage() {
 
   const handleRegisterShiprocketPickup = pickupForm.handleSubmit((data) => {
     if (!(sheetPincodeData?.success || !!sheetPincodeData?.postcode_details)) {
-      toast.error("Please provide a valid pincode");
+      sileo.error({ title: "Error" , description: "Please provide a valid pincode" });
       return;
     }
 
@@ -478,7 +478,7 @@ export default function CreateOrderPage() {
     pickupForm.setValue("address", addr.address);
     pickupForm.setValue("city", addr.city);
     pickupForm.setValue("state", addr.state);
-    toast.success("Details copied from sender address");
+    sileo.success({ title: "Success" , description: "Details copied from sender address" });
   };
 
   const handleDeleteSavedAddress = (e: React.MouseEvent, id: string) => {

@@ -29,11 +29,10 @@ import {
   Loading03Icon,
   DeliveryTruck01Icon,
   Wallet01Icon,
-  MoneyReceiveCircleIcon
-} from "@hugeicons/core-free-icons";
-import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+      MoneyReceiveCircleIcon
+    } from "@hugeicons/core-free-icons";
+    import { sileo } from "sileo";
+    import { Badge } from "@/components/ui/badge";import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Sheet, 
   SheetContent, 
@@ -248,7 +247,7 @@ export default function FranchisePage() {
     if (myReferral?.referral_link) {
       navigator.clipboard.writeText(myReferral.referral_link);
       setCopied(true);
-      toast.success("Referral link copied to clipboard!");
+      sileo.success({ title: "copied!" , description : "Referral link copied to clipboard!" });
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -260,7 +259,7 @@ export default function FranchisePage() {
 
   const handleWithdraw = (id: string, balance: number) => {
     if (balance <= 0) {
-      toast.error("No balance available to withdraw");
+      sileo.error({ title: "Insufficient Balance" , description : "No balance available to withdraw" });
       return;
     }
     

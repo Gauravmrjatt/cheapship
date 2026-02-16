@@ -203,11 +203,10 @@ function OrdersContent() {
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-1 px-4 lg:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
         <p className="text-muted-foreground">
           {userIdFilter 
             ? `Viewing orders for user ID: ${userIdFilter}` 
-            : "Monitor and manage all system orders."}
+            : ""}
         </p>
       </div>
      

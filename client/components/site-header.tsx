@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { RupeeSquareIcon, PlusSignIcon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
-import { useTransactions, useTopUpWallet } from "@/lib/hooks/use-transactions";
+import { useTopUpWallet, useCreateRazorpayOrder, useVerifyRazorpayPayment } from "@/lib/hooks/use-transactions";
 import { useState } from "react";
+import { useRazorpay, RazorpayOrderOptions } from "react-razorpay";
+
 
 import {
   Loading03Icon,
@@ -32,18 +34,51 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
 
   const { data: user } = useUser();
   const topUpMutation = useTopUpWallet();
+  const { Razorpay, isLoading: isRazorpayLoading } = useRazorpay();
+  const createOrderMutation = useCreateRazorpayOrder();
+  const verifyPaymentMutation = useVerifyRazorpayPayment();
 
-  const handleTopUp = () => {
+  const handleTopUp = async () => {
     const amount = parseFloat(topUpAmount);
     if (isNaN(amount) || amount <= 0) return;
 
-    topUpMutation.mutate({ amount }, {
-      onSuccess: () => {
-        setShowTopUp(false);
-        setTopUpAmount("");
-      }
-    });
+    try {
+      const order = await createOrderMutation.mutateAsync({ amount });
+
+      const options: RazorpayOrderOptions = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_your_key_id",
+        amount: order.amount,
+        currency: order.currency,
+        name: "Cheap Ship",
+        description: "Wallet Top-up",
+        order_id: order.id,
+        handler: (response) => {
+          verifyPaymentMutation.mutate({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            amount: amount,
+          });
+          setShowTopUp(false);
+          setTopUpAmount("");
+        },
+        prefill: {
+          name: user?.name,
+          email: user?.email,
+          contact: user?.mobile,
+        },
+        theme: {
+          color: "#000000",
+        },
+      };
+
+      const rzp1 = new Razorpay(options);
+      rzp1.open();
+    } catch (error) {
+      console.error("Payment initiation failed", error);
+    }
   };
+
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full items-center justify-between px-4 lg:gap-2 lg:px-6">
@@ -106,11 +141,10 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
           </div>
           <DialogFooter>
             <Button
-              className="w-full h-11 font-bold"
               onClick={handleTopUp}
-              disabled={topUpMutation.isPending || !topUpAmount}
+              disabled={createOrderMutation.isPending || isRazorpayLoading || !topUpAmount || parseFloat(topUpAmount) <= 0}
             >
-              {topUpMutation.isPending ? <HugeiconsIcon icon={Loading03Icon} className="animate-spin" /> : "PROCEED TO PAY"}
+              {createOrderMutation.isPending || isRazorpayLoading ? "Processing..." : "Pay Now"}
             </Button>
           </DialogFooter>
         </DialogContent>
