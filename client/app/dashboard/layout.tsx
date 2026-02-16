@@ -35,7 +35,7 @@ function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" isAdmin={true} />
       <SidebarInset>
         <SiteHeader pageTitle={pageTitle} />
         {children}

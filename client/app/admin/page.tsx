@@ -30,13 +30,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard Overview</h1>
-        <p className="text-sm text-muted-foreground">Welcome back, Admin</p>
-      </div>
-
+   
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="rounded-2xl border-none shadow-sm bg-card/50">
+        <Card className="rounded-2xl border-none shadow-sm ">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             <HugeiconsIcon icon={UserGroupIcon} size={16} className="text-muted-foreground" />
@@ -48,7 +44,7 @@ export default function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
-        <Card className="rounded-2xl border-none shadow-sm bg-card/50">
+        <Card className="rounded-2xl border-none shadow-sm ">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
             <HugeiconsIcon icon={ShoppingBasket01Icon} size={16} className="text-muted-foreground" />
@@ -60,7 +56,7 @@ export default function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
-        <Card className="rounded-2xl border-none shadow-sm bg-card/50">
+        <Card className="rounded-2xl border-none shadow-sm ">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <HugeiconsIcon icon={Invoice01Icon} size={16} className="text-muted-foreground" />
@@ -72,7 +68,7 @@ export default function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
-        <Card className="rounded-2xl border-none shadow-sm bg-card/50">
+        <Card className="rounded-2xl border-none shadow-sm ">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Withdrawals</CardTitle>
             <HugeiconsIcon icon={MoneyReceiveCircleIcon} size={16} className="text-muted-foreground" />
@@ -87,7 +83,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 rounded-2xl border-none shadow-sm bg-card/50">
+        <Card className="col-span-4 rounded-2xl border-none shadow-sm ">
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
             <CardDescription>
@@ -119,7 +115,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
         
-        <Card className="col-span-3 rounded-2xl border-none shadow-sm bg-card/50">
+        <Card className="col-span-3 rounded-2xl border-none shadow-sm ">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
@@ -137,6 +133,12 @@ export default function AdminDashboard() {
               <Button variant="outline" className="w-full justify-start h-12 rounded-xl">
                 <HugeiconsIcon icon={UserGroupIcon} className="mr-2 size-5" />
                 Manage Users
+              </Button>
+            </Link>
+            <Link href="/admin/transactions">
+              <Button variant="outline" className="w-full justify-start h-12 rounded-xl">
+                <HugeiconsIcon icon={Invoice01Icon} className="mr-2 size-5" />
+                View Transactions
               </Button>
             </Link>
           </CardContent>

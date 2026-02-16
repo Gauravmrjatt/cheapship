@@ -63,11 +63,15 @@ import { cn } from "@/lib/utils";
 
 export default function AdminWithdrawalsPage() {
   const [status, setStatus] = React.useState("ALL");
-  const { data: withdrawals, isLoading } = useAdminWithdrawals(status);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
+  const { data, isLoading } = useAdminWithdrawals(page, pageSize, status);
   const processMutation = useProcessWithdrawal();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+
+  const tableData = React.useMemo(() => data?.data || [], [data?.data]);
 
   const handleProcess = (id: string, action: 'APPROVED' | 'REJECTED') => {
     if (confirm(`Are you sure you want to ${action.toLowerCase()} this withdrawal?`)) {
@@ -126,19 +130,21 @@ export default function AdminWithdrawalsPage() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <Badge variant="outline" className={cn(
-            "text-[9px] font-bold py-0 h-5 gap-1.5 capitalize",
-            row.original.status === "APPROVED" && "text-green-600 border-green-200 bg-green-50",
-            row.original.status === "REJECTED" && "text-red-600 border-red-200 bg-red-50",
-            row.original.status === "PENDING" && "text-amber-600 border-amber-200 bg-amber-50"
-          )}>
-            {row.original.status === "PENDING" && <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} size={10} className="animate-spin" />}
-            {row.original.status === "APPROVED" && <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} size={10} className="fill-green-500" />}
-            {row.original.status === "REJECTED" && <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} size={10} />}
-            {row.original.status.toLowerCase()}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const status = row.original.status.toLowerCase();
+        return (
+          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
+            {status === "approved" ? (
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400 size-3" />
+            ) : status === "pending" ? (
+              <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="animate-spin size-3" />
+            ) : (
+              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="text-red-500 size-3" />
+            )}
+            {status}
+          </Badge>
+        );
+      },
     },
     {
       accessorKey: "created_at",
@@ -184,7 +190,7 @@ export default function AdminWithdrawalsPage() {
   ], [processMutation]);
 
   const table = useReactTable({
-    data: withdrawals || [],
+    data: tableData,
     columns,
     state: {
       sorting,
@@ -201,21 +207,22 @@ export default function AdminWithdrawalsPage() {
     getSortedRowModel: getSortedRowModel(),
   });
 
+  const handleStatusChange = (val: string) => {
+    setStatus(val);
+    setPage(1);
+  };
+
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1 px-4 lg:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Finance & Withdrawals</h1>
-        <p className="text-sm text-muted-foreground">Manage withdrawal requests and financial transactions</p>
-      </div>
 
       <Tabs
         value={status}
-        onValueChange={setStatus}
+        onValueChange={handleStatusChange}
         className="w-full flex-col justify-start gap-6"
       >
-        <div className="flex items-center justify-between px-4 lg:px-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={handleStatusChange}>
               <SelectTrigger className="flex w-fit lg:hidden" size="sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -229,11 +236,11 @@ export default function AdminWithdrawalsPage() {
               </SelectContent>
             </Select>
 
-            <TabsList className="hidden lg:flex bg-muted/50 p-1 rounded-xl">
-              <TabsTrigger value="ALL" className="rounded-lg">All Requests</TabsTrigger>
-              <TabsTrigger value="PENDING" className="rounded-lg">Pending</TabsTrigger>
-              <TabsTrigger value="APPROVED" className="rounded-lg">Approved</TabsTrigger>
-              <TabsTrigger value="REJECTED" className="rounded-lg">Rejected</TabsTrigger>
+            <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
+              <TabsTrigger value="ALL">All Requests</TabsTrigger>
+              <TabsTrigger value="PENDING">Pending</TabsTrigger>
+              <TabsTrigger value="APPROVED">Approved</TabsTrigger>
+              <TabsTrigger value="REJECTED">Rejected</TabsTrigger>
             </TabsList>
           </div>
 
@@ -245,9 +252,9 @@ export default function AdminWithdrawalsPage() {
 
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-                <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} />
+                <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} data-icon="inline-start" />
                 <span className="hidden lg:inline">Columns</span>
-                <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} />
+                <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
                 {table.getAllColumns().filter(c => c.getCanHide()).map((column) => (
@@ -265,28 +272,28 @@ export default function AdminWithdrawalsPage() {
           </div>
         </div>
 
-        <TabsContent value={status} className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-          <div className="overflow-hidden border rounded-2xl bg-card/50">
+        <div className="relative flex flex-col gap-4 overflow-auto">
+          <div className="overflow-hidden border rounded-2xl">
             <Table>
-              <TableHeader className="bg-muted sticky top-0 z-10">
+              <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="text-[10px] font-bold uppercase tracking-wider">
+                      <TableHead key={header.id} colSpan={header.colSpan}>
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       </TableHead>
                     ))}
                   </TableRow>
                 ))}
               </TableHeader>
-              <TableBody>
+              <TableBody className="**:data-[slot=table-cell]:first:w-8 rounded-2xl">
                 {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="h-24 text-center">
                       <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="size-6 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
-                ) : !withdrawals || withdrawals.length === 0 ? (
+                ) : !tableData || tableData.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
                       No withdrawal requests found.
@@ -294,7 +301,7 @@ export default function AdminWithdrawalsPage() {
                   </TableRow>
                 ) : (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-muted/30 transition-colors">
+                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -308,25 +315,46 @@ export default function AdminWithdrawalsPage() {
           </div>
 
           <div className="flex items-center justify-between px-4">
-            <div className="text-muted-foreground hidden flex-1 text-xs font-medium lg:flex">
+            <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
               {table.getFilteredSelectedRowModel().rows.length} of{" "}
-              {withdrawals?.length || 0} requests selected.
+              {data?.pagination?.total || 0} requests selected.
             </div>
             <div className="flex w-full items-center gap-8 lg:w-fit">
+              <div className="hidden items-center gap-2 lg:flex">
+                <Label htmlFor="rows-per-page" className="text-sm font-medium">Rows per page</Label>
+                <Select value={`${pageSize}`} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                  <SelectTrigger size="sm" className="w-20" id="rows-per-page">
+                    <SelectValue placeholder={pageSize} />
+                  </SelectTrigger>
+                  <SelectContent side="top">
+                    <SelectGroup>
+                      {[10, 20, 50].map((size) => (
+                        <SelectItem key={size} value={`${size}`}>{size}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex w-fit items-center justify-center text-sm font-medium">
-                Showing all requests
+                Page {page} of {data?.pagination?.totalPages || 1}
               </div>
               <div className="ml-auto flex items-center gap-2 lg:ml-0">
-                <Button variant="outline" className="size-8" size="icon" disabled>
+                <Button variant="outline" className="size-8" size="icon" onClick={() => setPage(1)} disabled={page === 1}>
+                  <HugeiconsIcon icon={ArrowLeftDoubleIcon} strokeWidth={2} />
+                </Button>
+                <Button variant="outline" className="size-8" size="icon" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                   <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
                 </Button>
-                <Button variant="outline" className="size-8" size="icon" disabled>
+                <Button variant="outline" className="size-8" size="icon" onClick={() => setPage(p => Math.min(data?.pagination?.totalPages || 1, p + 1))} disabled={page === (data?.pagination?.totalPages || 1)}>
                   <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
+                </Button>
+                <Button variant="outline" className="size-8" size="icon" onClick={() => setPage(data?.pagination?.totalPages || 1)} disabled={page === (data?.pagination?.totalPages || 1)}>
+                  <HugeiconsIcon icon={ArrowRightDoubleIcon} strokeWidth={2} />
                 </Button>
               </div>
             </div>
           </div>
-        </TabsContent>
+        </div>
       </Tabs>
     </div>
   );

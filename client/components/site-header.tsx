@@ -57,8 +57,8 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 pr-2.5 bg-muted/90 border-border/50 rounded-2xl ">
-            <div className="size-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-primary">
+          <div className="flex items-center gap-2 px-2.5 bg-muted/30 border rounded-2xl ">
+            <div className="size-5 rounded-xl  flex items-center justify-center text-primary">
               <HugeiconsIcon color="green" icon={RupeeSquareIcon} size={25} />
             </div>
             <div className="flex flex-col">

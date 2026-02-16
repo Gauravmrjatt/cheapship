@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -13,6 +14,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useAdminOrders } from "@/lib/hooks/use-admin";
+import { useSearchParams } from "next/navigation";
 import { 
   Table, 
   TableBody, 
@@ -28,7 +30,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,6 @@ import {
 } from "@/components/ui/select";
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
@@ -52,7 +52,6 @@ import {
   SearchIcon, 
   Loading03Icon, 
   CheckmarkCircle01Icon, 
-  Cancel01Icon,
   ArrowLeftDoubleIcon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
@@ -60,19 +59,35 @@ import {
   FilterIcon,
   LeftToRightListBulletIcon,
   ArrowDown01Icon,
+  DeliveryTruck01Icon,
 } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
 
-export default function AdminOrdersPage() {
+function OrdersContent() {
+  const searchParams = useSearchParams();
+  const userIdFromQuery = searchParams.get("userId") || "";
+  
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("ALL");
+  const userIdFilter = userIdFromQuery;
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   
-  const { data, isLoading } = useAdminOrders(page, pageSize, statusFilter, search);
+  const { data, isLoading } = useAdminOrders(page, pageSize, statusFilter, search, userIdFilter);
+
+  const handleStatusChange = (status: string) => {
+    setStatusFilter(status);
+    setPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const tableData = React.useMemo(() => data?.data || [], [data?.data]);
 
   const columns = React.useMemo<ColumnDef<any>[]>(() => [
     {
@@ -140,7 +155,7 @@ export default function AdminOrdersPage() {
             ) : status === "pending" || status === "processing" ? (
               <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="animate-spin size-3" />
             ) : (
-              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="text-red-500 size-3" />
+              <HugeiconsIcon icon={DeliveryTruck01Icon} strokeWidth={2} className=" size-3" />
             )}
             {status.replace(/_/g, " ")}
           </Badge>
@@ -168,7 +183,7 @@ export default function AdminOrdersPage() {
   ], []);
 
   const table = useReactTable({
-    data: data?.data || [],
+    data: tableData,
     columns,
     state: {
       sorting,
@@ -188,18 +203,22 @@ export default function AdminOrdersPage() {
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-1 px-4 lg:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">All Orders</h1>
-        <p className="text-sm text-muted-foreground">Monitor and manage all platform shipments</p>
+        <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
+        <p className="text-muted-foreground">
+          {userIdFilter 
+            ? `Viewing orders for user ID: ${userIdFilter}` 
+            : "Monitor and manage all system orders."}
+        </p>
       </div>
-
+     
       <Tabs
         value={statusFilter}
-        onValueChange={setStatusFilter}
+        onValueChange={handleStatusChange}
         className="w-full flex-col justify-start gap-6"
       >
-        <div className="flex items-center justify-between px-4 lg:px-6">
+        <div className="flex items-center justify-between ">
           <div className="flex items-center gap-4">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
               <SelectTrigger className="flex w-fit lg:hidden" size="sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -215,12 +234,12 @@ export default function AdminOrdersPage() {
               </SelectContent>
             </Select>
 
-            <TabsList className="hidden lg:flex bg-muted/50 p-1 rounded-xl">
-              <TabsTrigger value="ALL" className="rounded-lg">All Orders</TabsTrigger>
-              <TabsTrigger value="PENDING" className="rounded-lg">Pending</TabsTrigger>
-              <TabsTrigger value="IN_TRANSIT" className="rounded-lg">In Transit</TabsTrigger>
-              <TabsTrigger value="DELIVERED" className="rounded-lg">Delivered</TabsTrigger>
-              <TabsTrigger value="CANCELLED" className="rounded-lg">Cancelled</TabsTrigger>
+            <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
+              <TabsTrigger value="ALL">All Orders</TabsTrigger>
+              <TabsTrigger value="PENDING">Pending</TabsTrigger>
+              <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
+              <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
+              <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
             </TabsList>
           </div>
 
@@ -229,9 +248,9 @@ export default function AdminOrdersPage() {
               <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 placeholder="Search orders..."
-                className="pl-9 h-8 bg-muted/30 border-none"
+                className="pl-9 h-8"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>
             
@@ -242,9 +261,9 @@ export default function AdminOrdersPage() {
 
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-                <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} />
+                <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} data-icon="inline-start" />
                 <span className="hidden lg:inline">Columns</span>
-                <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} />
+                <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
                 {table.getAllColumns().filter(c => c.getCanHide()).map((column) => (
@@ -262,21 +281,21 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        <TabsContent value={statusFilter} className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-          <div className="overflow-hidden border rounded-2xl bg-card/50">
+        <div className="relative flex flex-col gap-4 overflow-auto  ">
+          <div className="overflow-hidden border rounded-2xl">
             <Table>
-              <TableHeader className="bg-muted sticky top-0 z-10">
+              <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="text-[10px] font-bold uppercase tracking-wider">
+                      <TableHead key={header.id} colSpan={header.colSpan}>
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       </TableHead>
                     ))}
                   </TableRow>
                 ))}
               </TableHeader>
-              <TableBody>
+              <TableBody className="**:data-[slot=table-cell]:first:w-8 rounded-2xl">
                 {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="h-24 text-center">
@@ -285,7 +304,7 @@ export default function AdminOrdersPage() {
                   </TableRow>
                 ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-muted/30 transition-colors">
+                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -305,7 +324,7 @@ export default function AdminOrdersPage() {
           </div>
 
           <div className="flex items-center justify-between px-4">
-            <div className="text-muted-foreground hidden flex-1 text-xs font-medium lg:flex">
+            <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
               {table.getFilteredSelectedRowModel().rows.length} of{" "}
               {data?.pagination?.total || 0} orders selected.
             </div>
@@ -344,8 +363,16 @@ export default function AdminOrdersPage() {
               </div>
             </div>
           </div>
-        </TabsContent>
+        </div>
       </Tabs>
     </div>
+  );
+}
+
+export default function AdminOrdersPage() {
+  return (
+    <Suspense fallback={<div>Loading orders...</div>}>
+      <OrdersContent />
+    </Suspense>
   );
 }

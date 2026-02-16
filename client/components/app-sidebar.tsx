@@ -54,6 +54,11 @@ const adminNav = [
     icon: <HugeiconsIcon icon={ShoppingBasket01Icon} strokeWidth={2} />,
   },
   {
+    title: "Transactions",
+    url: "/admin/transactions",
+    icon: <HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} />,
+  },
+  {
     title: "Finance & Withdrawals",
     url: "/admin/withdrawals",
     icon: <HugeiconsIcon icon={MoneyReceiveCircleIcon} strokeWidth={2} />,
@@ -177,7 +182,7 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
     email: user?.email || "",
   }
 
-  const mainNavItems = isAdmin ? adminNav : data.navMain;
+  const mainNavItems = isAdmin ? [...adminNav, ...data.navMain] : data.navMain;
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>

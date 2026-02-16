@@ -3,7 +3,7 @@ const { validationResult } = require('express-validator');
 const getTransactions = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
-  const { page = 1, pageSize = 10, type, status } = req.query;
+  const { page = 1, pageSize = 10, type, status, search } = req.query;
 
   const pageNum = parseInt(page, 10);
   const pageSizeNum = parseInt(pageSize, 10);
@@ -13,6 +13,14 @@ const getTransactions = async (req, res) => {
     const where = { user_id: userId };
     if (type) where.type = type;
     if (status) where.status = status;
+    
+    if (search) {
+      where.OR = [
+        { description: { contains: search, mode: 'insensitive' } },
+        { id: { contains: search, mode: 'insensitive' } },
+        { reference_id: { contains: search, mode: 'insensitive' } }
+      ];
+    }
 
     const [transactions, total] = await prisma.$transaction([
       prisma.transaction.findMany({

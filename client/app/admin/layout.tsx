@@ -4,8 +4,6 @@ import withAuth from "@/lib/hocs/with-auth";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/lib/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useUser } from "@/lib/hooks/use-user";
@@ -15,7 +13,6 @@ function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
   const { data: user, isLoading } = useUser();
   const router = useRouter();
 

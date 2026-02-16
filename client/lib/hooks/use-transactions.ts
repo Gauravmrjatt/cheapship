@@ -16,7 +16,7 @@ export interface Transaction {
   updated_at: string;
 }
 
-export const useTransactions = (page: number = 1, pageSize: number = 10, type?: string, status?: string) => {
+export const useTransactions = (page: number = 1, pageSize: number = 10, type?: string, status?: string, search?: string) => {
   const http = useHttp();
   
   const queryParams = new URLSearchParams({
@@ -26,6 +26,7 @@ export const useTransactions = (page: number = 1, pageSize: number = 10, type?: 
   
   if (type) queryParams.append("type", type);
   if (status) queryParams.append("status", status);
+  if (search) queryParams.append("search", search);
 
   return useQuery(http.get<{
     data: Transaction[];
@@ -35,7 +36,7 @@ export const useTransactions = (page: number = 1, pageSize: number = 10, type?: 
       currentPage: number;
       pageSize: number;
     }
-  }>(["transactions", page, pageSize, type, status], `/transactions?${queryParams.toString()}`));
+  }>(["transactions", page, pageSize, type, status, search], `/transactions?${queryParams.toString()}`));
 };
 
 export const useTopUpWallet = () => {

@@ -50,7 +50,7 @@ const getDashboardStats = async (req, res) => {
 
 const getUsers = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  const { page = 1, pageSize = 10, search } = req.query;
+  const { page = 1, pageSize = 10, search, status } = req.query;
   
   const pageNum = parseInt(page, 10);
   const pageSizeNum = parseInt(pageSize, 10);
@@ -59,6 +59,12 @@ const getUsers = async (req, res) => {
   const where = {
     user_type: 'NORMAL'
   };
+
+  if (status === 'ACTIVE') {
+    where.is_active = true;
+  } else if (status === 'BLOCKED') {
+    where.is_active = false;
+  }
 
   if (search) {
     where.OR = [
@@ -127,7 +133,7 @@ const toggleUserStatus = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  const { page = 1, pageSize = 10, status, search } = req.query;
+  const { page = 1, pageSize = 10, status, search, userId } = req.query;
 
   const pageNum = parseInt(page, 10);
   const pageSizeNum = parseInt(pageSize, 10);
@@ -137,6 +143,10 @@ const getAllOrders = async (req, res) => {
 
   if (status && status !== 'ALL') {
     where.shipment_status = status;
+  }
+
+  if (userId) {
+    where.user_id = userId;
   }
 
   if (search) {
@@ -180,7 +190,11 @@ const getAllOrders = async (req, res) => {
 
 const getWithdrawals = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  const { status } = req.query;
+  const { status, page = 1, pageSize = 10 } = req.query;
+
+  const pageNum = parseInt(page, 10);
+  const pageSizeNum = parseInt(pageSize, 10);
+  const offset = (pageNum - 1) * pageSizeNum;
 
   const where = {};
   if (status && status !== 'ALL') {
@@ -188,17 +202,30 @@ const getWithdrawals = async (req, res) => {
   }
 
   try {
-    const withdrawals = await prisma.commissionWithdrawal.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      include: {
-        user: {
-          select: { name: true, email: true, wallet_balance: true }
+    const [withdrawals, total] = await prisma.$transaction([
+      prisma.commissionWithdrawal.findMany({
+        where,
+        skip: offset,
+        take: pageSizeNum,
+        orderBy: { created_at: 'desc' },
+        include: {
+          user: {
+            select: { name: true, email: true, wallet_balance: true }
+          }
         }
+      }),
+      prisma.commissionWithdrawal.count({ where })
+    ]);
+
+    res.json({
+      data: withdrawals,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / pageSizeNum),
+        currentPage: pageNum,
+        pageSize: pageSizeNum
       }
     });
-
-    res.json(withdrawals);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -312,6 +339,63 @@ const updateGlobalSettings = async (req, res) => {
   }
 };
 
+const getAllTransactions = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { page = 1, pageSize = 10, type, search, userId } = req.query;
+
+  const pageNum = parseInt(page, 10);
+  const pageSizeNum = parseInt(pageSize, 10);
+  const offset = (pageNum - 1) * pageSizeNum;
+
+  const where = {};
+
+  if (type && type !== 'ALL') {
+    where.type = type;
+  }
+
+  if (userId) {
+    where.user_id = userId;
+  }
+
+  if (search) {
+    where.OR = [
+      { reference_id: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
+      { user: { name: { contains: search, mode: 'insensitive' } } }
+    ];
+  }
+
+  try {
+    const [transactions, total] = await prisma.$transaction([
+      prisma.transaction.findMany({
+        where,
+        skip: offset,
+        take: pageSizeNum,
+        orderBy: { created_at: 'desc' },
+        include: {
+          user: {
+            select: { name: true, email: true }
+          }
+        }
+      }),
+      prisma.transaction.count({ where })
+    ]);
+
+    res.json({
+      data: transactions,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / pageSizeNum),
+        currentPage: pageNum,
+        pageSize: pageSizeNum
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getUsers,
@@ -320,5 +404,6 @@ module.exports = {
   getWithdrawals,
   processWithdrawal,
   getGlobalSettings,
-  updateGlobalSettings
+  updateGlobalSettings,
+  getAllTransactions
 };

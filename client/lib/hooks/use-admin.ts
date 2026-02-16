@@ -18,14 +18,15 @@ export const useAdminDashboard = () => {
   return useQuery(http.get<DashboardStats>(["admin-dashboard"], "/admin/dashboard"));
 };
 
-export const useAdminUsers = (page: number = 1, pageSize: number = 10, search: string = "") => {
+export const useAdminUsers = (page: number = 1, pageSize: number = 10, search: string = "", status: string = "ALL") => {
   const http = useHttp();
   const queryParams = new URLSearchParams({
     page: page.toString(),
     pageSize: pageSize.toString(),
-    search
+    search,
+    status
   });
-  return useQuery(http.get<any>(["admin-users", page, pageSize, search], `/admin/users?${queryParams.toString()}`));
+  return useQuery(http.get<any>(["admin-users", page, pageSize, search, status], `/admin/users?${queryParams.toString()}`));
 };
 
 export const useToggleUserStatus = () => {
@@ -55,20 +56,38 @@ export const useToggleUserStatus = () => {
   });
 };
 
-export const useAdminOrders = (page: number = 1, pageSize: number = 10, status: string = "ALL", search: string = "") => {
+export const useAdminOrders = (page: number = 1, pageSize: number = 10, status: string = "ALL", search: string = "", userId: string = "") => {
   const http = useHttp();
   const queryParams = new URLSearchParams({
     page: page.toString(),
     pageSize: pageSize.toString(),
     status,
-    search
+    search,
+    userId
   });
-  return useQuery(http.get<any>(["admin-orders", page, pageSize, status, search], `/admin/orders?${queryParams.toString()}`));
+  return useQuery(http.get<any>(["admin-orders", page, pageSize, status, search, userId], `/admin/orders?${queryParams.toString()}`));
 };
 
-export const useAdminWithdrawals = (status: string = "ALL") => {
+export const useAdminTransactions = (page: number = 1, pageSize: number = 10, type: string = "ALL", search: string = "", userId: string = "") => {
   const http = useHttp();
-  return useQuery(http.get<any[]>(["admin-withdrawals", status], `/admin/withdrawals?status=${status}`));
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+    type,
+    search,
+    userId
+  });
+  return useQuery(http.get<any>(["admin-transactions", page, pageSize, type, search, userId], `/admin/transactions?${queryParams.toString()}`));
+};
+
+export const useAdminWithdrawals = (page: number = 1, pageSize: number = 10, status: string = "ALL") => {
+  const http = useHttp();
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+    status
+  });
+  return useQuery(http.get<any>(["admin-withdrawals", page, pageSize, status], `/admin/withdrawals?${queryParams.toString()}`));
 };
 
 export const useProcessWithdrawal = () => {

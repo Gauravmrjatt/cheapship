@@ -169,7 +169,7 @@ export function OrdersDataTable({
       header: "Type",
       cell: ({ row }) => (
         <div className="w-24">
-          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
+          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
             {row.original.order_type}
           </Badge>
         </div>
@@ -179,7 +179,7 @@ export function OrdersDataTable({
       accessorKey: "shipment_type",
       header: "Service",
       cell: ({ row }) => (
-        <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
+        <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
           {row.original.shipment_type}
         </Badge>
       ),
@@ -206,13 +206,13 @@ export function OrdersDataTable({
       cell: ({ row }) => {
         const status = row.original.shipment_status.toLowerCase();
         return (
-          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
+          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
             {status === "delivered" ? (
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400" />
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400 size-3" />
             ) : status === "pending" || status === "processing" ? (
-              <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} />
+              <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="animate-spin size-3" />
             ) : (
-              <HugeiconsIcon icon={DeliveryTruck01Icon} strokeWidth={2} />
+              <HugeiconsIcon icon={DeliveryTruck01Icon} strokeWidth={2} className="size-3" />
             )}
             {status.replace(/_/g, " ")}
           </Badge>
@@ -330,7 +330,7 @@ export function OrdersDataTable({
             </SelectContent>
           </Select>
 
-          <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
+          <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
             <TabsTrigger value="ALL">All Orders</TabsTrigger>
             <TabsTrigger value="PENDING">Pending</TabsTrigger>
             <TabsTrigger value="PROCESSING">Processing</TabsTrigger>
@@ -342,7 +342,7 @@ export function OrdersDataTable({
 
         <div className="flex items-center gap-2">
           <div className="relative hidden w-64 lg:block">
-            <HugeiconsIcon icon={SearchIcon} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               placeholder="Search orders..."
               className="pl-9 h-8"
@@ -507,8 +507,7 @@ export function OrdersDataTable({
         </div>
       )}
 
-      <TabsContent
-        value={filters?.shipment_status ?? "ALL"}
+      <div
         className="relative flex flex-col gap-4 overflow-auto px-4 rounded-2xl lg:px-6"
       >
         <div className="overflow-hidden  border rounded-2xl">
@@ -638,7 +637,7 @@ export function OrdersDataTable({
             </div>
           </div>
         </div>
-      </TabsContent>
+      </div>
     </Tabs>
   )
 }

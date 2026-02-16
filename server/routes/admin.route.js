@@ -17,6 +17,9 @@ router.patch('/users/:userId/status', adminController.toggleUserStatus);
 // Orders
 router.get('/orders', adminController.getAllOrders);
 
+// Transactions
+router.get('/transactions', adminController.getAllTransactions);
+
 // Withdrawals
 router.get('/withdrawals', adminController.getWithdrawals);
 router.post('/withdrawals/:id/process', adminController.processWithdrawal);

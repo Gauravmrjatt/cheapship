@@ -29,15 +29,8 @@ export default function SettingsPage() {
   if (!mounted) return null;
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-          Settings
-        </h1>
-        <p className="text-sm text-muted-foreground">Manage your account preferences and application settings</p>
-      </div>
-
-      <Tabs defaultValue="appearance" className="w-full">
+    <div className="  py-10 px-4 space-y-8 animate-in fade-in duration-500">
+      <Tabs defaultValue="appearance" className="w-full max-w-4xl">
         <TabsList className="bg-muted/50 p-1 rounded-xl mb-6">
           <TabsTrigger value="appearance" className="rounded-lg gap-2">
             <HugeiconsIcon icon={Sun01Icon} size={16} />

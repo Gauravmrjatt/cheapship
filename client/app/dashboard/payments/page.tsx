@@ -16,8 +16,16 @@ export default function PaymentsPage() {
   const { data, isLoading } = useTransactions(
     page, 
     pageSize, 
-    filters.type === "ALL" ? undefined : filters.type
+    filters.type === "ALL" ? undefined : filters.type,
+    undefined,
+    filters.search
   );
+
+  const handleFilterChange = (newFilters: any) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
+
   const topUpMutation = useTopUpWallet();
 
   const handleTopUp = () => {
@@ -43,7 +51,7 @@ export default function PaymentsPage() {
         filters={filters}
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
-        onFilterChange={setFilters}
+        onFilterChange={handleFilterChange}
       />
 
     

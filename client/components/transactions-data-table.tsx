@@ -26,7 +26,6 @@ import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -41,7 +40,6 @@ import {
 } from "@/components/ui/table"
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
@@ -66,6 +64,7 @@ import { Transaction } from "@/lib/hooks/use-transactions"
 interface TransactionsDataTableProps {
   data: Transaction[]
   isLoading?: boolean
+  showUserColumn?: boolean
   pagination?: {
     page: number
     pageSize: number
@@ -84,6 +83,7 @@ interface TransactionsDataTableProps {
 export function TransactionsDataTable({
   data,
   isLoading,
+  showUserColumn = false,
   pagination,
   filters,
   onPageChange,
@@ -91,8 +91,14 @@ export function TransactionsDataTable({
   onFilterChange,
 }: TransactionsDataTableProps) {
   const [rowSelection, setRowSelection] = React.useState({})
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
+    user: showUserColumn
+  })
   const [sorting, setSorting] = React.useState<SortingState>([])
+
+  React.useEffect(() => {
+    setColumnVisibility(prev => ({ ...prev, user: showUserColumn }));
+  }, [showUserColumn]);
 
   const columns = React.useMemo<ColumnDef<Transaction>[]>(() => [
     {
@@ -127,6 +133,23 @@ export function TransactionsDataTable({
         </span>
       ),
       enableHiding: false,
+    },
+    {
+      id: "user",
+      header: "User",
+      cell: ({ row }) => {
+        const user = (row.original as any).user;
+        if (!user) return null;
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-xs">{user.name}</span>
+            <span className="text-[10px] text-muted-foreground">{user.email}</span>
+          </div>
+        );
+      },
+      // Only show if at least one row has user data
+      // Actually table doesn't easily support dynamic columns based on data content in this way without more logic
+      // But we can just check if any row has user in the first render or just always include it and it will be empty for users
     },
     {
       accessorKey: "type",
@@ -281,7 +304,7 @@ export function TransactionsDataTable({
         </div>
       </div>
 
-      <TabsContent value={filters?.type ?? "ALL"} className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+      <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
         <div className="overflow-hidden  border rounded-2xl">
           <Table>
             <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
@@ -390,7 +413,7 @@ export function TransactionsDataTable({
             </div>
           </div>
         </div>
-      </TabsContent>
+      </div>
     </Tabs>
   )
 }

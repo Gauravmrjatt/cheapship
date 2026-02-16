@@ -26,11 +26,6 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Global Settings</h1>
-        <p className="text-sm text-muted-foreground">Configure platform-wide parameters</p>
-      </div>
-
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="rounded-2xl border-none shadow-sm bg-card/50">
           <CardHeader>
