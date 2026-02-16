@@ -21,6 +21,7 @@ export interface Franchise {
   is_active: boolean;
   created_at: string;
   total_profit: number;
+  total_base_shipping_charge: number;
   total_withdrawn: number;
   balance: number;
   _count?: {
@@ -40,6 +41,9 @@ export interface FranchiseOrder {
   courier_id: number | null;
   courier_name: string | null;
   shipping_charge: number | null;
+  base_shipping_charge: number | null;
+  franchise_commission_rate: number | null;
+  franchise_commission_amount: number | null;
   delivered_at: string | null;
   created_at: string;
   order_pickup_address: {

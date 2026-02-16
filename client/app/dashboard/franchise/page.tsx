@@ -92,7 +92,7 @@ function FranchiseOrdersDataTable({ franchiseId, franchiseName }: { franchiseId:
         onValueChange={setStatus}
         className="w-full flex-col justify-start gap-6"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-background sticky top-0 z-20">
           <div className="flex items-center gap-4">
             <TabsList className="bg-muted/50">
               <TabsTrigger value="ALL">All</TabsTrigger>
@@ -120,10 +120,12 @@ function FranchiseOrdersDataTable({ franchiseId, franchiseName }: { franchiseId:
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-wider">Order ID</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-wider">Type</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider">Order Details</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase tracking-wider">Status</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Amount</TableHead>
+                  {/* <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Base Amount</TableHead> */}
+                  {/* <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center">Comm %</TableHead> */}
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Total Amount</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center text-primary">Your Profit</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase tracking-wider">Date</TableHead>
                 </TableRow>
               </TableHeader>
@@ -131,12 +133,12 @@ function FranchiseOrdersDataTable({ franchiseId, franchiseName }: { franchiseId:
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={5}><Skeleton className="h-12 w-full rounded-lg" /></TableCell>
+                      <TableCell colSpan={7}><Skeleton className="h-12 w-full rounded-lg" /></TableCell>
                     </TableRow>
                   ))
                 ) : filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-64 text-center">
+                    <TableCell colSpan={7} className="h-64 text-center">
                       <div className="flex flex-col items-center justify-center opacity-40">
                         <HugeiconsIcon icon={ShoppingBasket01Icon} size={48} />
                         <p className="mt-2 font-medium">No orders found</p>
@@ -146,29 +148,50 @@ function FranchiseOrdersDataTable({ franchiseId, franchiseName }: { franchiseId:
                 ) : (
                   filteredOrders.map((order) => (
                     <TableRow key={order.id} className="hover:bg-muted/30 group">
-                      <TableCell className="font-mono text-xs font-medium">
-                        #{order.id.toString().slice(0, 8)}
+                      <TableCell>
+                        <span className="text-foreground font-medium uppercase">
+                          #{order.id.toString().slice(0, 8)}
+                        </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-[9px] font-bold py-0 h-4 uppercase">
-                          {order.order_type}
+                        {(() => {
+                          const status = order.shipment_status.toLowerCase();
+                          return (
+                            <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
+                              {status === "delivered" ? (
+                                <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400 size-3" />
+                              ) : status === "pending" ? (
+                                <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="animate-spin size-3" />
+                              ) : status === "cancelled" ? (
+                                <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="text-red-500 size-3" />
+                              ) : (
+                                <HugeiconsIcon icon={DeliveryTruck01Icon} strokeWidth={2} className="text-blue-500 size-3" />
+                              )}
+                              {status.replace(/_/g, " ")}
+                            </Badge>
+                          );
+                        })()}
+                      </TableCell>
+                      {/* <TableCell className="text-right tabular-nums font-medium text-muted-foreground">
+                        ₹{Number(order.base_shipping_charge || 0).toLocaleString("en-IN")}
+                      </TableCell> */}
+                      {/* <TableCell className="text-center">
+                       
+                      </TableCell> */}
+                      <TableCell className="text-right tabular-nums font-medium">
+                        ₹{Number(order.shipping_charge || order.total_amount).toLocaleString("en-IN")}
+                      </TableCell>
+                      <TableCell className=" tabular-nums font-medium text-center text-green-600">
+                        +₹{Number(order.franchise_commission_amount || 0).toLocaleString("en-IN")} 
+                         <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
+                          <HugeiconsIcon icon={PercentIcon} size={12} strokeWidth={2} className="text-primary" />
+                          {Number(order.franchise_commission_rate || 0)}%
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={cn(
-                          "text-[9px] font-bold py-0 h-4 gap-1",
-                          order.shipment_status === "DELIVERED" && "text-green-600 border-green-200 bg-green-50",
-                          order.shipment_status === "CANCELLED" && "text-red-600 border-red-200 bg-red-50",
-                          order.shipment_status === "PENDING" && "text-amber-600 border-amber-200 bg-amber-50"
-                        )}>
-                          {order.shipment_status === "PENDING" && <HugeiconsIcon icon={Loading03Icon} size={10} className="animate-spin" />}
-                          {order.shipment_status === "DELIVERED" && <HugeiconsIcon icon={CheckmarkCircle01Icon} size={10} />}
-                          {order.shipment_status.replace(/_/g, " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs font-bold text-right">₹{Number(order.total_amount).toLocaleString("en-IN")}</TableCell>
-                      <TableCell className="text-[10px] text-muted-foreground font-medium">
-                        {new Date(order.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(order.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -179,7 +202,7 @@ function FranchiseOrdersDataTable({ franchiseId, franchiseName }: { franchiseId:
         </div>
 
         {data?.pagination && data.pagination.totalPages > 1 && (
-          <div className="px-6 py-4 border-t flex items-center justify-between">
+          <div className="px-6 py-4 border-t flex items-center justify-between bg-background sticky bottom-0 z-20">
             <div className="text-xs text-muted-foreground font-medium">
               Showing {filteredOrders.length} of {data.pagination.total} orders
             </div>
@@ -287,6 +310,17 @@ export default function FranchisePage() {
 
   const selectedFranchise = franchises?.find(f => f.id === selectedFranchiseId);
 
+  const networkMetrics = React.useMemo(() => {
+    if (!franchises) return { totalProfit: 0, totalShipmentCost: 0, totalActive: 0, totalWithdrawable: 0, totalPending: 0 };
+    return franchises.reduce((acc, f) => ({
+      totalProfit: acc.totalProfit + (Number(f.total_profit) || 0),
+      totalShipmentCost: acc.totalShipmentCost + (Number(f.total_base_shipping_charge) || 0),
+      totalActive: acc.totalActive + (f.is_active ? 1 : 0),
+      totalWithdrawable: acc.totalWithdrawable + (Number(f.withdrawable_profit) || 0),
+      totalPending: acc.totalPending + (Number(f.pending_profit) || 0)
+    }), { totalProfit: 0, totalShipmentCost: 0, totalActive: 0, totalWithdrawable: 0, totalPending: 0 });
+  }, [franchises]);
+
   if (loadingFranchises || loadingReferral) {
     return (
       <div className="max-w-6xl mx-auto py-10 px-4 space-y-8">
@@ -324,6 +358,25 @@ export default function FranchisePage() {
             </CardContent>
           </Card>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="rounded-2xl border-none ring-1 ring-foreground/10 bg-card/50 shadow-lg shadow-foreground/5 p-6 flex flex-col gap-1">
+          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Network Cost</p>
+          <p className="text-xl font-bold">₹{networkMetrics.totalShipmentCost.toLocaleString("en-IN")}</p>
+        </Card>
+        <Card className="rounded-2xl border-none ring-1 ring-foreground/10 bg-primary/5 shadow-lg shadow-primary/5 p-6 flex flex-col gap-1">
+          <p className="text-[10px] uppercase font-bold text-primary/60 tracking-wider">Net Profit</p>
+          <p className="text-xl font-bold text-primary">₹{networkMetrics.totalProfit.toLocaleString("en-IN")}</p>
+        </Card>
+        <Card className="rounded-2xl border-none ring-1 ring-foreground/10 bg-green-500/5 shadow-lg shadow-green-500/5 p-6 flex flex-col gap-1">
+          <p className="text-[10px] uppercase font-bold text-green-600/60 tracking-wider">Withdrawable</p>
+          <p className="text-xl font-bold text-green-600">₹{networkMetrics.totalWithdrawable.toLocaleString("en-IN")}</p>
+        </Card>
+        <Card className="rounded-2xl border-none ring-1 ring-foreground/10 bg-amber-500/5 shadow-lg shadow-amber-500/5 p-6 flex flex-col gap-1">
+          <p className="text-[10px] uppercase font-bold text-amber-600/60 tracking-wider">Pending</p>
+          <p className="text-xl font-bold text-amber-600">₹{networkMetrics.totalPending.toLocaleString("en-IN")}</p>
+        </Card>
       </div>
 
       {!franchises || franchises.length === 0 ? (
@@ -385,7 +438,10 @@ export default function FranchisePage() {
                   <div className="bg-primary/5 rounded-xl p-3 flex flex-col justify-center items-end border border-primary/10">
                     <p className="text-[10px] uppercase font-bold text-primary/60 tracking-wider">Balance</p>
                     <p className="text-lg font-bold text-primary">₹{Number(f.balance || 0).toLocaleString("en-IN")}</p>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">Profit: ₹{Number(f.total_profit || 0).toFixed(1)}</p>
+                    <div className="flex flex-col items-end mt-1 text-[9px] text-muted-foreground font-medium">
+                      <p>Shipment Cost: ₹{Number(f.total_base_shipping_charge || 0).toLocaleString("en-IN")}</p>
+                      <p className="text-green-600">Net Profit: ₹{Number(f.total_profit || 0).toLocaleString("en-IN")}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -416,10 +472,10 @@ export default function FranchisePage() {
 
       {/* Orders Sheet */}
       <Sheet open={showOrdersSheet} onOpenChange={setShowOrdersSheet}>
-        <SheetContent side="right" className="sm:max-w-3xl flex flex-col h-full p-0 min-w-[50dvw]">
+        <SheetContent side="right" className="sm:max-w-7xl flex flex-col h-full p-0 min-w-[100dvw]">
           <SheetHeader className="p-6 pb-2">
             <SheetTitle className="flex items-center gap-2">
-              <HugeiconsIcon icon={ShoppingBasket01Icon} size={20} className="text-primary" />
+              <HugeiconsIcon icon={ShoppingBasket01Icon} size={20}  />
               Orders by {selectedFranchise?.name}
             </SheetTitle>
             <SheetDescription>Real-time analytics and lifecycle of partner shipments</SheetDescription>
@@ -438,14 +494,14 @@ export default function FranchisePage() {
 
       {/* Assign Rates Sheet */}
       <Sheet open={showRatesSheet} onOpenChange={setShowRatesSheet}>
-        <SheetContent side="right" className="sm:max-w-xl flex flex-col h-full p-0">
+        <SheetContent side="right" className="min-w-dvw  md:min-w-[50dvw] flex flex-col h-full p-0">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                 <HugeiconsIcon icon={PercentIcon} size={20} />
               </div>
               <div>
-                <SheetTitle className="text-xl">Protocol Configuration</SheetTitle>
+                <SheetTitle className="text-xl">Assign Rates to {selectedFranchise?.name}</SheetTitle>
                 <SheetDescription>Configure commission for {selectedFranchise?.name}</SheetDescription>
               </div>
             </div>

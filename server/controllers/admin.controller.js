@@ -271,30 +271,44 @@ const processWithdrawal = async (req, res) => {
       // Approve -> Debit Wallet (Real payout)
       // Reject -> Do nothing (Balance remains)
       
-      if (status === 'APPROVED') {
-         // Check balance again
-         const user = await tx.user.findUnique({ where: { id: withdrawal.user_id } });
-         if (Number(user.wallet_balance) < Number(withdrawal.amount)) {
-             throw new Error('Insufficient user balance for approval');
-         }
-
-         await tx.user.update({
-             where: { id: withdrawal.user_id },
-             data: { wallet_balance: { decrement: withdrawal.amount } }
-         });
-         
-         await tx.transaction.create({
-             data: {
-                 user_id: withdrawal.user_id,
-                 amount: withdrawal.amount,
-                 type: 'DEBIT',
-                 status: 'SUCCESS',
-                 description: 'Commission Withdrawal Approved',
-                 reference_id: withdrawal.id
-             }
-         });
-      }
-
+              if (status === 'APPROVED') {
+                 // Check balance again
+                 const user = await tx.user.findUnique({ where: { id: withdrawal.user_id } });
+                 if (Number(user.wallet_balance) < Number(withdrawal.amount)) {
+                     throw new Error('Insufficient user balance for approval');
+                 }
+      
+                 await tx.user.update({
+                     where: { id: withdrawal.user_id },
+                     data: { wallet_balance: { decrement: withdrawal.amount } }
+                 });
+                 
+                 // If it's a franchise withdrawal, consume the orders
+                 if (withdrawal.franchise_id) {
+                   await tx.order.updateMany({
+                     where: {
+                       user_id: withdrawal.franchise_id,
+                       shipment_status: 'DELIVERED',
+                       is_franchise_withdrawn: false
+                     },
+                     data: {
+                       is_franchise_withdrawn: true,
+                       franchise_commission_amount: 0
+                     }
+                   });
+                 }
+      
+                 await tx.transaction.create({
+                     data: {
+                         user_id: withdrawal.user_id,
+                         amount: withdrawal.amount,
+                         type: 'DEBIT',
+                         status: 'SUCCESS',
+                         description: 'Commission Withdrawal Approved',
+                         reference_id: withdrawal.id
+                     }
+                 });
+              }
       return updatedWithdrawal;
     });
 

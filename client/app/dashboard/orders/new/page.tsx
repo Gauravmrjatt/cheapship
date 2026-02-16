@@ -410,7 +410,15 @@ export default function CreateOrderPage() {
   };
 
   function onSubmit(values: z.infer<typeof createOrderSchema>) {
-    mutate({...values , total_amount :  Number(values.shipping_charge || 0)} as any);
+    // Only send what's necessary, server will calculate charges
+    const { 
+      shipping_charge, 
+      base_shipping_charge, 
+      courier_name, 
+      ...orderData 
+    } = values;
+    
+    mutate(orderData as any);
   }
 
   const selectSavedAddress = (address: SavedAddress, prefix: "pickup_address" | "receiver_address") => {
@@ -1251,7 +1259,7 @@ export default function CreateOrderPage() {
 
               <Card className="max-w-xs mx-auto p-6 bg-muted/30 border-dashed">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Final Amount</p>
-                <p className="text-4xl font-bold text-foreground">₹{(Number(formValues.total_amount) + Number(formValues.shipping_charge || 0)).toFixed(2)}</p>
+                <p className="text-4xl font-bold text-foreground">₹{ Number(formValues.shipping_charge || 0).toFixed(2)}</p>
               </Card></> : <>
               <div className="mx-auto w-20 h-20 bg-green-600 text-green-100 rounded-full flex items-center justify-center mb-6">
                 <HugeiconsIcon icon={CheckmarkCircle01Icon} size={40} />
@@ -1264,7 +1272,7 @@ export default function CreateOrderPage() {
 
               <Card className="max-w-xs mx-auto p-6 bg-muted/30 border-dashed">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Final Amount</p>
-                <p className="text-4xl font-bold text-foreground">₹{(Number(formValues.total_amount) + Number(formValues.shipping_charge || 0)).toFixed(2)}</p>
+                <p className="text-4xl font-bold text-foreground">₹{ Number(formValues.shipping_charge || 0).toFixed(2)}</p>
               </Card>
             </>}
 

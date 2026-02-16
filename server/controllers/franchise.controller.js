@@ -44,7 +44,10 @@ const getFranchises = async (req, res) => {
         orders: {
           select: {
             shipping_charge: true,
-            base_shipping_charge: true
+            base_shipping_charge: true,
+            franchise_commission_amount: true,
+            shipment_status: true,
+            is_franchise_withdrawn: true
           }
         },
         withdrawals: {
@@ -58,24 +61,47 @@ const getFranchises = async (req, res) => {
       }
     });
 
-    const franchisesWithProfit = franchises.map(f => {
-      const total_profit = f.orders.reduce((sum, order) => {
-        const shipping = parseFloat(order.shipping_charge || 0);
-        const base = parseFloat(order.base_shipping_charge || 0);
-        return sum + (shipping - base);
-      }, 0);
-
-      const total_withdrawn = f.withdrawals.reduce((sum, w) => sum + parseFloat(w.amount || 0), 0);
-
-      const { orders, withdrawals, ...rest } = f;
-      return {
-        ...rest,
-        total_profit,
-        total_withdrawn,
-        balance: total_profit - total_withdrawn
-      };
-    });
-
+          const franchisesWithProfit = franchises.map(f => {
+            const total_profit = f.orders.reduce((sum, order) => {
+              return sum + parseFloat(order.franchise_commission_amount || 0);
+            }, 0);
+    
+            const withdrawable_profit = f.orders.reduce((sum, order) => {
+              if (order.shipment_status === 'DELIVERED' && !order.is_franchise_withdrawn) {
+                return sum + parseFloat(order.franchise_commission_amount || 0);
+              }
+              return sum;
+            }, 0);
+    
+            const pending_profit = f.orders.reduce((sum, order) => {
+              if (order.shipment_status !== 'DELIVERED' && order.shipment_status !== 'CANCELLED' && !order.is_franchise_withdrawn) {
+                return sum + parseFloat(order.franchise_commission_amount || 0);
+              }
+              return sum;
+            }, 0);
+    
+            const total_base_shipping_charge = f.orders.reduce((sum, order) => {
+              return sum + parseFloat(order.base_shipping_charge || 0);
+            }, 0);
+    
+            const total_withdrawn = f.withdrawals.reduce((sum, w) => {
+              if (w.status === 'COMPLETED' || w.status === 'APPROVED' || w.status === 'PENDING') {
+                return sum + parseFloat(w.amount || 0);
+              }
+              return sum;
+            }, 0);
+    
+            const { orders, withdrawals, ...rest } = f;
+            return {
+              ...rest,
+              total_profit,
+              withdrawable_profit,
+              pending_profit,
+              total_base_shipping_charge,
+              total_withdrawn,
+              balance: Math.max(0, withdrawable_profit - total_withdrawn)
+            };
+          });
     res.json(franchisesWithProfit);
   } catch (error) {
     console.error(error);
@@ -112,53 +138,56 @@ const withdrawCommission = async (req, res) => {
         referred_by: currentUser.referer_code
       },
       include: {
-        orders: {
-          select: {
-            shipping_charge: true,
-            base_shipping_charge: true
-          }
-        },
-        withdrawals: {
-          select: {
-            amount: true
-          }
+      orders: {
+        select: {
+          franchise_commission_amount: true,
+          shipment_status: true,
+          is_franchise_withdrawn: true
+        }
+      },
+      withdrawals: {
+        select: {
+          amount: true,
+          status: true
         }
       }
-    });
-
-    if (!franchise) {
-      return res.status(404).json({ message: 'Franchise not found or not under your network' });
     }
+  });
 
-    // Calculate available balance
-    const total_profit = franchise.orders.reduce((sum, order) => {
-      const shipping = parseFloat(order.shipping_charge || 0);
-      const base = parseFloat(order.base_shipping_charge || 0);
-      return sum + (shipping - base);
-    }, 0);
+  if (!franchise) {
+    return res.status(404).json({ message: 'Franchise not found or not under your network' });
+  }
 
-    const total_withdrawn = franchise.withdrawals.reduce((sum, w) => sum + parseFloat(w.amount || 0), 0);
-    const available_balance = total_profit - total_withdrawn;
-
-    if (amount > available_balance) {
-      return res.status(400).json({ message: `Insufficient balance. Available: ₹${available_balance}` });
+  // Calculate available balance (Only non-withdrawn DELIVERED orders)
+  const withdrawable_profit = franchise.orders.reduce((sum, order) => {
+    if (order.shipment_status === 'DELIVERED' && !order.is_franchise_withdrawn) {
+      return sum + parseFloat(order.franchise_commission_amount || 0);
     }
+    return sum;
+  }, 0);
 
-    // Create withdrawal request
-    // Note: We are associating the withdrawal with the franchise holder (currentUser),
-    // but the requirement says "withdraw the commision" within the franchise list,
-    // which implies tracking which franchise earned this commission.
-    // However, the CommissionWithdrawal model I created associates with a user.
-    // I should probably track which franchise this withdrawal is from if needed.
-    // For now, I'll just create a withdrawal for the current user.
-    
-    const withdrawal = await prisma.commissionWithdrawal.create({
-      data: {
-        user_id: userId, // The franchise holder who is withdrawing
-        amount: amount,
-        status: 'PENDING'
-      }
-    });
+  const total_withdrawn = franchise.withdrawals.reduce((sum, w) => {
+    if (w.status === 'COMPLETED' || w.status === 'APPROVED' || w.status === 'PENDING') {
+      return sum + parseFloat(w.amount || 0);
+    }
+    return sum;
+  }, 0);
+
+  const available_balance = Math.max(0, withdrawable_profit - total_withdrawn);
+
+  if (amount > available_balance) {
+    return res.status(400).json({ message: `Insufficient withdrawable balance. Available: ₹${available_balance}` });
+  }
+
+  // Create withdrawal request
+  const withdrawal = await prisma.commissionWithdrawal.create({
+    data: {
+      user_id: userId, // The franchise network holder
+      franchise_id: franchiseId, // The specific franchise whose commission is withdrawn
+      amount: amount,
+      status: 'PENDING'
+    }
+  });
 
     res.json({
       message: 'Withdrawal request submitted successfully',

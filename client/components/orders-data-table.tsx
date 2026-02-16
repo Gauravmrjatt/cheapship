@@ -78,6 +78,8 @@ export type Order = {
   shipment_type: string
   payment_mode: string
   total_amount: number
+  shipping_charge?: number
+  base_shipping_charge?: number
   shipment_status: string
   created_at?: string
 }
@@ -200,6 +202,27 @@ export function OrdersDataTable({
         </div>
       ),
     },
+    // {
+    //   accessorKey: "base_shipping_charge",
+    //   header: () => <div className="text-right">Base Charge</div>,
+    //   cell: ({ row }) => (
+    //     <div className="text-right tabular-nums text-muted-foreground">
+    //       ₹{(row.original.base_shipping_charge || 0).toLocaleString("en-IN")}
+    //     </div>
+    //   ),
+    // },
+    // {
+    //   id: "profit",
+    //   header: () => <div className="text-right">Profit</div>,
+    //   cell: ({ row }) => {
+    //     const profit = Number(row.original.shipping_charge || 0) - Number(row.original.base_shipping_charge || 0);
+    //     return (
+    //       <div className="text-right tabular-nums text-green-600 font-medium">
+    //         ₹{profit.toLocaleString("en-IN")}
+    //       </div>
+    //     );
+    //   },
+    // },
     {
       accessorKey: "shipment_status",
       header: "Status",

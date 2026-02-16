@@ -1,6 +1,56 @@
 const { validationResult } = require('express-validator');
 const { getServiceability, getLocalityDetails } = require('../utils/shiprocket');
 
+// Helper to calculate final rates with commissions
+const calculateFinalRates = async (prisma, userId, availableCouriers, recommendedId = null) => {
+  // Get user's commission settings and Global Settings
+  const [user, globalSetting] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { commission_rate: true, assigned_rates: true, referred_by: true }
+    }),
+    prisma.systemSetting.findUnique({
+      where: { key: 'global_commission_rate' }
+    })
+  ]);
+
+  const globalCommissionRate = globalSetting ? parseFloat(globalSetting.value) : 0;
+  const franchiseCommissionRate = user?.commission_rate ? parseFloat(user.commission_rate.toString()) : (user?.referred_by ? 5 : 0);
+  const assignedRates = user?.assigned_rates || {};
+
+  return availableCouriers.map(courier => {
+    // Find commission for this courier
+    const courierConfig = assignedRates[courier.courier_company_id] || assignedRates[courier.courier_name] || {};
+    const markupPercent = courierConfig.rate !== undefined ? parseFloat(courierConfig.rate) : franchiseCommissionRate;
+    
+    const baseRate = parseFloat(courier.rate);
+    
+    // Formula: base_shipment_price + frenchies % on base_shipment price + global % on base_shipment price
+    const globalCommissionAmount = (baseRate * globalCommissionRate) / 100;
+    const franchiseCommissionAmount = (baseRate * markupPercent) / 100;
+    
+    const finalRate = baseRate + globalCommissionAmount + franchiseCommissionAmount;
+
+    return {
+      courier_name: courier.courier_name,
+      courier_company_id: courier.courier_company_id,
+      rating: courier.rating,
+      estimated_delivery: courier.etd,
+      delivery_in_days: courier.estimated_delivery_days,
+      chargeable_weight: courier.charge_weight,
+      rate: finalRate,
+      base_rate: baseRate,
+      global_commission_rate: globalCommissionRate,
+      global_commission_amount: globalCommissionAmount,
+      franchise_commission_rate: markupPercent,
+      franchise_commission_amount: franchiseCommissionAmount,
+      is_surface: courier.is_surface,
+      mode: courier.mode === 1 ? 'Air' : 'Surface',
+      is_recommended: courier.courier_company_id === recommendedId
+    };
+  });
+};
+
 const getPincodeDetails = async (req, res) => {
   const { postcode } = req.query;
 
@@ -83,73 +133,37 @@ const calculateRates = async (req, res) => {
       });
     }
 
-    const availableCouriers = serviceabilityData.data.available_courier_companies || [];
+          const availableCouriers = serviceabilityData.data.available_courier_companies || [];
+          
+          const serviceableCouriers = await calculateFinalRates(
+            prisma, 
+            req.user.id, 
+            availableCouriers, 
+            serviceabilityData.data.recommended_courier_company_id
+          );
     
-    // Get user's commission settings and Global Settings
-    const [user, globalSetting] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: req.user.id },
-        select: { commission_rate: true, assigned_rates: true, referred_by: true }
-      }),
-      prisma.systemSetting.findUnique({
-        where: { key: 'global_commission_rate' }
-      })
-    ]);
-
-    const globalCommission = globalSetting ? parseFloat(globalSetting.value) : 0;
-    const defaultRate = user?.commission_rate ? parseFloat(user.commission_rate.toString()) : (user?.referred_by ? 5 : 0);
-    const assignedRates = user?.assigned_rates || {};
-
-    // Format the response to match the user's requested structure
-    const formattedResponse = {
-      pickup_location: {
-        city: pickupLocality?.data?.postcode_details?.city || pickupLocality?.data?.city || '',
-        state: pickupLocality?.data?.postcode_details?.state || pickupLocality?.data?.state || '',
-        postcode: pickup_postcode
-      },
-      delivery_location: {
-        city: deliveryLocality?.data?.postcode_details?.city || deliveryLocality?.data?.city || '',
-        state: deliveryLocality?.data?.postcode_details?.state || deliveryLocality?.data?.state || '',
-        postcode: delivery_postcode
-      },
-      shipment_info: {
-        value: declared_value,
-        payment_mode: parseInt(cod) === 1 ? 'COD' : 'PREPAID',
-        applicable_weight: weight,
-        dangerous_goods: serviceabilityData.dg_courier === 1 ? 'Yes' : 'No'
-      },
-      serviceable_couriers: availableCouriers.map(courier => {
-        // Find commission for this courier
-        // assignedRates might look like { "Delhivery": { rate: 20, slab: 500 }, "123": { rate: 15 } }
-        const courierConfig = assignedRates[courier.courier_company_id] || assignedRates[courier.courier_name] || {};
-        const markupPercent = courierConfig.rate !== undefined ? parseFloat(courierConfig.rate) : defaultRate;
-        
-        const baseRate = parseFloat(courier.rate);
-        
-        // Apply Global Commission first (Base + Global%)
-        const rateWithGlobal = baseRate + (baseRate * globalCommission / 100);
-
-        // Apply User Markup on top of (Base + Global)
-        const markupAmount = (rateWithGlobal * markupPercent) / 100;
-        const finalRate = rateWithGlobal + markupAmount;
-
-        return {
-          courier_name: courier.courier_name,
-          courier_company_id: courier.courier_company_id,
-          rating: courier.rating,
-          estimated_delivery: courier.etd,
-          delivery_in_days: courier.estimated_delivery_days,
-          chargeable_weight: courier.charge_weight,
-          rate: finalRate,
-          is_surface: courier.is_surface,
-          mode: courier.mode === 1 ? 'Air' : 'Surface',
-          is_recommended: courier.courier_company_id === serviceabilityData.data.recommended_courier_company_id
-        };
-      })
-    };
-
-    res.json(formattedResponse);
-  } catch (error) {
+          // Format the response to match the user's requested structure
+          const formattedResponse = {
+            pickup_location: {
+              city: pickupLocality?.data?.postcode_details?.city || pickupLocality?.data?.city || '',
+              state: pickupLocality?.data?.postcode_details?.state || pickupLocality?.data?.state || '',
+              postcode: pickup_postcode
+            },
+            delivery_location: {
+              city: deliveryLocality?.data?.postcode_details?.city || deliveryLocality?.data?.city || '',
+              state: deliveryLocality?.data?.postcode_details?.state || deliveryLocality?.data?.state || '',
+              postcode: delivery_postcode
+            },
+            shipment_info: {
+              value: declared_value,
+              payment_mode: parseInt(cod) === 1 ? 'COD' : 'PREPAID',
+              applicable_weight: weight,
+              dangerous_goods: serviceabilityData.dg_courier === 1 ? 'Yes' : 'No'
+            },
+            serviceable_couriers: serviceableCouriers
+          };
+    
+          res.json(formattedResponse);  } catch (error) {
     console.error('Error calculating rates:', error);
     res.status(500).json({ message: 'Error calculating rates from Shiprocket' });
   }
@@ -171,14 +185,48 @@ const createOrder = async (req, res) => {
     save_pickup_address,
     save_receiver_address,
     courier_id,
-    courier_name,
-    shipping_charge,
-    base_shipping_charge
+    weight,
+    length,
+    width,
+    height
   } = req.body;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
 
   try {
+    // SECURITY: Recalculate price on server. Do not trust client's shipping_charge.
+    const serviceabilityData = await getServiceability({
+      pickup_postcode: pickup_address.pincode,
+      delivery_postcode: receiver_address.pincode,
+      weight,
+      cod: payment_mode === 'COD' ? 1 : 0,
+      declared_value: total_amount,
+      length,
+      breadth: width,
+      height,
+      mode: order_type === 'SURFACE' ? 'Surface' : 'Air'
+    });
+
+    if (!serviceabilityData || serviceabilityData.status !== 200) {
+      return res.status(400).json({ 
+        message: 'Could not verify shipping rates on server',
+        details: serviceabilityData?.message 
+      });
+    }
+
+    const availableCouriers = serviceabilityData.data.available_courier_companies || [];
+    const serviceableCouriers = await calculateFinalRates(prisma, userId, availableCouriers);
+    
+    // Find the chosen courier and its calculated rate
+    const chosenCourier = serviceableCouriers.find(c => c.courier_company_id === parseInt(courier_id));
+    
+    if (!chosenCourier) {
+      return res.status(400).json({ message: 'Selected courier is not available for this route/weight' });
+    }
+
+    const serverShippingCharge = chosenCourier.rate;
+    const serverBaseCharge = chosenCourier.base_rate;
+
     const newOrder = await prisma.$transaction(async (tx) => {
       // 1. Check wallet balance
       const user = await tx.user.findUnique({
@@ -186,7 +234,7 @@ const createOrder = async (req, res) => {
         select: { wallet_balance: true }
       });
 
-      const orderAmount = Number(shipping_charge || 0);
+      const orderAmount = Number(serverShippingCharge || 0);
 
       if (Number(user.wallet_balance) < orderAmount) {
         throw new Error(`Insufficient wallet balance. Required: ₹${orderAmount}, Available: ₹${user.wallet_balance}`);
@@ -248,13 +296,23 @@ const createOrder = async (req, res) => {
         data: {
           user_id: userId,
           order_type,
+          shipment_status: 'PENDING',
           shipment_type,
           payment_mode,
-          total_amount,
-          courier_id,
-          courier_name,
-          shipping_charge,
-          base_shipping_charge
+          total_amount : serverShippingCharge,
+          product_amount :  total_amount , 
+          weight,
+          length,
+          width,
+          height,
+          courier_id: chosenCourier.courier_company_id,
+          courier_name: chosenCourier.courier_name,
+          shipping_charge: serverShippingCharge,
+          base_shipping_charge: serverBaseCharge,
+          global_commission_rate: chosenCourier.global_commission_rate,
+          global_commission_amount: chosenCourier.global_commission_amount,
+          franchise_commission_rate: chosenCourier.franchise_commission_rate,
+          franchise_commission_amount: chosenCourier.franchise_commission_amount
         }
       });
 
