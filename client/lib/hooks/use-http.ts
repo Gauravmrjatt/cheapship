@@ -4,7 +4,7 @@ import { useMutation, QueryKey } from "@tanstack/react-query";
 import { sileo } from "sileo";
 import { useAuth } from "./use-auth";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL + "/api/v1" || "http://localhost:3000";
 
 interface HttpOptions<TData> {
   onSuccess?: (data: TData) => void;
