@@ -245,14 +245,14 @@ export function TransactionsDataTable({
   return (
     <Tabs
       value={filters?.type ?? "ALL"}
-      onValueChange={(v) => handleFilterUpdate("type", v)}
+      onValueChange={(v) => handleFilterUpdate("type", v ?? "ALL")}
       className="w-full flex-col justify-start gap-6"
     >
       <div className="flex items-center justify-between px-4 lg:px-6">
         <div className="flex items-center gap-4">
           <Select
             value={filters?.type ?? "ALL"}
-            onValueChange={(v) => handleFilterUpdate("type", v)}
+            onValueChange={(v) => handleFilterUpdate("type", v ?? "ALL")}
           >
             <SelectTrigger className="flex w-fit lg:hidden" size="sm">
               <SelectValue placeholder="Type" />

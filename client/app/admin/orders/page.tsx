@@ -77,9 +77,11 @@ function OrdersContent() {
   
   const { data, isLoading } = useAdminOrders(page, pageSize, statusFilter, search, userIdFilter);
 
-  const handleStatusChange = (status: string) => {
-    setStatusFilter(status);
-    setPage(1);
+  const handleStatusChange = (status: string | null) => {
+    if (status) {
+      setStatusFilter(status);
+      setPage(1);
+    }
   };
 
   const handleSearchChange = (value: string) => {

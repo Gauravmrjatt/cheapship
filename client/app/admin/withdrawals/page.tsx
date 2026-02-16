@@ -207,9 +207,11 @@ export default function AdminWithdrawalsPage() {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const handleStatusChange = (val: string) => {
-    setStatus(val);
-    setPage(1);
+  const handleStatusChange = (val: string | null) => {
+    if (val) {
+      setStatus(val);
+      setPage(1);
+    }
   };
 
   return (

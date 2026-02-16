@@ -21,6 +21,8 @@ export interface Franchise {
   is_active: boolean;
   created_at: string;
   total_profit: number;
+  withdrawable_profit: number;
+  pending_profit: number;
   total_base_shipping_charge: number;
   total_withdrawn: number;
   balance: number;

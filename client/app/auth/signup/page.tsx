@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,7 +25,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useHttp } from "@/lib/hooks/use-http"; 
 import { useMutation } from "@tanstack/react-query";
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const http = useHttp(); 
@@ -131,5 +131,13 @@ export default function SignUpPage() {
           </CardFooter>
         </form>
     </Card>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpForm />
+    </Suspense>
   );
 }

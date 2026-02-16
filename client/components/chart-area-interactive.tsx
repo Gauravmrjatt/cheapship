@@ -149,7 +149,7 @@ export function ChartAreaInteractive({
           </ToggleGroup>
           <Select
             value={timeRange}
-            onValueChange={setTimeRange}
+            onValueChange={(val) => val && setTimeRange(val)}
           >
             <SelectTrigger
               className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"

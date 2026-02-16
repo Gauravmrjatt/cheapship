@@ -425,7 +425,7 @@ export default function CreateOrderPage() {
     form.setValue(`${prefix}.name`, address.name);
     form.setValue(`${prefix}.phone`, address.phone);
     form.setValue(`${prefix}.email`, address.email || "");
-    form.setValue(`${prefix}.pincode`, address.pincode);
+    form.setValue(`${prefix}.pincode`, address.pin_code);
     form.setValue(`${prefix}.address`, address.complete_address);
     form.setValue(`${prefix}.city`, address.city);
     form.setValue(`${prefix}.state`, address.state);
@@ -806,12 +806,10 @@ export default function CreateOrderPage() {
               </div>
 
               {savedAddresses && savedAddresses.length > 0 && (
-                <Popover open={openPopover} onOpenChange={setOpenPopover}>
-                  <PopoverTrigger asChild>
-                    <Button onClick={(e) => e.preventDefault()} variant="outline" size="sm" className="h-9 gap-2">
-                      <HugeiconsIcon icon={AddressBookIcon} size={16} />
-                      Saved Addresses
-                    </Button>
+                <Popover open={openPickupPopover} onOpenChange={setOpenPickupPopover}>
+                  <PopoverTrigger render={<Button variant="outline" size="sm" className="h-9 gap-2" />}>
+                    <HugeiconsIcon icon={AddressBookIcon} size={16} />
+                    Saved Addresses
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-0" align="end">
                     <div className="p-4 border-b">
@@ -853,11 +851,9 @@ export default function CreateOrderPage() {
 
               {/* {isPickup && shiprocketPickupLocations.length > 0 && (
                 <Popover open={openShiprocketPopover} onOpenChange={setOpenShiprocketPopover}>
-                  <PopoverTrigger asChild>
-                    <Button onClick={(e) => e.preventDefault()} variant="outline" size="sm" className="h-9 gap-2">
-                      <HugeiconsIcon icon={RocketIcon} size={16} />
-                       Pickup Locations
-                    </Button>
+                  <PopoverTrigger render={<Button variant="outline" size="sm" className="h-9 gap-2" />}>
+                    <HugeiconsIcon icon={RocketIcon} size={16} />
+                     Pickup Locations
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-0" align="end">
                     <div className="p-4 border-b">

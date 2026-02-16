@@ -322,7 +322,7 @@ export function OrdersDataTable({
   return (
     <Tabs
       value={filters?.shipment_status ?? "ALL"}
-      onValueChange={(v) => handleFilterUpdate("shipment_status", v)}
+      onValueChange={(v) => handleFilterUpdate("shipment_status", v ?? "ALL")}
       className="w-full flex-col justify-start gap-6"
     >
       <div className="flex items-center justify-between px-4 lg:px-6">
@@ -332,7 +332,7 @@ export function OrdersDataTable({
           </Label>
           <Select
             value={filters?.shipment_status ?? "ALL"}
-            onValueChange={(v) => handleFilterUpdate("shipment_status", v)}
+            onValueChange={(v) => handleFilterUpdate("shipment_status", v ?? "ALL")}
           >
             <SelectTrigger
               className="flex w-fit @4xl/main:hidden"
@@ -424,7 +424,7 @@ export function OrdersDataTable({
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Service Layer</Label>
-                  <Select value={filters?.shipment_type ?? "ALL"} onValueChange={(v) => handleFilterUpdate("shipment_type", v)}>
+                  <Select value={filters?.shipment_type ?? "ALL"} onValueChange={(v) => handleFilterUpdate("shipment_type", v ?? "ALL")}>
                     <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
@@ -438,7 +438,7 @@ export function OrdersDataTable({
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Payment Mode</Label>
-                  <Select value={filters?.payment_mode ?? "ALL"} onValueChange={(v) => handleFilterUpdate("payment_mode", v)}>
+                  <Select value={filters?.payment_mode ?? "ALL"} onValueChange={(v) => handleFilterUpdate("payment_mode", v ?? "ALL")}>
                     <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
@@ -452,7 +452,7 @@ export function OrdersDataTable({
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Logistics Protocol</Label>
-                  <Select value={filters?.order_type ?? "ALL"} onValueChange={(v) => handleFilterUpdate("order_type", v)}>
+                  <Select value={filters?.order_type ?? "ALL"} onValueChange={(v) => handleFilterUpdate("order_type", v ?? "ALL")}>
                     <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>

@@ -8,7 +8,8 @@ import {
   useUpdateFranchiseRate, 
   useFranchiseOrders, 
   useWithdrawCommission,
-  FranchiseOrder 
+  FranchiseOrder,
+  Franchise
 } from "@/lib/hooks/use-franchise";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import {
   ArrowRightDoubleIcon,
   Loading03Icon,
   DeliveryTruck01Icon,
+  Cancel01Icon,
   Wallet01Icon,
       MoneyReceiveCircleIcon
     } from "@hugeicons/core-free-icons";
@@ -79,7 +81,7 @@ function FranchiseOrdersDataTable({ franchiseId, franchiseName }: { franchiseId:
   const filteredOrders = React.useMemo(() => {
     if (!data?.data) return [];
     if (!search) return data.data;
-    return data.data.filter(order => 
+    return data.data.filter((order: FranchiseOrder) => 
       order.id.toString().toLowerCase().includes(search.toLowerCase()) ||
       order.shipment_status.toLowerCase().includes(search.toLowerCase())
     );
@@ -146,7 +148,7 @@ function FranchiseOrdersDataTable({ franchiseId, franchiseName }: { franchiseId:
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredOrders.map((order) => (
+                  filteredOrders.map((order: FranchiseOrder) => (
                     <TableRow key={order.id} className="hover:bg-muted/30 group">
                       <TableCell>
                         <span className="text-foreground font-medium uppercase">
@@ -293,7 +295,7 @@ export default function FranchisePage() {
 
   const handleAssignRates = (id: string) => {
     setSelectedFranchiseId(id);
-    const franchise = franchises?.find(f => f.id === id);
+    const franchise = franchises?.find((f: Franchise) => f.id === id);
     setTempCommissionRate(Number(franchise?.commission_rate) || 5);
     setShowRatesSheet(true);
   };
@@ -308,11 +310,11 @@ export default function FranchisePage() {
     }
   };
 
-  const selectedFranchise = franchises?.find(f => f.id === selectedFranchiseId);
+  const selectedFranchise = franchises?.find((f: Franchise) => f.id === selectedFranchiseId);
 
   const networkMetrics = React.useMemo(() => {
     if (!franchises) return { totalProfit: 0, totalShipmentCost: 0, totalActive: 0, totalWithdrawable: 0, totalPending: 0 };
-    return franchises.reduce((acc, f) => ({
+    return franchises.reduce((acc: any, f: Franchise) => ({
       totalProfit: acc.totalProfit + (Number(f.total_profit) || 0),
       totalShipmentCost: acc.totalShipmentCost + (Number(f.total_base_shipping_charge) || 0),
       totalActive: acc.totalActive + (f.is_active ? 1 : 0),
@@ -329,7 +331,7 @@ export default function FranchisePage() {
           <Skeleton className="h-4 w-96" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-48 rounded-2xl" />)}
+          {[1, 2, 3].map((i: number) => <Skeleton key={i} className="h-48 rounded-2xl" />)}
         </div>
       </div>
     );
@@ -402,7 +404,7 @@ export default function FranchisePage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {franchises.map((f) => (
+          {franchises.map((f: Franchise) => (
             <Card key={f.id} className="rounded-2xl border-none ring-1 ring-foreground/10 bg-card/50 shadow-lg shadow-foreground/5 hover:bg-card/80 transition-all group overflow-hidden min-w-[500px]">
               <CardHeader className="p-5 pb-2">
                 <div className="flex items-start justify-between">
