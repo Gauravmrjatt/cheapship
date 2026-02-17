@@ -82,8 +82,8 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 rounded-2xl border-none shadow-sm ">
+      <div className="grid gap-6 lg:grid-cols-7">
+        <Card className="lg:col-span-4 rounded-2xl border-none shadow-sm">
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
             <CardDescription>
@@ -93,12 +93,12 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="space-y-4">
                {data?.recentOrders?.map((order: any) => (
-                 <div key={order.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
+                 <div key={order.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-4 bg-muted/30 rounded-xl">
                     <div className="flex flex-col gap-1">
                       <span className="font-mono text-xs font-bold">#{order.id.toString().slice(0,8)}</span>
                       <span className="text-xs text-muted-foreground">{order.user.name}</span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4">
                       <Badge variant="outline" className="text-[10px]">{order.shipment_status}</Badge>
                       <span className="text-sm font-bold">₹{order.total_amount}</span>
                     </div>
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
         
-        <Card className="col-span-3 rounded-2xl border-none shadow-sm ">
+        <Card className="lg:col-span-3 rounded-2xl border-none shadow-sm">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>

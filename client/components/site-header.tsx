@@ -4,15 +4,9 @@ import { useUser } from "@/lib/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { RupeeSquareIcon, PlusSignIcon } from "@hugeicons/core-free-icons";
-import Link from "next/link";
-import { useTopUpWallet, useCreateRazorpayOrder, useVerifyRazorpayPayment } from "@/lib/hooks/use-transactions";
+import { useCreateRazorpayOrder, useVerifyRazorpayPayment } from "@/lib/hooks/use-transactions";
 import { useState } from "react";
 import { useRazorpay, RazorpayOrderOptions } from "react-razorpay";
-
-
-import {
-  Loading03Icon,
-} from "@hugeicons/core-free-icons";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +27,6 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
   const [topUpAmount, setTopUpAmount] = useState("");
 
   const { data: user } = useUser();
-  const topUpMutation = useTopUpWallet();
   const { Razorpay, isLoading: isRazorpayLoading } = useRazorpay();
   const createOrderMutation = useCreateRazorpayOrder();
   const verifyPaymentMutation = useVerifyRazorpayPayment();
@@ -91,17 +84,17 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
           <h1 className="text-base font-medium">{pageTitle}</h1>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-2.5 bg-muted/30 border rounded-2xl ">
-            <div className="size-5 rounded-xl  flex items-center justify-center text-primary">
-              <HugeiconsIcon color="green" icon={RupeeSquareIcon} size={25} />
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-2.5 bg-muted/30 border rounded-2xl">
+            <div className="size-4 md:size-5 rounded-xl flex items-center justify-center text-primary">
+              <HugeiconsIcon color="green" icon={RupeeSquareIcon} size={20} className="md:size-[25px]" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-bold">₹{Number(user?.wallet_balance || 0).toLocaleString("en-IN")}</span>
+              <span className="text-xs md:text-sm font-bold">₹{Number(user?.wallet_balance || 0).toLocaleString("en-IN")}</span>
             </div>
-            <Separator orientation="vertical" className="h-9 mx-1" />
-            <Button size="icon" onClick={() => setShowTopUp(true)} className="size-7 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary transition-colors cursor-pointer">
-              <HugeiconsIcon icon={PlusSignIcon} size={16} />
+            <Separator orientation="vertical" className="h-7 md:h-9 mx-0.5 md:mx-1" />
+            <Button size="icon" onClick={() => setShowTopUp(true)} className="size-6 md:size-7 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary transition-colors cursor-pointer">
+              <HugeiconsIcon icon={PlusSignIcon} size={14} className="md:size-4" />
             </Button>
           </div>
         </div>

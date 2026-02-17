@@ -304,9 +304,9 @@ export function TransactionsDataTable({
         </div>
       </div>
 
-      <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-        <div className="overflow-hidden  border rounded-2xl">
-          <Table>
+      <div className="relative flex flex-col gap-4 px-4 lg:px-6">
+        <div className="overflow-x-auto border rounded-2xl">
+          <Table className="min-w-[640px]">
             <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>

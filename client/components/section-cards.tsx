@@ -1,15 +1,12 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
 import {
   Card,
-  CardAction,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   PackageIcon,
@@ -119,7 +116,7 @@ export function SectionCards({
   ]
 
   return (
-    <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 px-3 sm:gap-4 sm:px-4 lg:px-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {cards.map((card, index) => (
         <Card key={index} className="@container/card">
           <CardHeader>

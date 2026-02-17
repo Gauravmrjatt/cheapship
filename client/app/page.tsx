@@ -11,7 +11,7 @@ import Link from "next/link";
 
 export default function Page() {
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-80px)]">
+    <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4">
       <Card className="relative w-full max-w-lg overflow-hidden pt-0">
         <div className="bg-primary absolute inset-0 z-30 aspect-video opacity-50 mix-blend-color" />
         <img
