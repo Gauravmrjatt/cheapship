@@ -219,7 +219,7 @@ export default function LandingPage() {
             <Link href="/auth/signin" className="hidden sm:block">
               <Button variant="ghost">Sign In</Button>
             </Link>
-            <Link href="/auth/signup">
+            <Link href="/dashboard">
               <Button>Get Started</Button>
             </Link>
           </div>
@@ -243,7 +243,7 @@ export default function LandingPage() {
               Compare shipping rates from 25+ carriers in seconds. Save up to 40% on every shipment with India&apos;s smartest logistics platform.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/auth/signup">
+              <Link href="/dashboard">
                 <Button size="lg" className="h-12 px-8">
                   Start Shipping Free
                   <HugeiconsIcon icon={ArrowRight01Icon} className="ml-2" size={18} />
@@ -371,7 +371,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 bg-muted/50">
+      {/* <section id="pricing" className="py-20 bg-muted/50">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <Badge variant="outline" className="mb-4">Pricing</Badge>
@@ -417,7 +417,7 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Testimonials */}
       <section id="testimonials" className="py-20">
