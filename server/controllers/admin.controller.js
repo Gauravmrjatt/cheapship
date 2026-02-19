@@ -271,44 +271,61 @@ const processWithdrawal = async (req, res) => {
       // Approve -> Debit Wallet (Real payout)
       // Reject -> Do nothing (Balance remains)
       
-              if (status === 'APPROVED') {
-                 // Check balance again
-                 const user = await tx.user.findUnique({ where: { id: withdrawal.user_id } });
-                 if (Number(user.wallet_balance) < Number(withdrawal.amount)) {
-                     throw new Error('Insufficient user balance for approval');
-                 }
-      
-                 await tx.user.update({
-                     where: { id: withdrawal.user_id },
-                     data: { wallet_balance: { decrement: withdrawal.amount } }
-                 });
-                 
-                 // If it's a franchise withdrawal, consume the orders
-                 if (withdrawal.franchise_id) {
-                   await tx.order.updateMany({
-                     where: {
-                       user_id: withdrawal.franchise_id,
-                       shipment_status: 'DELIVERED',
-                       is_franchise_withdrawn: false
-                     },
-                     data: {
-                       is_franchise_withdrawn: true,
-                       franchise_commission_amount: 0
-                     }
-                   });
-                 }
-      
-                 await tx.transaction.create({
-                     data: {
-                         user_id: withdrawal.user_id,
-                         amount: withdrawal.amount,
-                         type: 'DEBIT',
-                         status: 'SUCCESS',
-                         description: 'Commission Withdrawal Approved',
-                         reference_id: withdrawal.id
-                     }
-                 });
-              }
+               if (status === 'APPROVED') {
+                  // Check balance again
+                  const user = await tx.user.findUnique({ where: { id: withdrawal.user_id } });
+                  if (Number(user.wallet_balance) < Number(withdrawal.amount)) {
+                      throw new Error('Insufficient user balance for approval');
+                  }
+       
+                  await tx.user.update({
+                      where: { id: withdrawal.user_id },
+                      data: { wallet_balance: { decrement: withdrawal.amount } }
+                  });
+                  
+                  // If it's a franchise withdrawal, consume the orders
+                  if (withdrawal.franchise_id) {
+                    await tx.order.updateMany({
+                      where: {
+                        user_id: withdrawal.franchise_id,
+                        shipment_status: 'DELIVERED',
+                        is_franchise_withdrawn: false
+                      },
+                      data: {
+                        is_franchise_withdrawn: true,
+                        franchise_commission_amount: 0
+                      }
+                    });
+                  } else {
+                    // This is a multi-level referral commission withdrawal
+                    // Commission records are already marked as withdrawn when request was created
+                    // Just verify they exist and are marked properly
+                    const withdrawnCommissions = await tx.orderReferralCommission.findMany({
+                      where: {
+                        referrer_id: withdrawal.user_id,
+                        is_withdrawn: true,
+                        withdrawn_at: {
+                          gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Within last 24 hours
+                        }
+                      }
+                    });
+                    
+                    if (withdrawnCommissions.length === 0) {
+                      console.warn(`No withdrawn commission records found for withdrawal ${withdrawal.id}`);
+                    }
+                  }
+       
+                  await tx.transaction.create({
+                      data: {
+                          user_id: withdrawal.user_id,
+                          amount: withdrawal.amount,
+                          type: 'DEBIT',
+                          status: 'SUCCESS',
+                          description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
+                          reference_id: withdrawal.id
+                      }
+                  });
+               }
       return updatedWithdrawal;
     });
 
@@ -410,6 +427,254 @@ const getAllTransactions = async (req, res) => {
   }
 };
 
+const getCommissionLimits = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  try {
+    const [minSetting, maxSetting] = await prisma.$transaction([
+      prisma.systemSetting.findUnique({
+        where: { key: 'min_commission_rate' }
+      }),
+      prisma.systemSetting.findUnique({
+        where: { key: 'max_commission_rate' }
+      })
+    ]);
+
+    res.json({
+      min_rate: minSetting ? parseFloat(minSetting.value) : 0,
+      max_rate: maxSetting ? parseFloat(maxSetting.value) : 100
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const updateCommissionLimits = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { min_rate, max_rate } = req.body;
+
+  if (min_rate === undefined || max_rate === undefined) {
+    return res.status(400).json({ message: 'Both min_rate and max_rate are required' });
+  }
+
+  if (min_rate < 0 || min_rate > 100 || max_rate < 0 || max_rate > 100) {
+    return res.status(400).json({ message: 'Commission rates must be between 0 and 100' });
+  }
+
+  if (min_rate > max_rate) {
+    return res.status(400).json({ message: 'Min rate cannot be greater than max rate' });
+  }
+
+  try {
+    const [minSetting, maxSetting] = await prisma.$transaction([
+      prisma.systemSetting.upsert({
+        where: { key: 'min_commission_rate' },
+        update: { value: min_rate.toString() },
+        create: {
+          key: 'min_commission_rate',
+          value: min_rate.toString(),
+          description: 'Minimum commission rate percentage for franchises'
+        }
+      }),
+      prisma.systemSetting.upsert({
+        where: { key: 'max_commission_rate' },
+        update: { value: max_rate.toString() },
+        create: {
+          key: 'max_commission_rate',
+          value: max_rate.toString(),
+          description: 'Maximum commission rate percentage for franchises'
+        }
+      })
+    ]);
+
+    res.json({
+      min_rate: parseFloat(minSetting.value),
+      max_rate: parseFloat(maxSetting.value)
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Get referral level setting (max levels)
+const getReferralLevelSetting = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const setting = await prisma.systemSetting.findFirst({
+      where: { key: 'max_referral_levels' }
+    });
+    res.json({
+      max_levels: setting ? parseInt(setting.value) : 1, 
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Update referral level setting (max levels)
+const updateReferralLevelSetting = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { max_levels } = req.body;
+
+  if (max_levels === undefined || typeof max_levels !== 'number' || max_levels < 0 || max_levels > 10) {
+    return res.status(400).json({ message: 'max_levels must be a number between 0 and 10' });
+  }
+
+  try {
+    // Find existing setting or create new one
+    const existingSetting = await prisma.systemSetting.findFirst({
+      where: { key: 'max_referral_levels' }
+    });
+
+    let result;
+    if (existingSetting) {
+      // Update existing
+      result = await prisma.systemSetting.update({
+        where: { key: 'max_referral_levels' },
+        data: { value: max_levels.toString() }
+      });
+    } else {
+      // Create new
+      result = await prisma.systemSetting.create({
+        data: {
+          key: 'max_referral_levels',
+          value: max_levels.toString(),
+          description: 'Maximum number of referral levels for franchises'
+        }
+      });
+    }
+
+    res.json({
+      max_levels: parseInt(result.value),
+      is_active: result.is_active
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Get network commission stats for admin
+const getNetworkCommissionStats = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  
+  try {
+    const [
+      totalReferralCommissions,
+      pendingReferralCommissions,
+      withdrawnReferralCommissions
+    ] = await prisma.$transaction([
+      prisma.orderReferralCommission.aggregate({
+        _sum: { amount: true },
+        _count: true
+      }),
+      prisma.orderReferralCommission.aggregate({
+        where: { is_withdrawn: false },
+        _sum: { amount: true },
+        _count: true
+      }),
+      prisma.orderReferralCommission.aggregate({
+        where: { is_withdrawn: true },
+        _sum: { amount: true },
+        _count: true
+      })
+    ]);
+    
+    res.json({
+      total_commission: totalReferralCommissions._sum.amount || 0,
+      total_count: totalReferralCommissions._count,
+      pending_commission: pendingReferralCommissions._sum.amount || 0,
+      pending_count: pendingReferralCommissions._count,
+      withdrawn_commission: withdrawnReferralCommissions._sum.amount || 0,
+      withdrawn_count: withdrawnReferralCommissions._count
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Admin: Set commission bounds for a specific user
+const setUserCommissionBounds = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { userId } = req.params;
+  const { min_rate, max_rate } = req.body;
+
+  if (min_rate === undefined || max_rate === undefined) {
+    return res.status(400).json({ message: 'Both min_rate and max_rate are required' });
+  }
+
+  if (min_rate > max_rate) {
+    return res.status(400).json({ message: 'Min rate cannot be greater than max rate' });
+  }
+
+  if (min_rate < 0 || min_rate > 100 || max_rate < 0 || max_rate > 100) {
+    return res.status(400).json({ message: 'Commission rates must be between 0 and 100' });
+  }
+
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        min_commission_rate: min_rate,
+        max_commission_rate: max_rate
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        min_commission_rate: true,
+        max_commission_rate: true,
+        updated_at: true
+      }
+    });
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Admin: Get commission bounds for a specific user
+const getUserCommissionBounds = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { userId } = req.params;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        min_commission_rate: true,
+        max_commission_rate: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      user_id: user.id,
+      name: user.name,
+      email: user.email,
+      bounds: {
+        min_rate: user.min_commission_rate ? parseFloat(user.min_commission_rate) : 0,
+        max_rate: user.max_commission_rate ? parseFloat(user.max_commission_rate) : 100
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getUsers,
@@ -419,5 +684,12 @@ module.exports = {
   processWithdrawal,
   getGlobalSettings,
   updateGlobalSettings,
-  getAllTransactions
+  getAllTransactions,
+  getCommissionLimits,
+  updateCommissionLimits,
+  getReferralLevelSetting,
+  updateReferralLevelSetting,
+  getNetworkCommissionStats,
+  setUserCommissionBounds,
+  getUserCommissionBounds
 };

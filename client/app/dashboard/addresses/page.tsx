@@ -88,7 +88,7 @@ export default function AddressesPage() {
           </div>
           <h3 className="text-xl font-bold">No saved addresses</h3>
           <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-            You haven't saved any addresses yet. Saved addresses will appear here for quick selection during order creation.
+            You haven&apos;t saved any addresses yet. Saved addresses will appear here for quick selection during order creation.
           </p>
           <Button variant="outline" className="mt-6 rounded-2xl">
             Create Your First Address

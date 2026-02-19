@@ -41,7 +41,7 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
       const options: RazorpayOrderOptions = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_your_key_id",
         amount: order.amount,
-        currency: order.currency,
+        currency: order.currency as "INR",
         name: "Cheap Ship",
         description: "Wallet Top-up",
         order_id: order.id,

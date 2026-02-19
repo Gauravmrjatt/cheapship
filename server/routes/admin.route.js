@@ -28,4 +28,17 @@ router.post('/withdrawals/:id/process', adminController.processWithdrawal);
 router.get('/settings/global-commission', adminController.getGlobalSettings);
 router.post('/settings/global-commission', adminController.updateGlobalSettings);
 
+// Commission Limits
+router.get('/settings/commission-limits', adminController.getCommissionLimits);
+router.post('/settings/commission-limits', adminController.updateCommissionLimits);
+
+// Referral Level Setting (max levels only)
+router.get('/settings/referral-levels', adminController.getReferralLevelSetting);
+router.post('/settings/referral-levels', adminController.updateReferralLevelSetting);
+router.get('/network-commission-stats', adminController.getNetworkCommissionStats);
+
+// User Commission Bounds (Admin only)
+router.get('/users/:userId/commission-bounds', adminController.getUserCommissionBounds);
+router.post('/users/:userId/commission-bounds', adminController.setUserCommissionBounds);
+
 module.exports = router;

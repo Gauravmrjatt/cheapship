@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense } from "react";
+import { TableSkeleton } from "@/components/skeletons";
 import {
   flexRender,
   getCoreRowModel,
@@ -26,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Order } from "@/components/orders-data-table";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -91,7 +93,7 @@ function OrdersContent() {
 
   const tableData = React.useMemo(() => data?.data || [], [data?.data]);
 
-  const columns = React.useMemo<ColumnDef<any>[]>(() => [
+  const columns = React.useMemo<ColumnDef<Order>[]>(() => [
     {
       id: "select",
       header: ({ table }) => (
@@ -128,28 +130,35 @@ function OrdersContent() {
     {
       accessorKey: "user.name",
       header: "User",
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="text-xs font-medium text-foreground">{row.original.user?.name}</span>
-          <span className="text-[10px] text-muted-foreground">{row.original.user?.email}</span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const user = row.original.user;
+        return (
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-foreground">{user?.name}</span>
+            <span className="text-[10px] text-muted-foreground">{user?.email}</span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "courier_name",
       header: "Courier",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium">{row.original.courier_name || "N/A"}</span>
-          <Badge variant="outline" className="text-[9px] uppercase font-bold py-0">{row.original.shipment_type}</Badge>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const order = row.original;
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium">{order.courier_name || "N/A"}</span>
+            <Badge variant="outline" className="text-[9px] uppercase font-bold py-0">{order.shipment_type}</Badge>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "shipment_status",
       header: "Status",
       cell: ({ row }) => {
-        const status = row.original.shipment_status.toLowerCase();
+        const order = row.original;
+        const status = order.shipment_status.toLowerCase();
         return (
           <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
             {status === "delivered" ? (
@@ -167,20 +176,26 @@ function OrdersContent() {
     {
       accessorKey: "total_amount",
       header: () => <div className="text-right">Amount</div>,
-      cell: ({ row }) => (
-        <div className="text-right tabular-nums font-bold text-xs">
-          ₹{Number(row.original.total_amount).toLocaleString("en-IN")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const order = row.original as any;
+        return (
+          <div className="text-right tabular-nums font-bold text-xs">
+            ₹{Number(order.total_amount).toLocaleString("en-IN")}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "created_at",
       header: "Date",
-      cell: ({ row }) => (
-        <div className="text-[10px] text-muted-foreground font-medium">
-          {new Date(row.original.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const order = row.original as any;
+        return (
+          <div className="text-[10px] text-muted-foreground font-medium">
+            {new Date(order.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+          </div>
+        );
+      },
     },
   ], []);
 
@@ -372,7 +387,11 @@ function OrdersContent() {
 
 export default function AdminOrdersPage() {
   return (
-    <Suspense fallback={<div>Loading orders...</div>}>
+    <Suspense fallback={
+      <div className="w-full space-y-6 py-4">
+        <TableSkeleton rowCount={10} columnCount={7} />
+      </div>
+    }>
       <OrdersContent />
     </Suspense>
   );

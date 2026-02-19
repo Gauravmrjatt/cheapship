@@ -73,8 +73,21 @@ const register = async (req, res) => {
       }
     });
 
-    const { password_hash, ...userWithoutPassword } = user;
-    res.status(201).json(userWithoutPassword);
+    const publicUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile,
+      referer_code: user.referer_code,
+      referred_by: user.referred_by,
+      franchise_type: user.franchise_type,
+      is_active: user.is_active,
+      user_type: user.user_type,
+      wallet_balance: user.wallet_balance,
+      created_at: user.created_at
+    };
+
+    res.status(201).json(publicUser);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -117,8 +130,20 @@ const login = async (req, res) => {
       { expiresIn: '5d' },
       (err, token) => {
         if (err) throw err;
-        const { password_hash, ...userWithoutPassword } = user;
-        res.json({ token, user: userWithoutPassword });
+        const publicUser = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          mobile: user.mobile,
+          referer_code: user.referer_code,
+          referred_by: user.referred_by,
+          franchise_type: user.franchise_type,
+          is_active: user.is_active,
+          user_type: user.user_type,
+          wallet_balance: user.wallet_balance,
+          created_at: user.created_at
+        };
+        res.json({ token, user: publicUser });
       }
     );
   } catch (error) {

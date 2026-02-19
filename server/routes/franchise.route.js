@@ -190,4 +190,61 @@ router.post(
  */
 router.get('/verify', franchiseController.verifyReferralCode);
 
+/**
+ * @swagger
+ * /franchise/my-referral-commissions:
+ *   get:
+ *     summary: Get current user's multi-level referral commissions
+ *     tags: [Franchise]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [all, pending, withdrawn]
+ *         description: Filter by commission status
+ *     responses:
+ *       200:
+ *         description: Referral commissions list
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/my-referral-commissions', authMiddleware, franchiseController.getMyReferralCommissions);
+
+/**
+ * @swagger
+ * /franchise/withdraw-referral-commissions:
+ *   post:
+ *     summary: Withdraw multi-level referral commissions
+ *     tags: [Franchise]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Withdrawal request submitted
+ *       400:
+ *         description: No withdrawable commissions
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/withdraw-referral-commissions', authMiddleware, franchiseController.withdrawReferralCommissions);
+
+/**
+ * @swagger
+ * /franchise/referral-network-stats:
+ *   get:
+ *     summary: Get referral network stats with multi-level commissions
+ *     tags: [Franchise]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Network stats
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/referral-network-stats', authMiddleware, franchiseController.getReferralNetworkStats);
+
 module.exports = router;

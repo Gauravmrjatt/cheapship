@@ -49,50 +49,6 @@ const getTransactions = async (req, res) => {
   }
 };
 
-const topUpWallet = async (req, res) => {
-  const prisma = req.app.locals.prisma;
-  const userId = req.user.id;
-  const { amount, reference_id } = req.body;
-
-  if (!amount || amount <= 0) {
-    return res.status(400).json({ message: 'Invalid amount' });
-  }
-
-  try {
-    // In a real app, verify the payment with the gateway (Razorpay/Paytm etc.)
-    // For now, we'll simulate a successful top-up
-    
-    const transaction = await prisma.$transaction(async (tx) => {
-      // 1. Create transaction record
-      const newTransaction = await tx.transaction.create({
-        data: {
-          user_id: userId,
-          amount: amount,
-          type: 'CREDIT',
-          status: 'SUCCESS',
-          description: 'Wallet Top-up',
-          reference_id: reference_id || `TOPUP_${Date.now()}`
-        }
-      });
-
-      // 2. Update user wallet balance
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          wallet_balance: { increment: amount }
-        }
-      });
-
-      return newTransaction;
-    });
-
-    res.json({ message: 'Wallet topped up successfully', transaction });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
-};
-
 const createRazorpayOrder = async (req, res) => {
   const { amount } = req.body;
 
@@ -176,7 +132,6 @@ const verifyRazorpayPayment = async (req, res) => {
 
 module.exports = {
   getTransactions,
-  topUpWallet,
   createRazorpayOrder,
   verifyRazorpayPayment
 };

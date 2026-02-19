@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Withdrawal } from "@/lib/hooks/use-admin";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -79,7 +80,7 @@ export default function AdminWithdrawalsPage() {
     }
   };
 
-  const columns = React.useMemo<ColumnDef<any>[]>(() => [
+  const columns = React.useMemo<ColumnDef<Withdrawal>[]>(() => [
     {
       id: "select",
       header: ({ table }) => (
@@ -108,8 +109,8 @@ export default function AdminWithdrawalsPage() {
       header: "User",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-medium text-xs text-foreground">{row.original.user.name}</span>
-          <span className="text-[10px] text-muted-foreground">{row.original.user.email}</span>
+          <span className="font-medium text-xs text-foreground">{row.original.user?.name}</span>
+          <span className="text-[10px] text-muted-foreground">{row.original.user?.email}</span>
         </div>
       ),
     },
@@ -117,7 +118,7 @@ export default function AdminWithdrawalsPage() {
       accessorKey: "user.wallet_balance",
       header: "Current Balance",
       cell: ({ row }) => (
-        <span className="text-xs font-medium tabular-nums">₹{Number(row.original.user.wallet_balance).toLocaleString("en-IN")}</span>
+        <span className="text-xs font-medium tabular-nums">₹{Number(row.original.user?.wallet_balance || 0).toLocaleString("en-IN")}</span>
       ),
     },
     {

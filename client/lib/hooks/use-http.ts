@@ -6,9 +6,9 @@ import { useAuth } from "./use-auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL + "/api/v1" || "http://localhost:3000";
 
-interface HttpOptions<TData> {
-  onSuccess?: (data: TData) => void;
-  onError?: (error: Error) => void;
+interface HttpOptions<TData, TVariables = any> {
+  onSuccess?: (data: TData, variables: TVariables) => void;
+  onError?: (error: Error, variables: TVariables) => void;
 }
 
 const getHeaders = (token: string | null) => {
@@ -21,7 +21,7 @@ const getHeaders = (token: string | null) => {
 export const useHttp = () => {
   const { token } = useAuth();
 
-  const get = <TData>(queryKey: QueryKey, endpoint: string, enabled: boolean = true) => {
+  const get = <TData>(queryKey: QueryKey, endpoint: string, enabled: boolean = true, options?: { refetchInterval?: number }) => {
     return {
       queryKey,
       queryFn: async () => {
@@ -35,10 +35,11 @@ export const useHttp = () => {
         return response.json();
       },
       enabled: !!token && enabled,
+      ...(options?.refetchInterval && { refetchInterval: options.refetchInterval }),
     };
   };
 
-  const post = <TData, TVariables>(endpoint: string, options?: HttpOptions<TData>) => {
+  const post = <TData = unknown, TVariables = unknown>(endpoint: string, options?: HttpOptions<TData, TVariables>) => {
     return {
       mutationFn: async (variables: TVariables) => {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -53,16 +54,16 @@ export const useHttp = () => {
         return response.json();
       },
       onSuccess: options?.onSuccess,
-      onError: (error: Error) => {
+      onError: (error: Error, variables: TVariables) => {
         sileo.error({ title: "Error" , description: error.message });
         if (options?.onError) {
-          options.onError(error);
+          options.onError(error, variables);
         }
       },
     };
   };
 
-  const put = <TData, TVariables>(endpoint: string, options?: HttpOptions<TData>) => {
+  const put = <TData = unknown, TVariables = unknown>(endpoint: string, options?: HttpOptions<TData, TVariables>) => {
     return {
       mutationFn: async (variables: TVariables) => {
         let url = `${API_BASE_URL}${endpoint}`;
@@ -85,16 +86,16 @@ export const useHttp = () => {
         return response.json();
       },
       onSuccess: options?.onSuccess,
-      onError: (error: Error) => {
+      onError: (error: Error, variables: TVariables) => {
         sileo.error({ title: "Error" , description: error.message });
         if (options?.onError) {
-          options.onError(error);
+          options.onError(error, variables);
         }
       },
     };
   };
 
-  const del = <TData, TVariables>(endpoint: string, options?: HttpOptions<TData>) => {
+  const del = <TData = unknown, TVariables = unknown>(endpoint: string, options?: HttpOptions<TData, TVariables>) => {
     return {
       mutationFn: async (variables: TVariables) => {
         const url = typeof variables === "string" 
@@ -112,10 +113,10 @@ export const useHttp = () => {
         return response.json();
       },
       onSuccess: options?.onSuccess,
-      onError: (error: Error) => {
+      onError: (error: Error, variables: TVariables) => {
         sileo.error({ title: "Error" , description: error.message });
         if (options?.onError) {
-          options.onError(error);
+          options.onError(error, variables);
         }
       },
     };

@@ -14,6 +14,8 @@ router.use(authMiddleware);
  *   description: Order management endpoints
  */
 
+router.post('/webhook', orderController.handleWebhook);
+
 /**
  * @swagger
  * /orders:
@@ -321,5 +323,11 @@ router.get('/:id', orderController.getOrderById);
  *         description: Order not found
  */
 router.put('/:id/cancel', orderController.cancelOrder);
+
+router.post('/webhook', orderController.handleWebhook);
+
+router.get('/:id/tracking', authMiddleware, orderController.getOrderTracking);
+
+router.get('/:id/live-status', authMiddleware, orderController.getLiveOrderStatus);
 
 module.exports = router;

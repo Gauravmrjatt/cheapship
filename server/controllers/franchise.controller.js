@@ -9,7 +9,11 @@ const getFranchises = async (req, res) => {
     // First get the current user's referer code
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { referer_code: true }
+      select: { 
+        referer_code: true,
+        min_commission_rate: true,
+        max_commission_rate: true
+      }
     });
 
     if (!currentUser || !currentUser.referer_code) {
@@ -102,7 +106,13 @@ const getFranchises = async (req, res) => {
               balance: Math.max(0, withdrawable_profit - total_withdrawn)
             };
           });
-    res.json(franchisesWithProfit);
+    res.json({
+      franchises: franchisesWithProfit,
+      bounds: {
+        min_rate: currentUser.min_commission_rate ? parseFloat(currentUser.min_commission_rate) : 0,
+        max_rate: currentUser.max_commission_rate ? parseFloat(currentUser.max_commission_rate) : 100
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -236,7 +246,7 @@ const getMyReferralCode = async (req, res) => {
   }
 };
 
-// Update franchise commission rate
+// Update franchise commission rate and bounds
 const updateFranchiseRate = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -249,10 +259,14 @@ const updateFranchiseRate = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // Get current user's referer code
+    // Get current user's referer code and commission bounds
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { referer_code: true }
+      select: { 
+        referer_code: true,
+        min_commission_rate: true,
+        max_commission_rate: true
+      }
     });
 
     if (!currentUser) {
@@ -273,11 +287,18 @@ const updateFranchiseRate = async (req, res) => {
 
     const updateData = {};
     
-    // Validate and add commission rate (0-100)
+    // Validate and add commission rate (must be within user's set bounds)
     if (commission_rate !== undefined) {
-      if (commission_rate < 0 || commission_rate > 100) {
-        return res.status(400).json({ message: 'Commission rate must be between 0 and 100' });
+      const userMin = currentUser.min_commission_rate ? parseFloat(currentUser.min_commission_rate) : 0;
+      const userMax = currentUser.max_commission_rate ? parseFloat(currentUser.max_commission_rate) : 100;
+      
+      // Check against user's bounds
+      if (commission_rate < userMin || commission_rate > userMax) {
+        return res.status(400).json({ 
+          message: `Commission rate must be between ${userMin}% and ${userMax}% (your set bounds)` 
+        });
       }
+      
       updateData.commission_rate = commission_rate;
     }
 
@@ -419,11 +440,263 @@ const verifyReferralCode = async (req, res) => {
   }
 };
 
+// Get current user's multi-level referral commissions
+const getMyReferralCommissions = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+  const { status = 'all' } = req.query; // 'all', 'pending', 'withdrawn'
+
+  try {
+    const where = {
+      referrer_id: userId
+    };
+
+    if (status === 'pending') {
+      where.is_withdrawn = false;
+    } else if (status === 'withdrawn') {
+      where.is_withdrawn = true;
+    }
+
+    const commissions = await prisma.orderReferralCommission.findMany({
+      where,
+      include: {
+        order: {
+          select: {
+            id: true,
+            shipment_status: true,
+            created_at: true,
+            user: {
+              select: {
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        created_at: 'desc'
+      }
+    });
+
+    // Calculate totals
+    const pendingCommissions = commissions.filter(c => !c.is_withdrawn);
+    const withdrawnCommissions = commissions.filter(c => c.is_withdrawn);
+
+    res.json({
+      commissions: commissions.map(c => ({
+        id: c.id,
+        order_id: c.order_id,
+        level: c.level,
+        amount: parseFloat(c.amount),
+        is_withdrawn: c.is_withdrawn,
+        withdrawn_at: c.withdrawn_at,
+        created_at: c.created_at,
+        order: {
+          id: c.order.id,
+          shipment_status: c.order.shipment_status,
+          created_at: c.order.created_at,
+          customer_name: c.order.user?.name
+        }
+      })),
+      summary: {
+        total_commissions: commissions.length,
+        total_amount: commissions.reduce((sum, c) => sum + parseFloat(c.amount), 0),
+        pending_amount: pendingCommissions.reduce((sum, c) => sum + parseFloat(c.amount), 0),
+        withdrawn_amount: withdrawnCommissions.reduce((sum, c) => sum + parseFloat(c.amount), 0),
+        pending_count: pendingCommissions.length,
+        withdrawn_count: withdrawnCommissions.length
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Withdraw multi-level referral commissions
+const withdrawReferralCommissions = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    // Get all pending commissions for this user
+    const pendingCommissions = await prisma.orderReferralCommission.findMany({
+      where: {
+        referrer_id: userId,
+        is_withdrawn: false
+      },
+      include: {
+        order: {
+          select: {
+            shipment_status: true
+          }
+        }
+      }
+    });
+
+    // Filter only commissions from delivered orders
+    const withdrawableCommissions = pendingCommissions.filter(
+      c => c.order.shipment_status === 'DELIVERED'
+    );
+
+    if (withdrawableCommissions.length === 0) {
+      return res.status(400).json({ 
+        message: 'No withdrawable commissions available. Commissions are only withdrawable after orders are delivered.' 
+      });
+    }
+
+    const totalAmount = withdrawableCommissions.reduce(
+      (sum, c) => sum + parseFloat(c.amount), 
+      0
+    );
+
+    // Use transaction to ensure atomicity
+    const result = await prisma.$transaction(async (tx) => {
+      // Create withdrawal record
+      const withdrawal = await tx.commissionWithdrawal.create({
+        data: {
+          user_id: userId,
+          amount: totalAmount,
+          status: 'PENDING'
+        }
+      });
+
+      // Mark commissions as withdrawn
+      await tx.orderReferralCommission.updateMany({
+        where: {
+          id: {
+            in: withdrawableCommissions.map(c => c.id)
+          }
+        },
+        data: {
+          is_withdrawn: true,
+          withdrawn_at: new Date()
+        }
+      });
+
+      return withdrawal;
+    });
+
+    res.json({
+      message: 'Withdrawal request submitted successfully',
+      withdrawal: {
+        id: result.id,
+        amount: totalAmount,
+        status: result.status,
+        commission_count: withdrawableCommissions.length
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Get referral network stats with multi-level commissions
+const getReferralNetworkStats = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    // Get user's referral code
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { referer_code: true }
+    });
+
+    if (!user || !user.referer_code) {
+      return res.status(404).json({ message: 'User referral code not found' });
+    }
+
+    // Get all commissions earned by this user from their network (Level 2+)
+    // AND Get Level 1 commissions from orders placed by directly referred users
+    const [allCommissions, levelStats, level1Orders] = await Promise.all([
+      prisma.orderReferralCommission.findMany({
+        where: { referrer_id: userId },
+        include: {
+          order: {
+            select: { shipment_status: true }
+          }
+        }
+      }),
+      prisma.orderReferralCommission.groupBy({
+        by: ['level'],
+        where: { referrer_id: userId },
+        _sum: { amount: true },
+        _count: true
+      }),
+      prisma.order.findMany({
+        where: {
+          user: {
+            referred_by: user.referer_code
+          },
+          franchise_commission_amount: { gt: 0 }
+        },
+        select: {
+          franchise_commission_amount: true,
+          shipment_status: true,
+          is_franchise_withdrawn: true
+        }
+      })
+    ]);
+
+    // Process Level 1 stats
+    const level1Count = level1Orders.length;
+    const level1TotalAmount = level1Orders.reduce((sum, o) => sum + parseFloat(o.franchise_commission_amount || 0), 0);
+    const level1PendingAmount = level1Orders
+      .filter(o => !o.is_franchise_withdrawn && o.shipment_status === 'DELIVERED')
+      .reduce((sum, o) => sum + parseFloat(o.franchise_commission_amount || 0), 0);
+    const level1WithdrawnAmount = level1Orders
+      .filter(o => o.is_franchise_withdrawn)
+      .reduce((sum, o) => sum + parseFloat(o.franchise_commission_amount || 0), 0);
+
+    // Process Level 2+ stats
+    const level2PlusPendingAmount = allCommissions
+      .filter(c => !c.is_withdrawn && c.order.shipment_status === 'DELIVERED')
+      .reduce((sum, c) => sum + parseFloat(c.amount), 0);
+
+    const level2PlusWithdrawnAmount = allCommissions
+      .filter(c => c.is_withdrawn)
+      .reduce((sum, c) => sum + parseFloat(c.amount), 0);
+
+    const level2PlusTotalAmount = allCommissions.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+
+    // Combine Level 1 and Level 2+ breakdown
+    const breakdown = [
+      {
+        level: 1,
+        total_amount: level1TotalAmount,
+        count: level1Count
+      },
+      ...levelStats.map(l => ({
+        level: l.level,
+        total_amount: parseFloat(l._sum.amount),
+        count: l._count
+      }))
+    ].sort((a, b) => a.level - b.level);
+
+    res.json({
+      total_commissions: allCommissions.length + level1Count,
+      total_amount: level2PlusTotalAmount + level1TotalAmount,
+      pending_withdrawable: level2PlusPendingAmount + level1PendingAmount,
+      withdrawn_amount: level2PlusWithdrawnAmount + level1WithdrawnAmount,
+      level_breakdown: breakdown
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   getFranchises,
   getMyReferralCode,
   updateFranchiseRate,
   getFranchiseOrders,
   verifyReferralCode,
-  withdrawCommission
+  withdrawCommission,
+  getMyReferralCommissions,
+  withdrawReferralCommissions,
+  getReferralNetworkStats
 };

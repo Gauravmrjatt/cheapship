@@ -9,6 +9,7 @@ router.use(authMiddleware);
 
 router.get('/', addressController.getAddresses);
 router.get('/pickup', addressController.getShiprocketPickupLocations);
+router.get('/check-verification', addressController.checkPhoneVerification);
 
 router.post(
   '/',
@@ -38,6 +39,9 @@ router.post(
   ],
   addressController.addShiprocketPickupLocation
 );
+
+router.post('/verify-phone', addressController.sendVerificationOtp);
+router.post('/verify-otp', addressController.verifyPhoneOtp);
 
 router.put('/:id', addressController.updateAddress);
 

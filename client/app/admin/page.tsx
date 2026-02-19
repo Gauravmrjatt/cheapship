@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Order } from "@/components/orders-data-table";
 
 export default function AdminDashboard() {
   const { data, isLoading } = useAdminDashboard();
@@ -92,18 +93,18 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-               {data?.recentOrders?.map((order: any) => (
-                 <div key={order.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-4 bg-muted/30 rounded-xl">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-mono text-xs font-bold">#{order.id.toString().slice(0,8)}</span>
-                      <span className="text-xs text-muted-foreground">{order.user.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 sm:gap-4">
-                      <Badge variant="outline" className="text-[10px]">{order.shipment_status}</Badge>
-                      <span className="text-sm font-bold">₹{order.total_amount}</span>
-                    </div>
-                 </div>
-               ))}
+{data?.recentOrders?.map((order: any) => (
+                  <div key={order.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-4 bg-muted/30 rounded-xl">
+                     <div className="flex flex-col gap-1">
+                       <span className="font-mono text-xs font-bold">#{order.id.toString().slice(0,8)}</span>
+                       <span className="text-xs text-muted-foreground">{order.user?.name}</span>
+                     </div>
+                     <div className="flex items-center gap-2 sm:gap-4">
+                       <Badge variant="outline" className="text-[10px]">{order.shipment_status}</Badge>
+                       <span className="text-sm font-bold">₹{order.total_amount}</span>
+                     </div>
+                  </div>
+                ))}
                <div className="flex justify-center pt-4">
                  <Link href="/admin/orders">
                    <Button variant="ghost" size="sm" className="text-xs">

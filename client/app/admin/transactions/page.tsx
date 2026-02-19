@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useState, Suspense } from "react";
 import { useAdminTransactions } from "@/lib/hooks/use-admin";
+import { TableSkeleton, PageHeaderSkeleton } from "@/components/skeletons";
 import { TransactionsDataTable } from "@/components/transactions-data-table";
 import { useSearchParams } from "next/navigation";
 
@@ -26,7 +27,7 @@ function TransactionsContent() {
     filters.userId
   );
 
-  const handleFilterChange = (newFilters: any) => {
+  const handleFilterChange = (newFilters: { type?: string; search?: string; userId?: string }) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1);
   };
@@ -58,7 +59,12 @@ function TransactionsContent() {
 
 export default function AdminTransactionsPage() {
   return (
-    <Suspense fallback={<div>Loading transactions...</div>}>
+    <Suspense fallback={
+      <div className="w-full space-y-6 py-4">
+        <PageHeaderSkeleton />
+        <TableSkeleton rowCount={10} columnCount={6} />
+      </div>
+    }>
       <TransactionsContent />
     </Suspense>
   );

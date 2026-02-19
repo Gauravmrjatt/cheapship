@@ -12,7 +12,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useAdminUsers, useToggleUserStatus } from "@/lib/hooks/use-admin";
+import { useAdminUsers, useToggleUserStatus, useSetUserCommissionBounds } from "@/lib/hooks/use-admin";
 import { 
   Table, 
   TableBody, 
@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { User } from "@/lib/store/auth";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -47,6 +48,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { 
   SearchIcon, 
@@ -60,7 +69,10 @@ import {
   UserBlock01Icon,
   FilterIcon,
   LeftToRightListBulletIcon,
-  ArrowDown01Icon
+  ArrowDown01Icon,
+  PercentIcon,
+  MinimizeIcon,
+  MaximizeIcon
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -77,10 +89,37 @@ export default function AdminUsersPage() {
   
   const { data, isLoading } = useAdminUsers(page, pageSize, search, statusFilter);
   const toggleStatusMutation = useToggleUserStatus();
+  const setUserBoundsMutation = useSetUserCommissionBounds();
+  
+  // Commission bounds sheet state
+  const [boundsSheetOpen, setBoundsSheetOpen] = React.useState(false);
+  const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null);
+  const [selectedUserName, setSelectedUserName] = React.useState<string>("");
+  const [minRate, setMinRate] = React.useState<number>(0);
+  const [maxRate, setMaxRate] = React.useState<number>(100);
 
-  const handleToggleStatus = (userId: string, currentStatus: boolean) => {
-    if (confirm(`Are you sure you want to ${currentStatus ? 'block' : 'unblock'} this user?`)) {
+  const handleToggleStatus = (userId: string, currentStatus?: boolean) => {
+    if (currentStatus === undefined || confirm(`Are you sure you want to ${currentStatus ? 'block' : 'unblock'} this user?`)) {
       toggleStatusMutation.mutate({ userId, is_active: !currentStatus });
+    }
+  };
+
+  const handleOpenBoundsSheet = (userId: string, userName: string, currentMin?: number, currentMax?: number) => {
+    setSelectedUserId(userId);
+    setSelectedUserName(userName);
+    setMinRate(currentMin ?? 0);
+    setMaxRate(currentMax ?? 100);
+    setBoundsSheetOpen(true);
+  };
+
+  const handleSaveBounds = () => {
+    if (selectedUserId) {
+      setUserBoundsMutation.mutate({ 
+        userId: selectedUserId, 
+        min_rate: minRate, 
+        max_rate: maxRate 
+      });
+      setBoundsSheetOpen(false);
     }
   };
 
@@ -98,7 +137,7 @@ export default function AdminUsersPage() {
 
   const tableData = React.useMemo(() => data?.data || [], [data?.data]);
 
-  const columns = React.useMemo<ColumnDef<any>[]>(() => [
+  const columns = React.useMemo<ColumnDef<User>[]>(() => [
     {
       id: "select",
       header: ({ table }) => (
@@ -177,6 +216,21 @@ export default function AdminUsersPage() {
       ),
     },
     {
+      id: "commission_bounds",
+      header: "Commission Bounds",
+      cell: ({ row }) => (
+        <div className="text-xs">
+          <Badge variant="secondary" className="text-[10px]">
+            <HugeiconsIcon icon={PercentIcon} strokeWidth={2} className="size-3 mr-1" />
+            {row.original.min_commission_rate !== null && row.original.min_commission_rate !== undefined 
+              ? `${row.original.min_commission_rate}% - ${row.original.max_commission_rate}%`
+              : "0% - 100%"
+            }
+          </Badge>
+        </div>
+      ),
+    },
+    {
       id: "actions",
       header: () => <div className="text-right pr-6">Actions</div>,
       cell: ({ row }) => (
@@ -193,13 +247,24 @@ export default function AdminUsersPage() {
             >
               <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} className="size-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem 
                 className={cn(row.original.is_active ? "text-destructive" : "text-primary", "font-medium")}
                 onClick={() => handleToggleStatus(row.original.id, row.original.is_active)}
               >
                 <HugeiconsIcon icon={row.original.is_active ? UserBlock01Icon : CheckmarkCircle01Icon} size={14} className="mr-2" />
                 {row.original.is_active ? "Block User" : "Unblock User"}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleOpenBoundsSheet(
+                  row.original.id, 
+                  row.original.name,
+                  row.original.min_commission_rate ? parseFloat(row.original.min_commission_rate) : undefined,
+                  row.original.max_commission_rate ? parseFloat(row.original.max_commission_rate) : undefined
+                )}
+              >
+                <HugeiconsIcon icon={PercentIcon} size={14} className="mr-2" />
+                Set Commission Bounds
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push(`/admin/transactions?userId=${row.original.id}`)}>
                 View Transactions
@@ -384,6 +449,99 @@ export default function AdminUsersPage() {
           </div>
         </div>
       </Tabs>
+
+      {/* Commission Bounds Sheet */}
+      <Sheet open={boundsSheetOpen} onOpenChange={setBoundsSheetOpen}>
+        <SheetContent side="right" className="min-w-dvw md:min-w-[400px] flex flex-col h-full p-0">
+          <SheetHeader className="p-6 border-b">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <HugeiconsIcon icon={PercentIcon} size={20} />
+              </div>
+              <div>
+                <SheetTitle className="text-xl">Set Commission Bounds</SheetTitle>
+                <SheetDescription>For {selectedUserName}</SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="bg-muted/30 rounded-xl p-4 text-sm text-muted-foreground">
+              <p className="font-semibold text-foreground mb-2">What are commission bounds?</p>
+              <p>These bounds limit what commission rates {selectedUserName} can set for their referred franchises. The user will only be able to assign rates within this range.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="admin-min-rate" className="text-sm font-medium">
+                  Minimum Rate (%)
+                </Label>
+                <div className="relative">
+                  <Input 
+                    id="admin-min-rate"
+                    type="number" 
+                    value={minRate} 
+                    onChange={(e) => setMinRate(parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                    min={0}
+                    max={100}
+                    className="h-12 text-lg font-semibold pr-12 focus-visible:ring-1"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                    <HugeiconsIcon icon={MinimizeIcon} size={18} />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="admin-max-rate" className="text-sm font-medium">
+                  Maximum Rate (%)
+                </Label>
+                <div className="relative">
+                  <Input 
+                    id="admin-max-rate"
+                    type="number" 
+                    value={maxRate} 
+                    onChange={(e) => setMaxRate(parseFloat(e.target.value) || 0)}
+                    placeholder="100"
+                    min={0}
+                    max={100}
+                    className="h-12 text-lg font-semibold pr-12 focus-visible:ring-1"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                    <HugeiconsIcon icon={MaximizeIcon} size={18} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter className="p-6 border-t mt-auto">
+            <div className="flex gap-3 w-full">
+              <Button 
+                variant="outline" 
+                className="flex-1 h-11" 
+                onClick={() => setBoundsSheetOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1 h-11 font-bold" 
+                onClick={handleSaveBounds}
+                disabled={setUserBoundsMutation.isPending}
+              >
+                {setUserBoundsMutation.isPending ? (
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon icon={Loading03Icon} size={16} className="animate-spin" />
+                    Saving...
+                  </div>
+                ) : (
+                  "Save Bounds"
+                )}
+              </Button>
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

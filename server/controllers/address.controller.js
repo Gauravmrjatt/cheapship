@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { addPickupLocation, getPickupLocations } = require('../utils/shiprocket');
+const { addPickupLocation, getPickupLocations, userVerifyAddress, verifyOtp, isNumberVerified } = require('../utils/shiprocket');
 
 const getAddresses = async (req, res) => {
   const prisma = req.app.locals.prisma;
@@ -25,16 +25,16 @@ const createAddress = async (req, res) => {
 
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
-  const { 
-    name, 
-    phone, 
-    email, 
-    complete_address, 
-    city, 
-    state, 
-    pincode, 
-    address_label, 
-    is_default 
+  const {
+    name,
+    phone,
+    email,
+    complete_address,
+    city,
+    state,
+    pincode,
+    address_label,
+    is_default
   } = req.body;
 
   try {
@@ -71,16 +71,16 @@ const updateAddress = async (req, res) => {
   const { id } = req.params;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
-  const { 
-    name, 
-    phone, 
-    email, 
-    complete_address, 
-    city, 
-    state, 
-    pincode, 
-    address_label, 
-    is_default 
+  const {
+    name,
+    phone,
+    email,
+    complete_address,
+    city,
+    state,
+    pincode,
+    address_label,
+    is_default
   } = req.body;
 
   try {
@@ -159,10 +159,10 @@ const addShiprocketPickupLocation = async (req, res) => {
       phone: parseInt(req.body.phone, 10),
       pin_code: parseInt(req.body.pin_code, 10),
     };
-    
+
     // Call Shiprocket API
     const data = await addPickupLocation(pickupData);
-    
+
     if (data.success) {
       // Save to DB
       await prisma.address.create({
@@ -182,8 +182,8 @@ const addShiprocketPickupLocation = async (req, res) => {
         }
       });
     }
-    
-    res.status(data.success ? 200 : 400).json({...data , msg : "Pickup address successfully added"});
+
+    res.status(data.success ? 200 : 400).json({ ...data, msg: "Pickup address successfully added" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -229,11 +229,63 @@ const getShiprocketPickupLocations = async (req, res) => {
   }
 };
 
+const sendVerificationOtp = async (req, res) => {
+  const { phone } = req.body;
+
+  if (!phone) {
+    return res.status(400).json({ success: false, message: 'Phone number is required' });
+  }
+
+  try {
+    const data = await userVerifyAddress(phone);
+    res.json({ success: true, message: 'OTP sent successfully', data });
+  } catch (error) {
+    console.error('Error sending OTP:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to send OTP' });
+  }
+};
+
+const verifyPhoneOtp = async (req, res) => {
+  const { otp , number} = req.body;
+
+  if (!otp) {
+    return res.status(400).json({ success: false, message: 'OTP is required' });
+  }
+
+  try {
+    const data = await verifyOtp(otp , number);
+    res.json({ success: true, message: 'Phone number verified successfully', data });
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to verify OTP' });
+  }
+};
+
+const checkPhoneVerification = async (req, res) => {
+  const { phone } = req.query;
+
+  if (!phone) {
+    return res.status(400).json({ success: false, message: 'Phone number is required' });
+  }
+
+  try {
+    const verified = await isNumberVerified(phone);
+    res.json({ success: true, verified });
+  } catch (error) {
+    console.error('Error checking verification:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to check verification status' });
+  }
+};
+
 module.exports = {
   getAddresses,
   createAddress,
   updateAddress,
   deleteAddress,
   addShiprocketPickupLocation,
-  getShiprocketPickupLocations
+  getShiprocketPickupLocations,
+  sendVerificationOtp,
+  verifyPhoneOtp,
+  checkPhoneVerification
 };
+

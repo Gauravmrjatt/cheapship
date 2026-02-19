@@ -8,6 +8,12 @@ export interface User {
   mobile?: string;
   wallet_balance?: number;
   user_type?: string;
+  is_active?: boolean;
+  min_commission_rate?: string;
+  max_commission_rate?: string;
+  _count?: {
+    orders: number;
+  };
 }
 
 interface AuthState {

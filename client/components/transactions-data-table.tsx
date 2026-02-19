@@ -138,7 +138,7 @@ export function TransactionsDataTable({
       id: "user",
       header: "User",
       cell: ({ row }) => {
-        const user = (row.original as any).user;
+        const user = row.original.user;
         if (!user) return null;
         return (
           <div className="flex flex-col">

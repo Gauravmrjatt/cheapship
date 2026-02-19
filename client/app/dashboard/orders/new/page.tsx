@@ -1,6 +1,6 @@
 "use client";
 import confetti from "canvas-confetti"
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { sileo } from "sileo";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useHttp } from "@/lib/hooks/use-http";
+import { useCheckPhoneVerificationMutation } from "@/lib/hooks/use-orders";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -43,7 +44,8 @@ import {
   Navigation01Icon,
   Delete01Icon,
   CheckmarkBadge01Icon,
-  Loading03Icon
+  Loading03Icon,
+  Shield01Icon
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -59,6 +61,14 @@ import {
   SheetTitle,
   SheetFooter
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
 
 const steps = [
   { id: 1, title: "Service", icon: Package01Icon },
@@ -124,6 +134,9 @@ export default function CreateOrderPage() {
   const [isShipped, setShipped] = useState(false);
   const [openReceiverPopover, setOpenReceiverPopover] = useState(false);
   const [openAddPickupSheet, setOpenAddPickupSheet] = useState(false);
+  const [openOtpDialog, setOpenOtpDialog] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [pendingOrderData, setPendingOrderData] = useState<any>(null);
   const router = useRouter();
   const http = useHttp();
   const queryClient = useQueryClient();
@@ -144,39 +157,6 @@ export default function CreateOrderPage() {
     mode: "onChange",
   });
 
-  const { mutate, isPending } = useMutation(
-    http.post("/orders", {
-      onSuccess: () => {
-        setShipped(true);
-        sileo.success({ title: "Success" , description: "Order created successfully" });
-        const end = Date.now() + 3 * 1000 // 3 seconds
-        const colors = ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"]
-        const frame = () => {
-          if (Date.now() > end) return
-          confetti({
-            particleCount: 2,
-            angle: 60,
-            spread: 55,
-            startVelocity: 60,
-            origin: { x: 0, y: 0.5 },
-            colors: colors,
-          })
-          confetti({
-            particleCount: 2,
-            angle: 120,
-            spread: 55,
-            startVelocity: 60,
-            origin: { x: 1, y: 0.5 },
-            colors: colors,
-          })
-          requestAnimationFrame(frame)
-        }
-        frame()
-        // router.push("/dashboard/orders");
-      },
-    })
-  );
-
   const { mutate: saveAddressMutation, isPending: isSavingAddress } = useMutation(
     http.post("/addresses", {
       onSuccess: () => {
@@ -189,12 +169,10 @@ export default function CreateOrderPage() {
     const { mutate: saveShiprocketPickupMutation, isPending: isSavingShiprocketPickup } = useMutation(
 
       http.post("/addresses/pickup", {
-
         onSuccess: (data: any) => {
-
           if (data.success) {
 
-            sileo.success({ title: "Success" , description: "Shiprocket pickup location created" });
+            sileo.success({ title: "Success" , description: "Pickup location created" });
 
             queryClient.invalidateQueries({ queryKey: ["shiprocket-pickup-locations"] });
 
@@ -204,7 +182,7 @@ export default function CreateOrderPage() {
 
           } else {
 
-            let errorMsg = data.message || "Failed to create Shiprocket pickup location";
+            let errorMsg = data.message || "Failed to create pickup location";
 
             try {
 
@@ -239,8 +217,65 @@ export default function CreateOrderPage() {
     })
   );
 
+  const { mutate: sendOtpMutation, isPending: isSendingOtp } = useMutation(
+    http.post("/addresses/verify-phone")
+  );
+
+  const { mutate: checkPhoneVerificationMutation, isPending: isCheckingVerification } = useCheckPhoneVerificationMutation();
+
+  const { mutate: verifyOtpMutation, isPending: isVerifyingOtp } = useMutation(
+    http.post("/addresses/verify-otp", {
+      onSuccess: (data: any) => {
+        if (data.success) {
+          sileo.success({ title: "Success", description: "Phone verified successfully" });
+          setOpenOtpDialog(false);
+          setOtp("");
+          if (pendingOrderData) {
+            createOrderMutation(pendingOrderData);
+            setPendingOrderData(null);
+          }
+        }
+      },
+      onError: (error: Error) => {
+        sileo.error({ title: "Error", description: error.message || "Failed to verify OTP" });
+      }
+    })
+  );
+
+  const { mutate: createOrderMutation, isPending: isCreatingOrder } = useMutation(
+    http.post("/orders", {
+      onSuccess: () => {
+        setShipped(true);
+        sileo.success({ title: "Success", description: "Order created successfully" });
+        const end = Date.now() + 3 * 1000;
+        const colors = ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"];
+        const frame = () => {
+          if (Date.now() > end) return;
+          confetti({
+            particleCount: 2,
+            angle: 60,
+            spread: 55,
+            startVelocity: 60,
+            origin: { x: 0, y: 0.5 },
+            colors: colors,
+          });
+          confetti({
+            particleCount: 2,
+            angle: 120,
+            spread: 55,
+            startVelocity: 60,
+            origin: { x: 1, y: 0.5 },
+            colors: colors,
+          });
+          requestAnimationFrame(frame);
+        };
+        frame();
+      },
+    })
+  );
+
   const form = useForm<z.infer<typeof createOrderSchema>>({
-    resolver: zodResolver(createOrderSchema),
+    resolver: zodResolver(createOrderSchema) as any,
     defaultValues: {
       order_type: "SURFACE",
       shipment_type: "DOMESTIC",
@@ -409,8 +444,45 @@ export default function CreateOrderPage() {
     }
   };
 
+  // Helper function to get nested error from form state
+  const getNestedError = (errors: any, path: string): any => {
+    const parts = path.split('.');
+    let current = errors;
+    for (const part of parts) {
+      if (current === undefined || current === null) return undefined;
+      current = current[part];
+    }
+    return current;
+  };
+
   function onSubmit(values: z.infer<typeof createOrderSchema>) {
-    // Only send what's necessary, server will calculate charges
+    if (!values.courier_id) {
+      console.error("[ORDER FORM] ERROR: courier_id is missing!");
+      sileo.error({ title: "Error", description: "Please select a courier partner" });
+      return;
+    }
+    
+    if (!values.pickup_location) {
+      console.error("[ORDER FORM] ERROR: pickup_location is missing!");
+      sileo.error({ title: "Error", description: "Please select a pickup location" });
+      return;
+    }
+    
+    if (!values.products || values.products.length === 0) {
+      console.error("[ORDER FORM] ERROR: No products added!");
+      sileo.error({ title: "Error", description: "Please add at least one product" });
+      return;
+    }
+    
+    for (let i = 0; i < values.products.length; i++) {
+      const p = values.products[i];
+      if (!p.name || !p.quantity || !p.price) {
+        console.error(`[ORDER FORM] ERROR: Product ${i + 1} has missing fields!`, p);
+        sileo.error({ title: "Error", description: `Product ${i + 1} is missing required fields` });
+        return;
+      }
+    }
+    
     const { 
       shipping_charge, 
       base_shipping_charge, 
@@ -418,8 +490,61 @@ export default function CreateOrderPage() {
       ...orderData 
     } = values;
     
-    mutate(orderData as any);
+    const phoneNumber = values.pickup_address.phone;
+    
+    // Use the check phone verification hook
+    checkPhoneVerificationMutation(phoneNumber, {
+      onSuccess: (data: any) => {
+        if (data.success && data.verified) {
+          createOrderMutation(orderData as any);
+        } else {
+          setPendingOrderData(orderData);
+          sendOtpMutation({ phone: phoneNumber }, {
+            onSuccess: () => {
+              setOpenOtpDialog(true);
+              sileo.success({ title: "OTP Sent", description: "Please enter the OTP sent to your phone" });
+            },
+            onError: (error: Error) => {
+              sileo.error({ title: "Error", description: error.message || "Failed to send OTP" });
+            }
+          } as any);
+        }
+      },
+      onError: (error: Error) => {
+        console.error('Error checking verification:', error);
+        sileo.error({ title: "Error", description: error.message || "Failed to check phone verification" });
+      }
+    } as any);
   }
+
+  const handleVerifyOtp = () => {
+    if (!otp || otp.length < 4) {
+      sileo.error({ title: "Error", description: "Please enter a valid OTP" });
+      return;
+    }
+    const phoneNumber = formValues.pickup_address.phone;
+    verifyOtpMutation({ otp , number: phoneNumber }, {
+      onSuccess: (data: any) => {
+        if (data.success && data.verified) {
+          createOrderMutation(pendingOrderData);
+        } else {
+          sileo.error({ title: "Error", description: "OTP verification failed" });
+        }
+      },
+      onError: (error: Error) => {
+        sileo.error({ title: "Error", description: error.message || "Failed to verify OTP" });
+      }
+    } as any);
+  };
+
+  const handleResendOtp = () => {
+    const phoneNumber = formValues.pickup_address.phone;
+    sendOtpMutation({ phone: phoneNumber }, {
+      onSuccess: () => {
+        sileo.success({ title: "OTP Resent", description: "A new OTP has been sent to your phone" });
+      }
+    } as any);
+  };
 
   const selectSavedAddress = (address: SavedAddress, prefix: "pickup_address" | "receiver_address") => {
     form.setValue(`${prefix}.name`, address.name);
@@ -615,7 +740,7 @@ export default function CreateOrderPage() {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium leading-none">Pickup Location (Shiprocket)</Label>
+                    <Label className="text-sm font-medium leading-none">Pickup Location </Label>
                     <Button 
                       type="button" 
                       variant="outline" 
@@ -1193,7 +1318,7 @@ export default function CreateOrderPage() {
                   </div> */}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping Charges</span>
-                    <span className="text-green-600 font-medium">+ ₹{values.shipping_charge}</span>
+                    <span className="text-green-600 font-medium">+ ₹{Number(values.shipping_charge || 0).toFixed(2)}</span>
                   </div>
                   <Separator className="my-2" />
                   <div className="flex justify-between items-end">
@@ -1245,7 +1370,7 @@ export default function CreateOrderPage() {
         return (
           <div className="space-y-8 animate-in zoom-in-95 duration-500 text-center py-16">
             {!isShipped ? <> <div className="mx-auto w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
-              {isPending ? <HugeiconsIcon icon={Loading03Icon} size={40} /> : <HugeiconsIcon icon={CheckmarkCircle01Icon} size={40} />}
+              {isCreatingOrder ? <HugeiconsIcon icon={Loading03Icon} size={40} /> : <HugeiconsIcon icon={CheckmarkCircle01Icon} size={40} />}
             </div>
 
               <div className="space-y-2 max-w-md mx-auto">
@@ -1283,6 +1408,11 @@ export default function CreateOrderPage() {
     if (currentStep === 3) return isPickupPincodeValid;
     if (currentStep === 4) return isDeliveryPincodeValid;
     if (currentStep === 5) return !!formValues.courier_id;
+    if (currentStep === 6) {
+      // Validate at least one product with name and valid quantity/price
+      const products = formValues.products || [];
+      return products.length > 0 && products.every(p => p.name && p.quantity >= 1 && p.price >= 1);
+    }
     return true;
   }
 
@@ -1327,7 +1457,13 @@ export default function CreateOrderPage() {
 
       <Card className="overflow-hidden border shadow-sm" >
         <CardContent className="p-8 md:p-10">
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+          <form 
+            onSubmit={form.handleSubmit(onSubmit as any, (errors) => {
+              console.error("[ORDER FORM] Form validation errors:", JSON.stringify(errors, null, 2));
+              sileo.error({ title: "Validation Error", description: "Please fill in all required fields" });
+            })} 
+            className="space-y-10"
+          >
             {renderStepContent()}
 
             <div className="flex justify-between pt-6 border-t">
@@ -1335,7 +1471,7 @@ export default function CreateOrderPage() {
                 type="button"
                 variant="ghost"
                 onClick={prevStep}
-                disabled={currentStep === 1 || isPending}
+                disabled={currentStep === 1 || isCreatingOrder}
                 className={cn(
                   "gap-2",
                   currentStep === 1 ? "invisible" : "flex"
@@ -1348,7 +1484,30 @@ export default function CreateOrderPage() {
                 <Button
                   type="button"
                   className="gap-2 px-8"
-                  onClick={(e) => { nextStep(); e.preventDefault() }}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    
+                    // Validate current step fields before proceeding
+                    const fieldsToValidate = getFieldsForStep(currentStep);
+        
+                    const isValid = await form.trigger(fieldsToValidate as any);
+   
+                    if (!isValid) {
+                      // Show validation errors
+                      const fieldErrors = fieldsToValidate.map((f: string) => {
+                        const error = getNestedError(form.formState.errors, f);
+                        return error ? `${f}: ${error.message}` : null;
+                      }).filter(Boolean);
+                      
+                      console.error("[ORDER FORM] Validation errors:", fieldErrors);
+                      if (fieldErrors.length > 0) {
+                        sileo.error({ title: "Validation Error", description: fieldErrors[0] as string });
+                      }
+                      return;
+                    }
+                    
+                    nextStep();
+                  }}
                   disabled={!isCurrentStepValid()}
                 >
                   Continue <HugeiconsIcon icon={ArrowRight01Icon} size={18} />
@@ -1356,18 +1515,71 @@ export default function CreateOrderPage() {
               ) : (
                 <Button
                   type="submit"
-                  disabled={isPending || isShipped}
-                  className={cn("gap-2 px-8", isShipped && "bg-muted text-muted-foreground hover:bg-muted coursor-disabled")}
+                  disabled={isCreatingOrder || isShipped}
+                  className={cn("gap-2 px-8", isShipped && "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed")}
                 >
-                  {isPending ? "Processing..." : !isShipped ? "Create Order" : "Shipped!"}
-                  {!isPending && <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} />}
-                  
+                  {isCreatingOrder ? "Processing..." : !isShipped ? "Create Order" : "Shipped!"}
+                  {!isCreatingOrder && <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} />}
                 </Button>
               )}
             </div>
           </form>
         </CardContent>
       </Card>
+
+      <Dialog open={openOtpDialog} onOpenChange={setOpenOtpDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={Shield01Icon} size={20} />
+              Verify Phone Number
+            </DialogTitle>
+            <DialogDescription>
+              We've sent an OTP to {formValues.pickup_address.phone}. Enter the code below to verify your phone number.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Field>
+              <FieldLabel>Enter OTP</FieldLabel>
+              <Input
+                type="text"
+                placeholder="Enter 6-digit OTP"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="text-center text-2xl tracking-widest"
+                maxLength={6}
+              />
+            </Field>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="ghost"
+              onClick={handleResendOtp}
+              disabled={isSendingOtp}
+              className="w-full sm:w-auto"
+            >
+              Resend OTP
+            </Button>
+            <Button
+              onClick={handleVerifyOtp}
+              disabled={isVerifyingOtp || otp.length < 4}
+              className="w-full sm:w-auto gap-2"
+            >
+              {isVerifyingOtp ? (
+                <>
+                  <HugeiconsIcon icon={Loading03Icon} className="animate-spin" size={16} />
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  Verify & Continue
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

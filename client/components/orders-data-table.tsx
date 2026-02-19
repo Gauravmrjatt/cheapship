@@ -82,6 +82,15 @@ export type Order = {
   base_shipping_charge?: number
   shipment_status: string
   created_at?: string
+  tracking_number?: string
+  shiprocket_shipment_id?: string
+  courier_name?: string
+  label_url?: string
+  track_url?: string
+  user?: {
+    name: string;
+    email: string;
+  }
 }
 
 interface OrdersDataTableProps {
@@ -120,8 +129,9 @@ export function OrdersDataTable({
       await cancelOrder(orderId);
       sileo.success({ title: "Order cancelled successfully" });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
-    } catch (error: any) {
-      sileo.error({ title: error.message || "Failed to cancel order" });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to cancel order";
+      sileo.error({ title: message });
     }
   };
 
@@ -243,6 +253,25 @@ export function OrdersDataTable({
       },
     },
     {
+      accessorKey: "tracking_number",
+      header: "Tracking",
+      cell: ({ row }) => {
+        const tracking = row.original.tracking_number;
+        const trackUrl = row.original.track_url;
+        if (!tracking) return <span className="text-muted-foreground text-xs">-</span>;
+        return (
+          <a 
+            href={trackUrl || `https://shiprocket.co/tracking/${tracking}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs font-mono hover:underline"
+          >
+            {tracking.slice(0, 12)}...
+          </a>
+        );
+      },
+    },
+    {
       id: "actions",
       cell: ({ row }) => (
         <DropdownMenu>
@@ -262,8 +291,20 @@ export function OrdersDataTable({
             <DropdownMenuItem render={<Link href={`/dashboard/orders/${row.original.id}`} />}>
               View Details
             </DropdownMenuItem>
-            <DropdownMenuItem>Track Shipment</DropdownMenuItem>
-            <DropdownMenuItem>Download Label</DropdownMenuItem>
+            {row.original.tracking_number && row.original.track_url && (
+              <DropdownMenuItem>
+                <a href={row.original.track_url} target="_blank" rel="noopener noreferrer" className="w-full">
+                  Track Shipment
+                </a>
+              </DropdownMenuItem>
+            )}
+            {row.original.label_url && (
+              <DropdownMenuItem>
+                <a href={row.original.label_url} target="_blank" rel="noopener noreferrer" className="w-full">
+                  Download Label
+                </a>
+              </DropdownMenuItem>
+            )}
             {row.original.shipment_status === "PENDING" && (
               <>
                 <DropdownMenuSeparator />

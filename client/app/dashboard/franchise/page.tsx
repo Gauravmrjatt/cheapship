@@ -8,8 +8,13 @@ import {
   useUpdateFranchiseRate, 
   useFranchiseOrders, 
   useWithdrawCommission,
+  useMyReferralCommissions,
+  useWithdrawReferralCommissions,
+  useReferralNetworkStats,
   FranchiseOrder,
-  Franchise
+  Franchise,
+  ReferralNetworkStats,
+  ReferralCommission
 } from "@/lib/hooks/use-franchise";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,8 +36,10 @@ import {
   DeliveryTruck01Icon,
   Cancel01Icon,
   Wallet01Icon,
-      MoneyReceiveCircleIcon
-    } from "@hugeicons/core-free-icons";
+  MoneyReceiveCircleIcon,
+  Layers01Icon,
+  AiNetworkIcon
+} from "@hugeicons/core-free-icons";
     import { sileo } from "sileo";
     import { Badge } from "@/components/ui/badge";import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -257,14 +264,21 @@ function FranchiseOrdersDataTable({ franchiseId, franchiseName }: { franchiseId:
 }
 
 export default function FranchisePage() {
-  const { data: franchises, isLoading: loadingFranchises } = useFranchisesList();
+  const { data: franchiseData, isLoading: loadingFranchises } = useFranchisesList();
   const { data: myReferral, isLoading: loadingReferral } = useMyReferralCode();
+  const { data: networkStats, isLoading: loadingNetworkStats } = useReferralNetworkStats();
+  const { data: referralCommissions, isLoading: loadingReferralCommissions } = useMyReferralCommissions('pending');
   const updateRateMutation = useUpdateFranchiseRate();
   const withdrawMutation = useWithdrawCommission();
-  
+  const withdrawReferralMutation = useWithdrawReferralCommissions();
+
+  const franchises = franchiseData?.franchises;
+  const userBounds = franchiseData?.bounds;
+
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<string | null>(null);
   const [showOrdersSheet, setShowOrdersSheet] = useState(false);
   const [showRatesSheet, setShowRatesSheet] = useState(false);
+  const [showReferralCommissionsSheet, setShowReferralCommissionsSheet] = useState(false);
   const [copied, setCopied] = useState(false);
   const [tempCommissionRate, setTempCommissionRate] = useState<number>(5);
 
@@ -323,7 +337,16 @@ export default function FranchisePage() {
     }), { totalProfit: 0, totalShipmentCost: 0, totalActive: 0, totalWithdrawable: 0, totalPending: 0 });
   }, [franchises]);
 
-  if (loadingFranchises || loadingReferral) {
+  // Get user's commission bounds
+  const effectiveLimits = React.useMemo(() => {
+    if (!userBounds) return { min: 0, max: 100 };
+    return {
+      min: userBounds.min_rate,
+      max: userBounds.max_rate
+    };
+  }, [userBounds]);
+
+  if (loadingFranchises || loadingReferral || loadingNetworkStats) {
     return (
       <div className="max-w-6xl mx-auto py-10 px-4 space-y-8">
         <div className="space-y-2">
@@ -331,7 +354,7 @@ export default function FranchisePage() {
           <Skeleton className="h-4 w-96" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i: number) => <Skeleton key={i} className="h-48 rounded-2xl" />)}
+          {[1, 2, 3, 4].map((i: number) => <Skeleton key={i} className="h-48 rounded-2xl" />)}
         </div>
       </div>
     );
@@ -362,7 +385,7 @@ export default function FranchisePage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="rounded-2xl border-none ring-1 ring-foreground/10 bg-card/50 shadow-lg shadow-foreground/5 p-6 flex flex-col gap-1">
           <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Network Cost</p>
           <p className="text-xl font-bold">₹{networkMetrics.totalShipmentCost.toLocaleString("en-IN")}</p>
@@ -375,9 +398,32 @@ export default function FranchisePage() {
           <p className="text-[10px] uppercase font-bold text-green-600/60 tracking-wider">Withdrawable</p>
           <p className="text-xl font-bold text-green-600">₹{networkMetrics.totalWithdrawable.toLocaleString("en-IN")}</p>
         </Card>
-        <Card className="rounded-2xl border-none ring-1 ring-foreground/10 bg-amber-500/5 shadow-lg shadow-amber-500/5 p-6 flex flex-col gap-1">
-          <p className="text-[10px] uppercase font-bold text-amber-600/60 tracking-wider">Pending</p>
-          <p className="text-xl font-bold text-amber-600">₹{networkMetrics.totalPending.toLocaleString("en-IN")}</p>
+        <Card 
+          className="rounded-2xl border-none ring-1 ring-foreground/10 bg-purple-500/5 shadow-lg shadow-purple-500/5 p-6 flex flex-col gap-1 cursor-pointer hover:bg-purple-500/10 transition-colors"
+          onClick={() => setShowReferralCommissionsSheet(true)}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] uppercase font-bold text-purple-600/60 tracking-wider">Referral Commissions</p>
+            <HugeiconsIcon icon={AiNetworkIcon} className="size-4 text-purple-600" />
+          </div>
+          <p className="text-xl font-bold text-purple-600">
+            ₹{(networkStats?.pending_withdrawable || 0).toLocaleString("en-IN")}
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            {networkStats?.total_commissions || 0} total commissions · Click to view
+          </p>
+        </Card>
+        <Card className="rounded-2xl border-none ring-1 ring-foreground/10 bg-blue-500/5 shadow-lg shadow-blue-500/5 p-6 flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] uppercase font-bold text-blue-600/60 tracking-wider">Your Commission Bounds</p>
+            <HugeiconsIcon icon={PercentIcon} className="size-4 text-blue-600" />
+          </div>
+          <p className="text-xl font-bold text-blue-600">
+            {userBounds?.min_rate ?? 0}% - {userBounds?.max_rate ?? 100}%
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            Set by admin · Limits your franchise rates
+          </p>
         </Card>
       </div>
 
@@ -536,6 +582,8 @@ export default function FranchisePage() {
                     value={tempCommissionRate} 
                     onChange={(e) => setTempCommissionRate(parseFloat(e.target.value) || 0)}
                     placeholder="5"
+                    min={effectiveLimits.min}
+                    max={effectiveLimits.max}
                     className="h-12 text-lg font-semibold pr-12 focus-visible:ring-1"
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
@@ -543,7 +591,7 @@ export default function FranchisePage() {
                   </div>
                 </div>
                 <p className="text-[0.8rem] text-muted-foreground">
-                  Default rate is 5%. This applies to all service providers for this franchise.
+                  Rate must be between {effectiveLimits.min}% and {effectiveLimits.max}% (your set bounds).
                 </p>
               </div>
             </div>
@@ -571,6 +619,139 @@ export default function FranchisePage() {
                 ) : (
                   "Save Changes"
                 )}
+              </Button>
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Referral Commissions Sheet */}
+      <Sheet open={showReferralCommissionsSheet} onOpenChange={setShowReferralCommissionsSheet}>
+        <SheetContent side="right" className="min-w-dvw md:min-w-[50dvw] flex flex-col h-full p-0">
+          <SheetHeader className="p-6 border-b">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600">
+                <HugeiconsIcon icon={AiNetworkIcon} size={20} />
+              </div>
+              <div>
+                <SheetTitle className="text-xl">Multi-Level Referral Commissions</SheetTitle>
+                <SheetDescription>View and withdraw commissions from your referral network</SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="border-none bg-purple-500/5 shadow-none">
+                <CardContent className="p-4 text-center">
+                  <p className="text-2xl font-bold text-purple-600">
+                    ₹{(networkStats?.total_amount || 0).toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Total Earned</p>
+                </CardContent>
+              </Card>
+              <Card className="border-none bg-green-500/5 shadow-none">
+                <CardContent className="p-4 text-center">
+                  <p className="text-2xl font-bold text-green-600">
+                    ₹{(networkStats?.pending_withdrawable || 0).toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Available to Withdraw</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Level Breakdown */}
+            {networkStats?.level_breakdown && networkStats.level_breakdown.length > 0 && (
+              <Card className="border-none bg-muted/30 shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <HugeiconsIcon icon={Layers01Icon} className="size-4" />
+                    Commission by Level
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-2">
+                    {networkStats.level_breakdown.map((level: ReferralNetworkStats['level_breakdown'][0]) => (
+                      <div key={level.level} className="flex items-center justify-between p-3 bg-background rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Badge variant="secondary">Level {level.level}</Badge>
+                          <span className="text-sm text-muted-foreground">{level.count} orders</span>
+                        </div>
+                        <span className="font-semibold">₹{level.total_amount.toLocaleString("en-IN")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pending Commissions */}
+            {referralCommissions && referralCommissions.commissions.length > 0 && (
+              <Card className="border-none shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Pending Commissions</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {referralCommissions.commissions.slice(0, 10).map((commission: ReferralCommission) => (
+                      <div key={commission.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">Level {commission.level}</Badge>
+                            <span className="text-xs text-muted-foreground">
+                              Order #{commission.order_id.toString().slice(0, 8)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {commission.order.customer_name || 'Unknown'} · {new Date(commission.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className="font-semibold text-green-600">+₹{commission.amount}</span>
+                      </div>
+                    ))}
+                    {referralCommissions.commissions.length > 10 && (
+                      <p className="text-xs text-center text-muted-foreground py-2">
+                        +{referralCommissions.commissions.length - 10} more commissions
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <SheetFooter className="p-6 border-t mt-auto">
+            <div className="w-full space-y-3">
+              {(networkStats?.pending_withdrawable || 0) > 0 && (
+                <Button 
+                  className="w-full h-12 font-bold bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    if (confirm(`Withdraw ₹${networkStats?.pending_withdrawable || 0} in referral commissions?`)) {
+                      withdrawReferralMutation.mutate();
+                    }
+                  }}
+                  disabled={withdrawReferralMutation.isPending}
+                >
+                  {withdrawReferralMutation.isPending ? (
+                    <div className="flex items-center gap-2">
+                      <HugeiconsIcon icon={Loading03Icon} size={16} className="animate-spin" />
+                      Processing...
+                    </div>
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={MoneyReceiveCircleIcon} className="mr-2 size-5" />
+                      Withdraw ₹{(networkStats?.pending_withdrawable || 0).toLocaleString("en-IN")}
+                    </>
+                  )}
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                className="w-full h-11"
+                onClick={() => setShowReferralCommissionsSheet(false)}
+              >
+                Close
               </Button>
             </div>
           </SheetFooter>

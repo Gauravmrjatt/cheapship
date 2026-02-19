@@ -31,6 +31,16 @@ export interface Franchise {
   };
 }
 
+export interface CommissionLimits {
+  min_rate: number;
+  max_rate: number;
+}
+
+export interface FranchiseResponse {
+  franchises: Franchise[];
+  bounds: CommissionLimits;
+}
+
 export interface FranchiseOrder {
   id: string | number;
   user_id: string;
@@ -71,7 +81,7 @@ export interface FranchiseOrder {
 // Get all franchises for the current user
 export const useFranchisesList = () => {
   const http = useHttp();
-  return useQuery(http.get<Franchise[]>(["franchises"], "/franchise/list"));
+  return useQuery(http.get<FranchiseResponse>(["franchises"], "/franchise/list"));
 };
 
 // Get current user's referral code
@@ -92,21 +102,25 @@ interface UpdateFranchiseRateParams {
   assigned_rates?: Record<string, { rate: number; slab: number }>;
 }
 
+interface UpdateFranchiseData {
+  commission_rate?: number;
+  assigned_rates?: Record<string, { rate: number; slab: number }>;
+}
+
 // Update franchise commission rate
 export const useUpdateFranchiseRate = () => {
   const queryClient = useQueryClient();
   const http = useHttp();
 
   return useMutation({
-    ...http.put<any, UpdateFranchiseRateParams>("/franchise", {
+    ...http.put<unknown, UpdateFranchiseData>("/franchise", {
       onSuccess: () => {
         sileo.success({ title: "Franchise settings updated successfully" });
         queryClient.invalidateQueries({ queryKey: ["franchises"] });
       },
     }),
     mutationFn: async ({ franchiseId, ...data }: UpdateFranchiseRateParams) => {
-      // Use the internal mutationFn from http.put but with custom URL
-      const mutator = http.put<any, any>(`/franchise/${franchiseId}`).mutationFn;
+      const mutator = http.put<unknown, UpdateFranchiseData>(`/franchise/${franchiseId}`).mutationFn;
       return mutator(data);
     }
   });
@@ -154,20 +168,92 @@ export const useVerifyReferralCode = () => {
 };
 
 // Withdraw commission
+interface WithdrawResponse {
+  message?: string;
+}
+
 export const useWithdrawCommission = () => {
   const queryClient = useQueryClient();
   const http = useHttp();
 
   return useMutation({
-    ...http.post<any, { franchiseId: string; amount: number }>("/franchise", {
+    ...http.post<WithdrawResponse, { franchiseId: string; amount: number }>("/franchise", {
       onSuccess: (data) => {
         sileo.success({ title: "Success" , description : data.message || "Withdrawal request submitted successfully" });
         queryClient.invalidateQueries({ queryKey: ["franchises"] });
       },
     }),
     mutationFn: async ({ franchiseId, amount }: { franchiseId: string; amount: number }) => {
-      const mutator = http.post<any, any>(`/franchise/${franchiseId}/withdraw`).mutationFn;
+      const mutator = http.post<unknown, { amount: number }>(`/franchise/${franchiseId}/withdraw`).mutationFn;
       return mutator({ amount });
     }
   });
+};
+
+// Multi-Level Referral Commissions
+export interface ReferralCommission {
+  id: string;
+  order_id: number;
+  level: number;
+  amount: number;
+  is_withdrawn: boolean;
+  withdrawn_at?: string;
+  created_at: string;
+  order: {
+    id: number;
+    shipment_status: string;
+    created_at: string;
+    customer_name?: string;
+  };
+}
+
+export interface ReferralCommissionSummary {
+  total_commissions: number;
+  total_amount: number;
+  pending_amount: number;
+  withdrawn_amount: number;
+  pending_count: number;
+  withdrawn_count: number;
+}
+
+export interface ReferralCommissionResponse {
+  commissions: ReferralCommission[];
+  summary: ReferralCommissionSummary;
+}
+
+export const useMyReferralCommissions = (status: 'all' | 'pending' | 'withdrawn' = 'all') => {
+  const http = useHttp();
+  return useQuery(http.get<ReferralCommissionResponse>(["my-referral-commissions", status], `/franchise/my-referral-commissions?status=${status}`));
+};
+
+export const useWithdrawReferralCommissions = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+
+  return useMutation({
+    ...http.post<WithdrawResponse, void>("/franchise/withdraw-referral-commissions", {
+      onSuccess: (data) => {
+        sileo.success({ title: "Success", description: data.message || "Withdrawal request submitted successfully" });
+        queryClient.invalidateQueries({ queryKey: ["my-referral-commissions"] });
+        queryClient.invalidateQueries({ queryKey: ["referral-network-stats"] });
+      },
+    })
+  });
+};
+
+export interface ReferralNetworkStats {
+  total_commissions: number;
+  total_amount: number;
+  pending_withdrawable: number;
+  withdrawn_amount: number;
+  level_breakdown: {
+    level: number;
+    total_amount: number;
+    count: number;
+  }[];
+}
+
+export const useReferralNetworkStats = () => {
+  const http = useHttp();
+  return useQuery(http.get<ReferralNetworkStats>(["referral-network-stats"], "/franchise/referral-network-stats"));
 };

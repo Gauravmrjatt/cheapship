@@ -14,6 +14,10 @@ export interface Transaction {
   reference_id: string | null;
   created_at: string;
   updated_at: string;
+  user?: {
+    name: string;
+    email: string;
+  };
 }
 
 export const useTransactions = (page: number = 1, pageSize: number = 10, type?: string, status?: string, search?: string) => {
@@ -44,7 +48,7 @@ export const useTopUpWallet = () => {
   const http = useHttp();
 
   return useMutation({
-    ...http.post<any, { amount: number; reference_id?: string }>("/transactions/topup", {
+    ...http.post<unknown, { amount: number; reference_id?: string }>("/transactions/topup", {
       onSuccess: () => {
         sileo.success({ title: "Wallet topped up successfully" });
         queryClient.invalidateQueries({ queryKey: ["user-profile"] });
@@ -57,7 +61,7 @@ export const useTopUpWallet = () => {
 export const useCreateRazorpayOrder = () => {
   const http = useHttp();
   return useMutation({
-    ...http.post<any, { amount: number }>("/transactions/razorpay/order")
+    ...http.post<{ id: string; amount: number; currency: string }, { amount: number }>("/transactions/razorpay/order")
   });
 };
 
@@ -66,7 +70,7 @@ export const useVerifyRazorpayPayment = () => {
   const http = useHttp();
 
   return useMutation({
-    ...http.post<any, { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string; amount: number }>("/transactions/razorpay/verify", {
+    ...http.post<unknown, { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string; amount: number }>("/transactions/razorpay/verify", {
       onSuccess: () => {
         sileo.success({ title: "Payment successful", description: "Wallet balance updated." });
         queryClient.invalidateQueries({ queryKey: ["user-profile"] });

@@ -42,39 +42,6 @@ router.get('/', transactionController.getTransactions);
 
 /**
  * @swagger
- * /transactions/topup:
- *   post:
- *     summary: Top up wallet balance
- *     tags: [Transactions]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - amount
- *             properties:
- *               amount:
- *                 type: number
- *               reference_id:
- *                 type: string
- *     responses:
- *       200:
- *         description: Wallet topped up successfully
- */
-router.post(
-  '/topup',
-  [
-    check('amount', 'Valid amount is required').isNumeric().custom(v => v > 0)
-  ],
-  transactionController.topUpWallet
-);
-
-/**
- * @swagger
  * /transactions/razorpay/order:
  *   post:
  *     summary: Create Razorpay order
