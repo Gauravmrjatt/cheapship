@@ -51,7 +51,7 @@ function SignInForm() {
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [countdown, setCountdown] = useState(0);
-  
+
   const redirectTo = searchParams.get("redirect") || "/";
 
   const passwordLoginMutation = useMutation<SignInResponse, Error, PasswordFormData>(
@@ -68,7 +68,7 @@ function SignInForm() {
     http.post<SendOtpResponse, OtpRequestFormData>("/auth/send-login-otp", {
       onSuccess: (data) => {
         setStep(2);
-        setCountdown(Math.floor(data.expiresIn / 1000));
+        setCountdown(data.expiresIn);
         setEmail(data.email || "");
         sileo.success({ title: "OTP Sent", description: data.message });
       },
@@ -121,9 +121,12 @@ function SignInForm() {
 
   function onSendOtp(values: OtpRequestFormData) {
     if (values.email) {
-      setEmail(values.email);
+      const trimmedEmail = values.email.trim().toLowerCase();
+      setEmail(trimmedEmail);
+      sendLoginOtpMutation.mutate({ ...values, email: trimmedEmail });
+    } else {
+      sendLoginOtpMutation.mutate(values);
     }
-    sendLoginOtpMutation.mutate(values);
   }
 
   function onVerifyOtp(values: OtpFormData) {
@@ -133,19 +136,23 @@ function SignInForm() {
   function handleResendOtp() {
     if (countdown > 0) return;
     const values = otpRequestForm.getValues();
-    sendLoginOtpMutation.mutate(values);
+    if (values.email) {
+      sendLoginOtpMutation.mutate({ ...values, email: values.email.trim().toLowerCase() });
+    } else {
+      sendLoginOtpMutation.mutate(values);
+    }
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm ">
       <CardHeader>
         <CardTitle className="text-2xl">Sign In</CardTitle>
         <CardDescription>
           {loginMethod === "otp" && step === 1
             ? "Enter your email or mobile to receive an OTP"
             : loginMethod === "otp" && step === 2
-            ? "Enter the OTP sent to your email"
-            : "Enter your credentials to sign in"}
+              ? "Enter the OTP sent to your email"
+              : "Enter your credentials to sign in"}
         </CardDescription>
       </CardHeader>
 
@@ -175,7 +182,7 @@ function SignInForm() {
               type="button"
               variant="link"
               className="mt-2"
-              onClick={() => setLoginMethod("otp")}
+              onClick={(e) => { e.preventDefault(); setLoginMethod("otp") }}
             >
               Sign in with OTP instead
             </Button>
@@ -200,7 +207,7 @@ function SignInForm() {
         <form onSubmit={otpRequestForm.handleSubmit(onSendOtp)}>
           <CardContent className="grid gap-4">
             <Field>
-              <FieldLabel>Email</FieldLabel>
+              <label>Email</label>
               <Input
                 placeholder="m@example.com"
                 type="email"
@@ -219,7 +226,7 @@ function SignInForm() {
               </div>
             </div>
             <Field>
-              <FieldLabel>Mobile</FieldLabel>
+              <label>Mobile</label>
               <Input placeholder="1234567890" {...otpRequestForm.register("mobile")} />
               {otpRequestForm.formState.errors.mobile && (
                 <FieldError>{otpRequestForm.formState.errors.mobile.message}</FieldError>
@@ -227,14 +234,14 @@ function SignInForm() {
             </Field>
           </CardContent>
           <CardFooter className="flex flex-col">
-            <Button type="submit" className="w-full" disabled={sendLoginOtpMutation.isPending}>
+            <Button type="submit" className="w-full mt-8" disabled={sendLoginOtpMutation.isPending}>
               {sendLoginOtpMutation.isPending ? "Sending OTP..." : "Send OTP"}
             </Button>
             <Button
               type="button"
               variant="link"
               className="mt-2"
-              onClick={() => setLoginMethod("password")}
+              onClick={(e) => { e.preventDefault(); setLoginMethod("password") }}
             >
               Sign in with password instead
             </Button>
@@ -253,7 +260,7 @@ function SignInForm() {
               OTP sent to <span className="font-medium">{email}</span>
             </div>
             <Field>
-              <FieldLabel>Enter 6-digit OTP</FieldLabel>
+              {/* <FieldLabel>Enter 6-digit OTP</FieldLabel> */}
               <Input
                 placeholder="000000"
                 maxLength={6}

@@ -67,7 +67,7 @@ import {
   Wallet01Icon,
   PackageIcon,
   Delete02Icon,
-  DeliveryIcon,
+  DeliveryViewIcon,
   Coins01Icon
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
@@ -79,7 +79,7 @@ interface TransactionsDataTableProps {
   isLoading?: boolean
   showUserColumn?: boolean
   pagination?: {
-    page: number
+    currentPage: number
     pageSize: number
     totalPages: number
     total: number
@@ -100,7 +100,7 @@ const categoryLabels: Record<string, { label: string; icon: typeof Wallet01Icon 
   WALLET_TOPUP: { label: "Wallet Topup", icon: Wallet01Icon },
   ORDER_PAYMENT: { label: "Order Payment", icon: PackageIcon },
   REFUND: { label: "Refund", icon: Delete02Icon },
-  COD_REMITTANCE: { label: "COD Remittance", icon: DeliveryIcon },
+  COD_REMITTANCE: { label: "COD Remittance", icon: DeliveryViewIcon },
   COMMISSION: { label: "Commission", icon: Coins01Icon },
 }
 
@@ -236,7 +236,7 @@ export function TransactionsDataTable({
           return (
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger>
                   <div className="flex items-center gap-1">
                     {statusContent}
                     <HugeiconsIcon icon={InformationSquareIcon} size={14} className="text-muted-foreground" />
@@ -312,7 +312,7 @@ export function TransactionsDataTable({
       onValueChange={(v) => handleFilterUpdate("category", v === "ALL" ? undefined : v)}
       className="w-full flex-col justify-start gap-6"
     >
-      <div className="flex flex-col gap-4 px-4 lg:px-6">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Select
@@ -404,7 +404,7 @@ export function TransactionsDataTable({
         </div>
       </div>
 
-      <div className="relative flex flex-col gap-4 px-4 lg:px-6">
+      <div className="relative flex flex-col gap-4 ">
         <div className="overflow-x-auto border rounded-2xl">
           <Table className="min-w-[640px]">
             <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
@@ -471,7 +471,7 @@ export function TransactionsDataTable({
             </div>
 
             <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {pagination?.page || 1} of {pagination?.totalPages || 1}
+              Page {pagination?.currentPage || 1} of {pagination?.totalPages || 1}
             </div>
 
             <div className="ml-auto flex items-center gap-2 lg:ml-0">
@@ -479,7 +479,7 @@ export function TransactionsDataTable({
                 variant="outline"
                 className="hidden h-8 w-8 p-0 lg:flex"
                 onClick={() => onPageChange?.(1)}
-                disabled={pagination?.page === 1}
+                disabled={pagination?.currentPage === 1}
               >
                 <HugeiconsIcon icon={ArrowLeftDoubleIcon} strokeWidth={2} />
               </Button>
@@ -487,8 +487,8 @@ export function TransactionsDataTable({
                 variant="outline"
                 className="size-8"
                 size="icon"
-                onClick={() => onPageChange?.((pagination?.page || 1) - 1)}
-                disabled={pagination?.page === 1}
+                onClick={() => onPageChange?.((pagination?.currentPage || 1) - 1)}
+                disabled={pagination?.currentPage === 1}
               >
                 <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
               </Button>
@@ -496,8 +496,8 @@ export function TransactionsDataTable({
                 variant="outline"
                 className="size-8"
                 size="icon"
-                onClick={() => onPageChange?.((pagination?.page || 1) + 1)}
-                disabled={pagination?.page === pagination?.totalPages}
+                onClick={() => onPageChange?.((pagination?.currentPage || 1) + 1)}
+                disabled={pagination?.currentPage === pagination?.totalPages}
               >
                 <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
               </Button>
@@ -506,7 +506,7 @@ export function TransactionsDataTable({
                 className="hidden size-8 lg:flex"
                 size="icon"
                 onClick={() => onPageChange?.(pagination?.totalPages || 1)}
-                disabled={pagination?.page === pagination?.totalPages}
+                disabled={pagination?.currentPage === pagination?.totalPages}
               >
                 <HugeiconsIcon icon={ArrowRightDoubleIcon} strokeWidth={2} />
               </Button>

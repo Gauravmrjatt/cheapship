@@ -48,7 +48,6 @@ import {
   CheckmarkBadge01Icon,
   Loading03Icon,
   Shield01Icon,
-  TaskSquare01Icon,
   AlertCircleIcon
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
@@ -74,14 +73,6 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { useRateCalculatorStore } from "@/lib/store/rate-calculator";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 
 const PRODUCT_SUGGESTIONS = [
   "Cotton Shirt",
@@ -431,7 +422,7 @@ const form = useForm<z.infer<typeof createOrderSchema>>({
 
   const shiprocketPickupLocations = shiprocketPickups?.data?.shipping_address || [];
 
-  const { data: recentProductsData } = useQuery<{data: {products: {name: string}[] | null}[]}>({
+  const { data: recentProductsData } = useQuery<string[]>({
     queryKey: ['recent-products'],
     queryFn: async () => {
       const res = await fetch('/api/v1/orders?pageSize=20', {
@@ -439,9 +430,7 @@ const form = useForm<z.infer<typeof createOrderSchema>>({
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      return res.json();
-    },
-    select: (data) => {
+      const data = await res.json();
       const products = new Set<string>();
       data.data?.forEach((order: any) => {
         order.products?.forEach((p: any) => {
@@ -449,7 +438,7 @@ const form = useForm<z.infer<typeof createOrderSchema>>({
         });
       });
       return Array.from(products);
-    }
+    },
   });
 
   const allProductSuggestions = [...new Set([...PRODUCT_SUGGESTIONS, ...(recentProductsData || [])])];

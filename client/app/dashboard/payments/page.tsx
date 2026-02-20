@@ -5,19 +5,6 @@ import { useState } from "react";
 import { useTransactions, } from "@/lib/hooks/use-transactions";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { TransactionsDataTable } from "@/components/transactions-data-table";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon } from "@hugeicons/core-free-icons";
 
 export default function PaymentsPage() {
   const [page, setPage] = useState(1);
@@ -49,7 +36,7 @@ export default function PaymentsPage() {
 
 
   return (
-    <div className="w-full py-10 space-y-8 animate-in fade-in duration-500">
+    <div className="w-full py-10 space-y-8 p-5 animate-in fade-in duration-500">
       <TransactionsDataTable 
         data={data?.data || []}
         isLoading={isLoading}

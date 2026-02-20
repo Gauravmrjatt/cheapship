@@ -57,7 +57,7 @@ function SignUpForm() {
     http.post<SendOtpResponse, SignUpFormData>("/auth/send-registration-otp", {
       onSuccess: (data) => {
         setStep(2);
-        setCountdown(Math.floor(data.expiresIn / 1000));
+        setCountdown(data.expiresIn);
         sileo.success({ title: "OTP Sent", description: data.message });
       },
     })
@@ -109,8 +109,9 @@ function SignUpForm() {
   }, [countdown]);
 
   function onSendOtp(values: SignUpFormData) {
-    setEmail(values.email);
-    sendOtpMutation.mutate(values);
+    const trimmedValues = { ...values, email: values.email.trim().toLowerCase() };
+    setEmail(trimmedValues.email);
+    sendOtpMutation.mutate(trimmedValues);
   }
 
   function onVerifyOtp(values: OtpFormData) {
@@ -120,12 +121,12 @@ function SignUpForm() {
   function handleResendOtp() {
     if (countdown > 0) return;
     setResendDisabled(true);
-    const values = signUpForm.getValues();
+    const values = { ...signUpForm.getValues(), email: signUpForm.getValues("email").trim().toLowerCase() };
     sendOtpMutation.mutate(values);
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full  max-w-sm">
       <CardHeader>
         <CardTitle className="text-2xl">Sign Up</CardTitle>
         <CardDescription>
@@ -182,7 +183,7 @@ function SignUpForm() {
             <input type="hidden" {...signUpForm.register("referred_by")} />
           </CardContent>
           <CardFooter className="flex flex-col">
-            <Button type="submit" className="w-full" disabled={sendOtpMutation.isPending}>
+            <Button type="submit" className="w-full mt-8"  disabled={sendOtpMutation.isPending}>
               {sendOtpMutation.isPending ? "Sending OTP..." : "Continue"}
             </Button>
             <div className="mt-4 text-center text-sm">

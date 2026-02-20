@@ -72,9 +72,7 @@ interface RateResponse {
   serviceable_couriers: CourierPartner[];
 }
 
-const rateCalculatorSchema = calculateRateSchema.extend({
-  order_type: z.enum(["SURFACE", "EXPRESS"]).default("SURFACE"),
-});
+const rateCalculatorSchema = calculateRateSchema;
 
 export default function RateCalculatorPage() {
   const [showRates, setShowRates] = useState(false);
@@ -82,7 +80,9 @@ export default function RateCalculatorPage() {
   const router = useRouter();
   const { setRateData } = useRateCalculatorStore();
   
-  const form = useForm<z.infer<typeof rateCalculatorSchema>>({
+  type RateCalculatorFormData = z.output<typeof rateCalculatorSchema>;
+  
+  const form = useForm<RateCalculatorFormData>({
     resolver: zodResolver(rateCalculatorSchema),
     defaultValues: {
       pickupPincode: "",

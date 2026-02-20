@@ -225,8 +225,26 @@ router.post(
 router.post(
   '/send-login-otp',
   [
-    check('email').optional().isEmail().withMessage('Please include a valid email'),
-    check('mobile').optional().not().isEmpty().withMessage('Mobile is required'),
+    check('email')
+      .if((value) => value) // validate only if provided
+      .isEmail()
+      .withMessage('Please include a valid email'),
+
+    check('mobile')
+      .if((value) => value) // validate only if provided
+      .notEmpty()
+      .withMessage('Mobile cannot be empty'),
+
+    // Require at least one
+    check().custom((_, { req }) => {
+      const { email, mobile } = req.body;
+
+      if (!email && !mobile) {
+        throw new Error('Either email or mobile is required');
+      }
+
+      return true;
+    }),
   ],
   authController.sendLoginOtp
 );

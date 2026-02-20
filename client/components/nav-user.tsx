@@ -77,7 +77,7 @@ export function NavUser({
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
+            {/* <DropdownMenuGroup>
               <DropdownMenuItem>
                 <HugeiconsIcon icon={UserCircle02Icon} strokeWidth={2} />
                 Account
@@ -90,7 +90,7 @@ export function NavUser({
                 <HugeiconsIcon icon={Notification03Icon} strokeWidth={2} />
                 Notifications
               </DropdownMenuItem>
-            </DropdownMenuGroup>
+            </DropdownMenuGroup> */}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>
               <HugeiconsIcon icon={Logout01Icon} strokeWidth={2} />

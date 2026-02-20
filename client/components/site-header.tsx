@@ -102,7 +102,7 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
   };
 
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+    <header className="flex h-(--header-height) sticky top-0 bg-background rounded-t-3xl z-50 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full items-center justify-between px-4 lg:gap-2 lg:px-6">
         <div className="flex items-center gap-1">
           <SidebarTrigger className="-ml-1" />

@@ -91,19 +91,7 @@ export default function InvoicesPage() {
   const invoices = data?.data || [];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <HugeiconsIcon icon={Invoice01Icon} size={24} className="text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
-          <p className="text-sm text-muted-foreground">
-            Download invoices for your delivered orders
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-8 p-5 animate-in fade-in duration-500">
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">

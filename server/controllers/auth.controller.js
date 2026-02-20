@@ -158,7 +158,8 @@ const sendRegistrationOtp = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { name, email, mobile, password, referred_by, franchise_type, franchise_address, franchise_pincode, franchise_city, franchise_state } = req.body;
+  const { name, email: rawEmail, mobile, password, referred_by, franchise_type, franchise_address, franchise_pincode, franchise_city, franchise_state } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -228,7 +229,8 @@ const verifyRegistrationOtp = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, otp } = req.body;
+  const { email: rawEmail, otp } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -317,7 +319,8 @@ const sendLoginOtp = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, mobile } = req.body;
+  const { email: rawEmail, mobile } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -356,13 +359,14 @@ const sendLoginOtp = async (req, res) => {
 
     const otp = otpService.generateOtp();
     await otpService.createOtpRecord(prisma, userEmail, user.mobile, otp, 'login');
-
+     console.log(otp)
     await emailService.sendOtpEmail(userEmail, otp, 'login');
 
     res.status(200).json({ 
       message: 'OTP sent to your email address.',
       expiresIn: otpService.OTP_EXPIRY_MINUTES * 60,
-      email: userEmail.replace(/(.{2}).*(@.*)/, '$1***$2')
+      // email: userEmail.replace(/(.{2}).*(@.*)/, '$1***$2')
+      email: userEmail
     });
   } catch (error) {
     console.error('Send login OTP error:', error);
@@ -376,7 +380,8 @@ const verifyLoginOtp = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, otp } = req.body;
+  const { email: rawEmail, otp } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -439,7 +444,8 @@ const forgotPassword = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email } = req.body;
+  const { email: rawEmail } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -483,7 +489,8 @@ const resetPassword = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, otp, newPassword } = req.body;
+  const { email: rawEmail, otp, newPassword } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {

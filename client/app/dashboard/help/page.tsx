@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   HelpCircleIcon,
-  EmailIcon,
+  MailIcon,
   CallIcon,
   Clock01Icon,
   ArrowDown01Icon,
@@ -63,7 +63,7 @@ function FAQAccordion({ items }: { items: FAQItem[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 ">
       {items.map((item, index) => (
         <div
           key={index}
@@ -120,7 +120,7 @@ export default function HelpPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl animate-in fade-in duration-500">
+    <div className="space-y-6 max-w-4xl animate-in fade-in duration-500 p-5">
       <div className="flex items-center gap-3">
         <div className="p-2 bg-primary/10 rounded-lg">
           <HugeiconsIcon icon={HelpCircleIcon} size={24} className="text-primary" />
@@ -151,7 +151,7 @@ export default function HelpPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-muted rounded-lg">
-                  <HugeiconsIcon icon={EmailIcon} size={18} className="text-muted-foreground" />
+                  <HugeiconsIcon icon={MailIcon} size={18} className="text-muted-foreground" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Email</p>

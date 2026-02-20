@@ -38,7 +38,26 @@ router.get('/orders', adminController.getAllOrders);
 router.get('/orders/:id', adminController.getOrderById);
 
 // Transactions
-router.get('/transactions', adminController.getAllTransactions);
+router.get(
+  '/transactions',
+  [
+    check('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+    check('pageSize').optional().isInt({ min: 1 }).withMessage('Page size must be a positive integer'),
+    check('type').optional().isIn(['ALL', 'CREDIT', 'DEBIT']).withMessage('Invalid transaction type'),
+    check('category').optional().isIn(['ALL', 'WALLET_TOPUP', 'ORDER_PAYMENT', 'REFUND', 'COD_REMITTANCE', 'COMMISSION']).withMessage('Invalid transaction category'),
+    check('userId').optional().custom((value) => {
+      if (value === '' || value === 'ALL') return true;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(value)) {
+        throw new Error('Invalid User ID format');
+      }
+      return true;
+    }),
+    check('fromDate').optional().isISO8601().withMessage('Invalid fromDate format'),
+    check('toDate').optional().isISO8601().withMessage('Invalid toDate format'),
+  ],
+  adminController.getAllTransactions
+);
 
 // Withdrawals
 router.get('/withdrawals', adminController.getWithdrawals);

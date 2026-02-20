@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminDashboard } from "@/lib/hooks/use-admin";
+import { useAdminDashboard, useNetworkCommissionStats } from "@/lib/hooks/use-admin";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -9,7 +9,11 @@ import {
   ShoppingBasket01Icon, 
   MoneyReceiveCircleIcon, 
   Invoice01Icon,
-  ArrowRight01Icon
+  ArrowRight01Icon,
+  AiNetworkIcon,
+  Money03Icon,
+  Clock01Icon,
+  CheckmarkCircle02Icon
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -18,6 +22,7 @@ import { Order } from "@/components/orders-data-table";
 
 export default function AdminDashboard() {
   const { data, isLoading } = useAdminDashboard();
+  const { data: commissionStats, isLoading: commissionLoading } = useNetworkCommissionStats();
 
   if (isLoading) {
     return (
@@ -82,6 +87,64 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="rounded-2xl border-none shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <HugeiconsIcon icon={AiNetworkIcon} size={20} className="text-primary" />
+            <CardTitle className="text-lg">Network Commissions</CardTitle>
+          </div>
+          <CardDescription>
+            Overview of multi-level referral commission payouts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {commissionLoading ? (
+            <div className="grid grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-20 rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div className="bg-muted/30 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <HugeiconsIcon icon={Money03Icon} size={16} className="text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Total Commissions</span>
+                  </div>
+                  <div className="text-2xl font-bold">
+                    ₹{Number(commissionStats?.total_commission || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-muted/30 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} className="text-green-500" />
+                    <span className="text-xs text-muted-foreground">Withdrawn</span>
+                  </div>
+                  <div className="text-2xl font-bold">
+                    ₹{Number(commissionStats?.withdrawn_commission || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-muted/30 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <HugeiconsIcon icon={Clock01Icon} size={16} className="text-orange-500" />
+                    <span className="text-xs text-muted-foreground">Pending Withdrawal</span>
+                  </div>
+                  <div className="text-2xl font-bold">
+                    ₹{Number(commissionStats?.pending_commission || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-end">
+                <span className="text-xs text-muted-foreground">
+                  {commissionStats?.total_count || 0} commission records total
+                </span>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-7">
         <Card className="lg:col-span-4 rounded-2xl border-none shadow-sm">

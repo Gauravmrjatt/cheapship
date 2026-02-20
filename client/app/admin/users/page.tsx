@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -79,6 +80,7 @@ import { useRouter } from "next/navigation";
 
 export default function AdminUsersPage() {
   const router = useRouter();
+  const isMounted = React.useRef(true);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [search, setSearch] = React.useState("");
@@ -88,8 +90,15 @@ export default function AdminUsersPage() {
   const [rowSelection, setRowSelection] = React.useState({});
   
   const { data, isLoading } = useAdminUsers(page, pageSize, search, statusFilter);
-  const toggleStatusMutation = useToggleUserStatus();
-  const setUserBoundsMutation = useSetUserCommissionBounds();
+  const toggleStatusMutation = useToggleUserStatus(isMounted);
+  const setUserBoundsMutation = useSetUserCommissionBounds(isMounted);
+
+  React.useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
   
   // Commission bounds sheet state
   const [boundsSheetOpen, setBoundsSheetOpen] = React.useState(false);
@@ -381,11 +390,15 @@ export default function AdminUsersPage() {
               </TableHeader>
               <TableBody className="**:data-[slot=table-cell]:first:w-8 rounded-2xl">
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                      <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="size-6 animate-spin mx-auto text-muted-foreground" />
-                    </TableCell>
-                  </TableRow>
+                  Array.from({ length: pageSize }).map((_, index) => (
+                    <TableRow key={index}>
+                      {columns.map((_, colIndex) => (
+                        <TableCell key={colIndex}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
                 ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>

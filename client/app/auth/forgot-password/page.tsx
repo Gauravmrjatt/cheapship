@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
     http.post<SendOtpResponse, ForgotPasswordFormData>("/auth/forgot-password", {
       onSuccess: (data) => {
         setStep(2);
-        setCountdown(Math.floor(data.expiresIn / 1000));
+        setCountdown(data.expiresIn);
         sileo.success({ title: "OTP Sent", description: data.message });
       },
     })
@@ -93,8 +93,9 @@ export default function ForgotPasswordPage() {
   }, [countdown]);
 
   function onSendOtp(values: ForgotPasswordFormData) {
-    setEmail(values.email);
-    sendOtpMutation.mutate(values);
+    const trimmedEmail = values.email.trim().toLowerCase();
+    setEmail(trimmedEmail);
+    sendOtpMutation.mutate({ email: trimmedEmail });
   }
 
   function onVerifyOtp(values: OtpFormData) {

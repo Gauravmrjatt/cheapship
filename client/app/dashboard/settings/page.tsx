@@ -50,12 +50,12 @@ export default function SettingsPage() {
             <HugeiconsIcon icon={Shield01Icon} size={16} />
             Security
           </TabsTrigger>
-          <TabsTrigger value="kyc" className="rounded-lg gap-2" asChild>
-            <Link href="/dashboard/settings/kyc">
+          <Link href="/dashboard/settings/kyc">
+            <TabsTrigger value="kyc" className="rounded-lg gap-2">
               <HugeiconsIcon icon={Shield01Icon} size={16} />
               KYC Verification
-            </Link>
-          </TabsTrigger>
+            </TabsTrigger>
+          </Link>
         </TabsList>
 
         <TabsContent value="appearance">

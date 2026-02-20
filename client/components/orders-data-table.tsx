@@ -113,7 +113,7 @@ interface OrdersDataTableProps {
   data: Order[]
   isLoading?: boolean
   pagination?: {
-    page: number
+    currentPage: number
     pageSize: number
     totalPages: number
     total: number
@@ -701,7 +701,7 @@ export function OrdersDataTable({
               </Select>
             </div>
             <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {pagination?.page || 1} of{" "}
+              Page {pagination?.currentPage || 1} of{" "}
               {pagination?.totalPages || 1}
             </div>
             <div className="ml-auto flex items-center gap-2 lg:ml-0">
@@ -709,7 +709,7 @@ export function OrdersDataTable({
                 variant="outline"
                 className="hidden h-8 w-8 p-0 lg:flex"
                 onClick={() => onPageChange?.(1)}
-                disabled={pagination?.page === 1}
+                disabled={pagination?.currentPage === 1}
               >
                 <span className="sr-only">Go to first page</span>
                 <HugeiconsIcon icon={ArrowLeftDoubleIcon} strokeWidth={2} />
@@ -718,8 +718,8 @@ export function OrdersDataTable({
                 variant="outline"
                 className="size-8"
                 size="icon"
-                onClick={() => onPageChange?.((pagination?.page || 1) - 1)}
-                disabled={pagination?.page === 1}
+                onClick={() => onPageChange?.((pagination?.currentPage || 1) - 1)}
+                disabled={pagination?.currentPage === 1}
               >
                 <span className="sr-only">Go to previous page</span>
                 <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
@@ -728,8 +728,8 @@ export function OrdersDataTable({
                 variant="outline"
                 className="size-8"
                 size="icon"
-                onClick={() => onPageChange?.((pagination?.page || 1) + 1)}
-                disabled={pagination?.page === pagination?.totalPages}
+                onClick={() => onPageChange?.((pagination?.currentPage || 1) + 1)}
+                disabled={pagination?.currentPage === pagination?.totalPages}
               >
                 <span className="sr-only">Go to next page</span>
                 <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
@@ -739,7 +739,7 @@ export function OrdersDataTable({
                 className="hidden size-8 lg:flex"
                 size="icon"
                 onClick={() => onPageChange?.(pagination?.totalPages || 1)}
-                disabled={pagination?.page === pagination?.totalPages}
+                disabled={pagination?.currentPage === pagination?.totalPages}
               >
                 <span className="sr-only">Go to last page</span>
                 <HugeiconsIcon icon={ArrowRightDoubleIcon} strokeWidth={2} />

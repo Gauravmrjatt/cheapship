@@ -40,7 +40,7 @@ export default function OrdersPage() {
             filters={filters}
             onFilterChange={handleFilterChange}
             pagination={{
-              page,
+              currentPage: page,
               pageSize,
               totalPages: data?.pagination?.totalPages ?? 1,
               total: data?.pagination?.total ?? 0,

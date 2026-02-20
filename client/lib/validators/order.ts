@@ -26,7 +26,7 @@ export const calculateRateSchema = z.object({
   paymentType: z.enum(["PREPAID", "COD"]),
   shipmentValue: z.number().min(1, "Value is required"),
   dangerousGoods: z.boolean(),
-  order_type: z.enum(["SURFACE", "EXPRESS"]).optional().default("SURFACE"),
+  order_type: z.enum(["SURFACE", "EXPRESS"]),
 });
 
 export const createOrderSchema = z.object({

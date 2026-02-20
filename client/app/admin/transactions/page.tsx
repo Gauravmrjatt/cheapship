@@ -39,13 +39,12 @@ function TransactionsContent() {
   };
 
   return (
-    <div className="w-full space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1 px-4 lg:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Transactions</h1>
+    <div className="w-full space-y-0 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-1 px-0 lg:px-6">
         <p className="text-muted-foreground">
           {filters.userId 
-            ? `Viewing transactions for user ID: ${filters.userId}` 
-            : "Monitor and manage all system transactions."}
+            && `Viewing transactions for user ID: ${filters.userId}` 
+          }
         </p>
       </div>
 

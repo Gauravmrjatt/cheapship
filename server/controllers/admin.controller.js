@@ -1,9 +1,11 @@
 const bcrypt = require('bcrypt');
+const { validationResult } = require('express-validator');
 const otpService = require('../services/otp.service');
 const emailService = require('../services/email.service');
 
 const sendAdminForgotPasswordOtp = async (req, res) => {
-  const { email } = req.body;
+  const { email: rawEmail } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -39,7 +41,8 @@ const sendAdminForgotPasswordOtp = async (req, res) => {
 };
 
 const resetAdminPassword = async (req, res) => {
-  const { email, otp, newPassword } = req.body;
+  const { email: rawEmail, otp, newPassword } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -125,7 +128,7 @@ const getUsers = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { page = 1, pageSize = 10, search, status } = req.query;
   
-  const pageNum = parseInt(page, 10);
+  const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
   const offset = (pageNum - 1) * pageSizeNum;
 
@@ -208,7 +211,7 @@ const getAllOrders = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { page = 1, pageSize = 10, status, search, userId } = req.query;
 
-  const pageNum = parseInt(page, 10);
+  const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
   const offset = (pageNum - 1) * pageSizeNum;
 
@@ -277,7 +280,7 @@ const getWithdrawals = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { status, page = 1, pageSize = 10 } = req.query;
 
-  const pageNum = parseInt(page, 10);
+  const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
   const offset = (pageNum - 1) * pageSizeNum;
 
@@ -457,10 +460,15 @@ const updateGlobalSettings = async (req, res) => {
 };
 
 const getAllTransactions = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const prisma = req.app.locals.prisma;
   const { page = 1, pageSize = 10, type, category, search, userId, fromDate, toDate } = req.query;
 
-  const pageNum = parseInt(page, 10);
+  const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
   const offset = (pageNum - 1) * pageSizeNum;
 
@@ -781,7 +789,7 @@ const getAllCODOrders = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { page = 1, pageSize = 10, remittance_status, search } = req.query;
 
-  const pageNum = parseInt(page, 10);
+  const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
   const offset = (pageNum - 1) * pageSizeNum;
 

@@ -262,7 +262,7 @@ function OrdersContent() {
   });
 
   return (
-    <div className="w-full space-y-6 animate-in fade-in duration-500">
+    <div className="w-full space-y-0 animate-in fade-in duration-500">
       <div className="flex flex-col gap-1 px-4 lg:px-6">
         <p className="text-muted-foreground">
           {userIdFilter 

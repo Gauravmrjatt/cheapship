@@ -108,18 +108,8 @@ export default function RemittancesPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <HugeiconsIcon icon={Wallet01Icon} size={24} className="text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">COD & Remittances</h1>
-          <p className="text-sm text-muted-foreground">
-            Track your Cash on Delivery remittances
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6 animate-in p-5 fade-in duration-500">
+    
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

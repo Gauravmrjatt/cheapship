@@ -5,8 +5,7 @@ import {
   useGlobalSettings, 
   useUpdateGlobalSettings,
   useReferralLevelSetting,
-  useUpdateReferralLevelSetting,
-  useNetworkCommissionStats
+  useUpdateReferralLevelSetting
 } from "@/lib/hooks/use-admin";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,7 +17,6 @@ import {
   Globe02Icon, 
   PercentIcon, 
   Loading03Icon,
-  AiNetworkIcon,
   Layers01Icon,
   MoneyReceiveCircleIcon
 } from "@hugeicons/core-free-icons";
@@ -26,7 +24,6 @@ import {
 export default function AdminSettingsPage() {
   const { data: settings, isLoading } = useGlobalSettings();
   const { data: levelSetting, isLoading: levelsLoading } = useReferralLevelSetting();
-  const { data: networkStats, isLoading: statsLoading } = useNetworkCommissionStats();
   const updateSettingsMutation = useUpdateGlobalSettings();
   const updateLevelSettingMutation = useUpdateReferralLevelSetting();
 
@@ -147,78 +144,8 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Network Commission Stats Card */}
-        <Card className="rounded-2xl border-none shadow-sm bg-card/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <HugeiconsIcon icon={AiNetworkIcon} className="size-5" />
-              Network Commissions
-            </CardTitle>
-            <CardDescription>
-              Overview of multi-level referral commission payouts.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-primary/5 rounded-xl p-4 text-center">
-                <p className="text-2xl font-bold text-primary">
-                  {statsLoading ? '-' : `₹${Number(networkStats?.total_commission || 0).toLocaleString()}`}
-                </p>
-                <p className="text-xs text-muted-foreground">Total Commissions</p>
-              </div>
-              <div className="bg-green-500/5 rounded-xl p-4 text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {statsLoading ? '-' : `₹${Number(networkStats?.withdrawn_commission || 0).toLocaleString()}`}
-                </p>
-                <p className="text-xs text-muted-foreground">Withdrawn</p>
-              </div>
-            </div>
-            <div className="bg-amber-500/5 rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-amber-600">
-                {statsLoading ? '-' : `₹${Number(networkStats?.pending_commission || 0).toLocaleString()}`}
-              </p>
-              <p className="text-xs text-muted-foreground">Pending Withdrawal</p>
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-              {statsLoading ? '-' : `${networkStats?.total_count || 0} commission records total`}
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* How It Works Card */}
-      <Card className="rounded-2xl border-none shadow-sm bg-card/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <HugeiconsIcon icon={MoneyReceiveCircleIcon} className="size-5" />
-            How Multi-Level Commissions Work
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-muted/30 rounded-xl p-4 text-sm text-muted-foreground">
-              <p className="font-semibold text-foreground mb-2">Cascading Commission Structure</p>
-              <ul className="list-disc list-inside space-y-2">
-                <li>Each user sets their own commission rate for their franchises</li>
-                <li>Level 1 referrer earns their commission rate % of the order value</li>
-                <li>Level 2 referrer earns their commission rate % of Level 1&apos;s profit</li>
-                <li>Level 3 referrer earns their commission rate % of Level 2&apos;s profit</li>
-                <li>This continues for the configured number of levels</li>
-              </ul>
-            </div>
-            <div className="bg-primary/5 rounded-xl p-4 text-sm">
-              <p className="font-semibold text-foreground mb-2">Example Calculation</p>
-              <div className="space-y-2 text-muted-foreground">
-                <p><Badge variant="secondary">Order Value</Badge> ₹100 shipping charge</p>
-                <p><Badge variant="secondary">Level 1</Badge> User C has 10% rate → earns ₹10</p>
-                <p><Badge variant="secondary">Level 2</Badge> User B has 10% rate → earns 10% of ₹10 = ₹1</p>
-                <p><Badge variant="secondary">Level 3</Badge> User A has 10% rate → earns 10% of ₹1 = ₹0.10</p>
-                <p className="text-xs pt-2 border-t">Each referrer&apos;s commission rate is applied to the previous level&apos;s earnings</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -132,7 +132,7 @@ export const useAdminUsers = (page: number = 1, pageSize: number = 10, search: s
   return useQuery(http.get<AdminUsersResponse>(["admin-users", page, pageSize, search, status], `/admin/users?${queryParams.toString()}`));
 };
 
-export const useToggleUserStatus = () => {
+export const useToggleUserStatus = (isMounted?: React.MutableRefObject<boolean>) => {
   const queryClient = useQueryClient();
   const http = useHttp();
   return useMutation({
@@ -151,6 +151,7 @@ export const useToggleUserStatus = () => {
         return response.json() as Promise<unknown>;
     },
     onSuccess: () => {
+      if (isMounted?.current === false) return;
       sileo.success({ title: "User status updated" });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     }
@@ -258,12 +259,13 @@ export const useUserCommissionBounds = (userId: string) => {
   return useQuery(http.get<UserCommissionBounds>(["user-commission-bounds", userId], `/admin/users/${userId}/commission-bounds`));
 };
 
-export const useSetUserCommissionBounds = () => {
+export const useSetUserCommissionBounds = (isMounted?: React.MutableRefObject<boolean>) => {
   const queryClient = useQueryClient();
   const http = useHttp();
   return useMutation({
     ...http.post<UserCommissionBounds, { min_rate: number; max_rate: number }>("/admin/users/commission-bounds", {
-      onSuccess: (_, variables) => {
+      onSuccess: () => {
+        if (isMounted?.current === false) return;
         sileo.success({ title: "User commission bounds updated" });
         queryClient.invalidateQueries({ queryKey: ["user-commission-bounds"] });
         queryClient.invalidateQueries({ queryKey: ["admin-users"] });

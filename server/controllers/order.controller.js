@@ -26,11 +26,20 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
 
     const baseRate = parseFloat(courier.rate);
 
-    // Formula: base_shipment_price + frenchies % on base_shipment price + global % on base_shipment price
+    // Formula: base_shipment_price + franchise % on base_shipment price + global % on base_shipment price
     const globalCommissionAmount = (baseRate * globalCommissionRate) / 100;
     const franchiseCommissionAmount = (baseRate * markupPercent) / 100;
 
     const finalRate = baseRate + globalCommissionAmount + franchiseCommissionAmount;
+
+    // Debug logging in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Price Calc] ${courier.courier_name}:`);
+      console.log(`  Shiprocket Base Rate: ₹${baseRate}`);
+      console.log(`  Global Commission (${globalCommissionRate}%): ₹${globalCommissionAmount}`);
+      console.log(`  Franchise Commission (${markupPercent}%): ₹${franchiseCommissionAmount}`);
+      console.log(`  Final Rate: ₹${finalRate}`);
+    }
 
     return {
       courier_name: courier.courier_name,

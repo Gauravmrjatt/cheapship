@@ -95,6 +95,30 @@ export const useHttp = () => {
     };
   };
 
+  const patch = <TData = unknown, TVariables = unknown>(endpoint: string, options?: HttpOptions<TData, TVariables>) => {
+    return {
+      mutationFn: async (variables: TVariables) => {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          method: "PATCH",
+          headers: getHeaders(token),
+          body: JSON.stringify(variables),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "API request failed");
+        }
+        return response.json();
+      },
+      onSuccess: options?.onSuccess,
+      onError: (error: Error, variables: TVariables) => {
+        sileo.error({ title: "Error" , description: error.message });
+        if (options?.onError) {
+          options.onError(error, variables);
+        }
+      },
+    };
+  };
+
   const del = <TData = unknown, TVariables = unknown>(endpoint: string, options?: HttpOptions<TData, TVariables>) => {
     return {
       mutationFn: async (variables: TVariables) => {
@@ -122,5 +146,5 @@ export const useHttp = () => {
     };
   };
 
-  return { get, post, put, del };
+  return { get, post, put, patch, del };
 };

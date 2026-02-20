@@ -7,7 +7,7 @@ const getTransactions = async (req, res) => {
   const userId = req.user.id;
   const { page = 1, pageSize = 10, type, category, status, search, fromDate, toDate } = req.query;
 
-  const pageNum = parseInt(page, 10);
+  const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
   const offset = (pageNum - 1) * pageSizeNum;
 
