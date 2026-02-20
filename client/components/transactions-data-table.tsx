@@ -317,7 +317,7 @@ export function TransactionsDataTable({
           <div className="flex items-center gap-4">
             <Select
               value={filters?.category ?? "ALL"}
-              onValueChange={(v) => handleFilterUpdate("category", v === "ALL" ? undefined : v)}
+      onValueChange={(v) => { if (v) handleFilterUpdate("category", v === "ALL" ? undefined : v) }}
             >
               <SelectTrigger className="flex w-fit lg:hidden" size="sm">
                 <SelectValue placeholder="Category" />
@@ -357,7 +357,7 @@ export function TransactionsDataTable({
           <div className="flex items-center gap-2">
             <Select
               value={filters?.type ?? "ALL"}
-              onValueChange={(v) => handleFilterUpdate("type", v === "ALL" ? undefined : v)}
+              onValueChange={(v) => { if (v) handleFilterUpdate("type", v === "ALL" ? undefined : v) }}
             >
               <SelectTrigger className="w-28" size="sm">
                 <SelectValue placeholder="Type" />
