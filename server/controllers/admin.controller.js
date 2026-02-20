@@ -1,3 +1,76 @@
+const bcrypt = require('bcrypt');
+const otpService = require('../services/otp.service');
+const emailService = require('../services/email.service');
+
+const sendAdminForgotPasswordOtp = async (req, res) => {
+  const { email } = req.body;
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const admin = await prisma.user.findFirst({
+      where: { email, user_type: 'ADMIN' }
+    });
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    const rateLimitCheck = await otpService.checkRateLimit(prisma, email, 'admin_forgot_password');
+    if (!rateLimitCheck.allowed) {
+      return res.status(429).json({ 
+        message: rateLimitCheck.message,
+        retryAfter: rateLimitCheck.retryAfter 
+      });
+    }
+
+    const otp = otpService.generateOtp();
+    await otpService.createOtpRecord(prisma, email, admin.mobile, otp, 'admin_forgot_password');
+
+    await emailService.sendOtpEmail(email, otp, 'forgot_password');
+
+    res.status(200).json({ 
+      message: 'OTP sent to your email',
+      expiresIn: otpService.OTP_EXPIRY_MINUTES * 60
+    });
+  } catch (error) {
+    console.error('Admin forgot password error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const resetAdminPassword = async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const admin = await prisma.user.findFirst({
+      where: { email, user_type: 'ADMIN' }
+    });
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    const verifyResult = await otpService.verifyOtp(prisma, email, otp, 'admin_forgot_password');
+    
+    if (!verifyResult.valid) {
+      return res.status(400).json({ message: verifyResult.error });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: admin.id },
+      data: { password_hash: hashedPassword }
+    });
+
+    res.status(200).json({ message: 'Password reset successfully. Please login with your new password.' });
+  } catch (error) {
+    console.error('Admin reset password error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 const getDashboardStats = async (req, res) => {
   const prisma = req.app.locals.prisma;
   
@@ -151,7 +224,7 @@ const getAllOrders = async (req, res) => {
 
   if (search) {
     where.OR = [
-      { id: { equals: parseInt(search) || undefined } }, // If search is number
+      { id: { equals: parseInt(search) || undefined } },
       { courier_name: { contains: search, mode: 'insensitive' } },
       { user: { name: { contains: search, mode: 'insensitive' } } }
     ];
@@ -173,8 +246,20 @@ const getAllOrders = async (req, res) => {
       prisma.order.count({ where })
     ]);
 
+    const ordersWithPriceBreakdown = orders.map(order => ({
+      ...order,
+      price_breakdown: {
+        base_shipping_charge: order.base_shipping_charge,
+        global_commission_rate: order.global_commission_rate,
+        global_commission_amount: order.global_commission_amount,
+        franchise_commission_rate: order.franchise_commission_rate,
+        franchise_commission_amount: order.franchise_commission_amount,
+        final_shipping_charge: order.shipping_charge
+      }
+    }));
+
     res.json({
-      data: orders,
+      data: ordersWithPriceBreakdown,
       pagination: {
         total,
         totalPages: Math.ceil(total / pageSizeNum),
@@ -315,16 +400,17 @@ const processWithdrawal = async (req, res) => {
                     }
                   }
        
-                  await tx.transaction.create({
-                      data: {
-                          user_id: withdrawal.user_id,
-                          amount: withdrawal.amount,
-                          type: 'DEBIT',
-                          status: 'SUCCESS',
-                          description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
-                          reference_id: withdrawal.id
-                      }
-                  });
+                   await tx.transaction.create({
+                       data: {
+                           user_id: withdrawal.user_id,
+                           amount: withdrawal.amount,
+                           type: 'DEBIT',
+                           category: 'COMMISSION',
+                           status: 'SUCCESS',
+                           description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
+                           reference_id: withdrawal.id
+                       }
+                   });
                }
       return updatedWithdrawal;
     });
@@ -372,7 +458,7 @@ const updateGlobalSettings = async (req, res) => {
 
 const getAllTransactions = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  const { page = 1, pageSize = 10, type, search, userId } = req.query;
+  const { page = 1, pageSize = 10, type, category, search, userId, fromDate, toDate } = req.query;
 
   const pageNum = parseInt(page, 10);
   const pageSizeNum = parseInt(pageSize, 10);
@@ -384,8 +470,24 @@ const getAllTransactions = async (req, res) => {
     where.type = type;
   }
 
+  if (category && category !== 'ALL') {
+    where.category = category;
+  }
+
   if (userId) {
     where.user_id = userId;
+  }
+
+  if (fromDate || toDate) {
+    where.created_at = {};
+    if (fromDate) {
+      where.created_at.gte = new Date(fromDate);
+    }
+    if (toDate) {
+      const endOfDay = new Date(toDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      where.created_at.lte = endOfDay;
+    }
   }
 
   if (search) {
@@ -675,7 +777,168 @@ const getUserCommissionBounds = async (req, res) => {
   }
 };
 
+const getAllCODOrders = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { page = 1, pageSize = 10, remittance_status, search } = req.query;
+
+  const pageNum = parseInt(page, 10);
+  const pageSizeNum = parseInt(pageSize, 10);
+  const offset = (pageNum - 1) * pageSizeNum;
+
+  const where = {
+    payment_mode: 'COD'
+  };
+
+  if (remittance_status && remittance_status !== 'ALL') {
+    where.remittance_status = remittance_status;
+  }
+
+  if (search) {
+    where.OR = [
+      { id: { equals: parseInt(search) || undefined } },
+      { courier_name: { contains: search, mode: 'insensitive' } },
+      { user: { name: { contains: search, mode: 'insensitive' } } }
+    ];
+  }
+
+  try {
+    const [orders, total, totalCODAmount, totalRemittedAmount] = await prisma.$transaction([
+      prisma.order.findMany({
+        where,
+        skip: offset,
+        take: pageSizeNum,
+        orderBy: { created_at: 'desc' },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true }
+          },
+          order_receiver_address: {
+            select: { name: true, city: true, state: true }
+          }
+        }
+      }),
+      prisma.order.count({ where }),
+      prisma.order.aggregate({
+        where: { ...where, remittance_status: 'PENDING' },
+        _sum: { cod_amount: true }
+      }),
+      prisma.order.aggregate({
+        where: { ...where, remittance_status: 'REMITTED' },
+        _sum: { remitted_amount: true }
+      })
+    ]);
+
+    res.json({
+      data: orders,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / pageSizeNum),
+        currentPage: pageNum,
+        pageSize: pageSizeNum
+      },
+      summary: {
+        totalPendingCOD: totalCODAmount._sum.cod_amount || 0,
+        totalRemitted: totalRemittedAmount._sum.remitted_amount || 0
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const updateOrderRemittance = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { id } = req.params;
+  const { remittance_status, remitted_amount, remittance_ref_id } = req.body;
+
+  if (!['NOT_APPLICABLE', 'PENDING', 'PROCESSING', 'REMITTED', 'FAILED'].includes(remittance_status)) {
+    return res.status(400).json({ message: 'Invalid remittance status' });
+  }
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.payment_mode !== 'COD') {
+      return res.status(400).json({ message: 'Only COD orders can have remittance status updated' });
+    }
+
+    const updateData = { remittance_status };
+
+    if (remittance_status === 'REMITTED') {
+      updateData.remitted_amount = remitted_amount || order.cod_amount;
+      updateData.remitted_at = new Date();
+      if (remittance_ref_id) {
+        updateData.remittance_ref_id = remittance_ref_id;
+      }
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: BigInt(id) },
+      data: updateData,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
+
+    res.json({ message: 'Remittance status updated', order: updatedOrder });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const getOrderById = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { id } = req.params;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: BigInt(id) },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, mobile: true }
+        },
+        order_pickup_address: true,
+        order_receiver_address: true
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    res.json({
+      ...order,
+      price_breakdown: {
+        base_shipping_charge: order.base_shipping_charge,
+        global_commission_rate: order.global_commission_rate,
+        global_commission_amount: order.global_commission_amount,
+        franchise_commission_rate: order.franchise_commission_rate,
+        franchise_commission_amount: order.franchise_commission_amount,
+        final_shipping_charge: order.shipping_charge
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    if (error.code === 'P2023') {
+      return res.status(404).json({ message: 'Invalid order ID format' });
+    }
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
+  sendAdminForgotPasswordOtp,
+  resetAdminPassword,
   getDashboardStats,
   getUsers,
   toggleUserStatus,
@@ -691,5 +954,8 @@ module.exports = {
   updateReferralLevelSetting,
   getNetworkCommissionStats,
   setUserCommissionBounds,
-  getUserCommissionBounds
+  getUserCommissionBounds,
+  getAllCODOrders,
+  updateOrderRemittance,
+  getOrderById
 };

@@ -22,7 +22,8 @@ import {
   Search01Icon,
   AiCloudIcon,
   RocketIcon,
-  Cancel01Icon
+  Cancel01Icon,
+  ArrowRight01Icon
 } from "@hugeicons/core-free-icons";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { calculateRateSchema } from "@/lib/validators/order";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { useRouter } from "next/navigation";
+import { useRateCalculatorStore } from "@/lib/store/rate-calculator";
 
 interface LocationInfo {
   city: string;
@@ -69,12 +72,18 @@ interface RateResponse {
   serviceable_couriers: CourierPartner[];
 }
 
+const rateCalculatorSchema = calculateRateSchema.extend({
+  order_type: z.enum(["SURFACE", "EXPRESS"]).default("SURFACE"),
+});
+
 export default function RateCalculatorPage() {
   const [showRates, setShowRates] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const router = useRouter();
+  const { setRateData } = useRateCalculatorStore();
   
-  const form = useForm<z.infer<typeof calculateRateSchema>>({
-    resolver: zodResolver(calculateRateSchema),
+  const form = useForm<z.infer<typeof rateCalculatorSchema>>({
+    resolver: zodResolver(rateCalculatorSchema),
     defaultValues: {
       pickupPincode: "",
       deliveryPincode: "",
@@ -85,6 +94,7 @@ export default function RateCalculatorPage() {
       paymentType: "PREPAID",
       shipmentValue: 0,
       dangerousGoods: false,
+      order_type: "SURFACE",
     },
   });
 
@@ -130,7 +140,7 @@ export default function RateCalculatorPage() {
     declared_value: formValues.shipmentValue?.toString(),
     length: formValues.length?.toString(),
     breadth: formValues.width?.toString(),
-    height: formValues.height?.toString(),
+    height: formValues.height?.toString()
   }).toString(), [formValues]);
 
   const { data, isLoading, isError, refetch } = useQuery<RateResponse>(
@@ -161,7 +171,33 @@ export default function RateCalculatorPage() {
       paymentType: "PREPAID",
       shipmentValue: 0,
       dangerousGoods: false,
+      order_type: "SURFACE",
     });
+  };
+
+  const handleShipNow = (courier: CourierPartner) => {
+    setRateData({
+      pickupPincode: formValues.pickupPincode,
+      deliveryPincode: formValues.deliveryPincode,
+      weight: formValues.actualWeight,
+      length: formValues.length,
+      width: formValues.width,
+      height: formValues.height,
+      paymentType: formValues.paymentType as "PREPAID" | "COD",
+      shipmentValue: formValues.shipmentValue,
+      order_type: formValues.order_type as "SURFACE" | "EXPRESS",
+      selectedCourier: {
+        courier_company_id: courier.courier_company_id,
+        courier_name: courier.courier_name,
+        rate: courier.rate,
+        mode: courier.mode,
+        rating: courier.rating,
+        estimated_delivery: courier.estimated_delivery,
+        delivery_in_days: courier.delivery_in_days,
+        chargeable_weight: courier.chargeable_weight,
+      },
+    });
+    router.push("/dashboard/orders/new");
   };
 
   const partners = data?.serviceable_couriers ?? [];
@@ -306,6 +342,28 @@ export default function RateCalculatorPage() {
                     />
                   </Field>
 
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Delivery Mode</FieldLabel>
+                    <Controller
+                      control={form.control}
+                      name="order_type"
+                      render={({ field }) => (
+                        <Tabs value={field.value} onValueChange={field.onChange} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="SURFACE">
+                              <HugeiconsIcon icon={TruckIcon} size={14} className="mr-1.5" />
+                              Surface
+                            </TabsTrigger>
+                            <TabsTrigger value="EXPRESS">
+                              <HugeiconsIcon icon={RocketIcon} size={14} className="mr-1.5" />
+                              Air
+                            </TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      )}
+                    />
+                  </Field>
+
                   <div className="flex items-center space-x-2 rounded-lg border p-4 bg-muted/30">
                     <Controller
                       control={form.control}
@@ -387,7 +445,7 @@ export default function RateCalculatorPage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Origin</p>
-                    <p className="font-bold">{data?.pickup_location?.city || "Detecting..."} {formValues.pickupPincode}</p>
+                    <p className="font-bold">{data?.pickup_location?.city || formValues.pickupPincode}</p>
                   </div>
                 </div>
                 <div className="p-4 rounded-xl border bg-card flex items-center gap-4">
@@ -396,7 +454,7 @@ export default function RateCalculatorPage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Destination</p>
-                    <p className="font-bold">{data?.delivery_location?.city || "Detecting..."} {formValues.deliveryPincode}</p>
+                    <p className="font-bold">{data?.delivery_location?.city || formValues.deliveryPincode}</p>
                   </div>
                 </div>
               </div>
@@ -483,7 +541,10 @@ export default function RateCalculatorPage() {
                             <p className="text-2xl font-black tabular-nums">₹{courier.rate.toFixed(2)}</p>
                             <p className="text-[9px] text-muted-foreground font-bold uppercase">Incl. GST</p>
                           </div>
-                          <Button size="sm" className="hidden sm:flex font-bold">Ship Now</Button>
+                          <Button size="sm" className="font-bold" onClick={() => handleShipNow(courier)}>
+                            Ship Now
+                            <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="ml-1" />
+                          </Button>
                         </div>
                       </div>
                       {courier.is_flagged && (

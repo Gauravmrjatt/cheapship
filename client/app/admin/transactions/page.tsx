@@ -15,19 +15,25 @@ function TransactionsContent() {
   const [pageSize, setPageSize] = useState(10);
   const [filters, setFilters] = useState({ 
     type: "ALL", 
+    category: "ALL",
     search: "", 
-    userId: userIdFromQuery 
+    userId: userIdFromQuery,
+    fromDate: undefined as string | undefined,
+    toDate: undefined as string | undefined
   });
 
   const { data, isLoading } = useAdminTransactions(
     page, 
     pageSize, 
-    filters.type,
+    filters.type === "ALL" ? undefined : filters.type,
     filters.search,
-    filters.userId
+    filters.userId,
+    filters.category === "ALL" ? undefined : filters.category,
+    filters.fromDate,
+    filters.toDate
   );
 
-  const handleFilterChange = (newFilters: { type?: string; search?: string; userId?: string }) => {
+  const handleFilterChange = (newFilters: { type?: string; category?: string; search?: string; userId?: string; fromDate?: string; toDate?: string }) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1);
   };

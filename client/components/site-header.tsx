@@ -3,9 +3,9 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useUser } from "@/lib/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { RupeeSquareIcon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import { RupeeSquareIcon, PlusSignIcon, Alert02Icon } from "@hugeicons/core-free-icons";
 import { useCreateRazorpayOrder, useVerifyRazorpayPayment } from "@/lib/hooks/use-transactions";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRazorpay, RazorpayOrderOptions } from "react-razorpay";
 import {
   Dialog,
@@ -25,15 +25,40 @@ interface SiteHeaderProps {
 export function SiteHeader({ pageTitle }: SiteHeaderProps) {
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
+  const [razorpayError, setRazorpayError] = useState<string | null>(null);
 
   const { data: user } = useUser();
-  const { Razorpay, isLoading: isRazorpayLoading } = useRazorpay();
+  const { Razorpay, isLoading: isRazorpayLoading, error: razorpayLoadError } = useRazorpay();
   const createOrderMutation = useCreateRazorpayOrder();
   const verifyPaymentMutation = useVerifyRazorpayPayment();
+
+  useEffect(() => {
+    if (razorpayLoadError) {
+      setRazorpayError("Failed to load payment gateway. Please check your internet connection.");
+    }
+  }, [razorpayLoadError]);
+
+  useEffect(() => {
+    if (isRazorpayLoading) {
+      const timeout = setTimeout(() => {
+        setRazorpayError("Payment gateway is taking too long to load. Please try again.");
+      }, 10000);
+      return () => clearTimeout(timeout);
+    } else {
+      setRazorpayError(null);
+    }
+  }, [isRazorpayLoading]);
 
   const handleTopUp = async () => {
     const amount = parseFloat(topUpAmount);
     if (isNaN(amount) || amount <= 0) return;
+
+    if (!Razorpay) {
+      setRazorpayError("Payment gateway not available. Please refresh and try again.");
+      return;
+    }
+
+    setRazorpayError(null);
 
     try {
       const order = await createOrderMutation.mutateAsync({ amount });
@@ -66,9 +91,13 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
       };
 
       const rzp1 = new Razorpay(options);
+      rzp1.on('payment.failed', (response: any) => {
+        setRazorpayError(response.error.description || "Payment failed. Please try again.");
+      });
       rzp1.open();
     } catch (error) {
       console.error("Payment initiation failed", error);
+      setRazorpayError("Failed to initiate payment. Please try again.");
     }
   };
 
@@ -132,6 +161,12 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
               ))}
             </div>
           </div>
+          {razorpayError && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+              <HugeiconsIcon icon={Alert02Icon} size={16} />
+              <span>{razorpayError}</span>
+            </div>
+          )}
           <DialogFooter>
             <Button
               onClick={handleTopUp}

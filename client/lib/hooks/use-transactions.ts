@@ -9,7 +9,9 @@ export interface Transaction {
   user_id: string;
   amount: number;
   type: 'CREDIT' | 'DEBIT';
+  category: 'WALLET_TOPUP' | 'ORDER_PAYMENT' | 'REFUND' | 'COD_REMITTANCE' | 'COMMISSION';
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
+  status_reason: string | null;
   description: string | null;
   reference_id: string | null;
   created_at: string;
@@ -20,7 +22,16 @@ export interface Transaction {
   };
 }
 
-export const useTransactions = (page: number = 1, pageSize: number = 10, type?: string, status?: string, search?: string) => {
+export const useTransactions = (
+  page: number = 1, 
+  pageSize: number = 10, 
+  type?: string, 
+  category?: string,
+  status?: string, 
+  search?: string,
+  fromDate?: string,
+  toDate?: string
+) => {
   const http = useHttp();
   
   const queryParams = new URLSearchParams({
@@ -29,8 +40,11 @@ export const useTransactions = (page: number = 1, pageSize: number = 10, type?: 
   });
   
   if (type) queryParams.append("type", type);
+  if (category) queryParams.append("category", category);
   if (status) queryParams.append("status", status);
   if (search) queryParams.append("search", search);
+  if (fromDate) queryParams.append("fromDate", fromDate);
+  if (toDate) queryParams.append("toDate", toDate);
 
   return useQuery(http.get<{
     data: Transaction[];
@@ -40,7 +54,7 @@ export const useTransactions = (page: number = 1, pageSize: number = 10, type?: 
       currentPage: number;
       pageSize: number;
     }
-  }>(["transactions", page, pageSize, type, status, search], `/transactions?${queryParams.toString()}`));
+  }>(["transactions", page, pageSize, type, category, status, search, fromDate, toDate], `/transactions?${queryParams.toString()}`));
 };
 
 export const useTopUpWallet = () => {

@@ -13,8 +13,10 @@ import {
   FieldError,
   FieldLabel,
 } from "@/components/ui/field";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { createOrderSchema, shiprocketPickupSchema } from "@/lib/validators/order";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { sileo } from "sileo";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useHttp } from "@/lib/hooks/use-http";
@@ -45,7 +47,9 @@ import {
   Delete01Icon,
   CheckmarkBadge01Icon,
   Loading03Icon,
-  Shield01Icon
+  Shield01Icon,
+  TaskSquare01Icon,
+  AlertCircleIcon
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -69,16 +73,52 @@ import {
   DialogTitle,
   DialogFooter
 } from "@/components/ui/dialog";
+import { useRateCalculatorStore } from "@/lib/store/rate-calculator";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+const PRODUCT_SUGGESTIONS = [
+  "Cotton Shirt",
+  "Denim Jeans",
+  "Silk Saree",
+  "T-Shirt",
+  "Kurta",
+  "Electronics Item",
+  "Mobile Phone",
+  "Books",
+  "Cosmetics",
+  "Footwear",
+  "Handbag",
+  "Watch",
+  "Sunglasses",
+  "Jewelry",
+  "Home Decor",
+  "Kitchen Items",
+  "Sports Equipment",
+  "Toys",
+  "Stationery",
+  "Medicines"
+];
+
+const formatPrice = (price: number | string) => {
+  return parseFloat(String(price)).toFixed(2);
+};
 
 const steps = [
   { id: 1, title: "Service", icon: Package01Icon },
-  { id: 2, title: "Details", icon: ShippingTruck01Icon },
-  { id: 3, title: "Sender", icon: UserCircle02Icon },
-  { id: 4, title: "Receiver", icon: UserGroupIcon },
-  { id: 5, title: "Couriers", icon: TruckIcon },
+  { id: 2, title: "Courier", icon: TruckIcon },
+  { id: 3, title: "Pickup", icon: ShippingTruck01Icon },
+  { id: 4, title: "Sender", icon: UserCircle02Icon },
+  { id: 5, title: "Receiver", icon: UserGroupIcon },
   { id: 6, title: "Items", icon: Add01Icon },
-  { id: 7, title: "Review", icon: SearchIcon },
-  { id: 8, title: "Finish", icon: CreditCardIcon },
+  { id: 7, title: "Payment", icon: CreditCardIcon },
+  { id: 8, title: "Review", icon: SearchIcon },
 ];
 
 interface SavedAddress {
@@ -89,7 +129,7 @@ interface SavedAddress {
   complete_address: string;
   city: string;
   state: string;
-  pin_code: string;
+  pincode: string;
   address_label?: string;
   is_default: boolean;
 }
@@ -137,9 +177,17 @@ export default function CreateOrderPage() {
   const [openOtpDialog, setOpenOtpDialog] = useState(false);
   const [otp, setOtp] = useState("");
   const [pendingOrderData, setPendingOrderData] = useState<any>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [productSuggestionsOpen, setProductSuggestionsOpen] = useState<number | null>(null);
+  const [recentlyUsedProducts, setRecentlyUsedProducts] = useState<string[]>([]);
+  const [courierRatePincode, setCourierRatePincode] = useState({ pickup: "", delivery: "" });
+  const [courierRateWeight, setCourierRateWeight] = useState<number>(0.5);
+  const [courierRateValue, setCourierRateValue] = useState<number>(0);
+  const [courierRateDimensions, setCourierRateDimensions] = useState({ length: 10, width: 10, height: 10 });
   const router = useRouter();
   const http = useHttp();
   const queryClient = useQueryClient();
+  const { data: rateCalculatorData, clearRateData } = useRateCalculatorStore();
 
   const pickupForm = useForm<z.infer<typeof shiprocketPickupSchema>>({
     resolver: zodResolver(shiprocketPickupSchema),
@@ -244,7 +292,8 @@ export default function CreateOrderPage() {
 
   const { mutate: createOrderMutation, isPending: isCreatingOrder } = useMutation(
     http.post("/orders", {
-      onSuccess: () => {
+      onSuccess: (data: any) => {
+        setCreatedOrderId(data.id?.toString() || null);
         setShipped(true);
         sileo.success({ title: "Success", description: "Order created successfully" });
         const end = Date.now() + 3 * 1000;
@@ -274,17 +323,18 @@ export default function CreateOrderPage() {
     })
   );
 
-  const form = useForm<z.infer<typeof createOrderSchema>>({
+const form = useForm<z.infer<typeof createOrderSchema>>({
     resolver: zodResolver(createOrderSchema) as any,
     defaultValues: {
       order_type: "SURFACE",
       shipment_type: "DOMESTIC",
       payment_mode: "PREPAID",
       total_amount: 0,
-      weight: 0,
-      length: 0,
-      width: 0,
-      height: 0,
+      cod_amount: 0,
+      weight: 0.5,
+      length: 10,
+      width: 10,
+      height: 10,
       pickup_location: "",
       pickup_address: {
         name: "",
@@ -307,7 +357,10 @@ export default function CreateOrderPage() {
       products: [{ name: "", quantity: 1, price: 0 }],
       save_pickup_address: false,
       save_receiver_address: false,
+      make_pickup_address: false,
+      same_as_pickup: false,
     },
+    mode: "onChange",
   });
 
   const { errors } = form.formState;
@@ -318,6 +371,56 @@ export default function CreateOrderPage() {
     name: "products",
   });
 
+  useEffect(() => {
+    if (rateCalculatorData) {
+      form.reset({
+        order_type: rateCalculatorData.order_type,
+        shipment_type: "DOMESTIC",
+        payment_mode: rateCalculatorData.paymentType,
+        total_amount: rateCalculatorData.shipmentValue,
+        weight: rateCalculatorData.weight,
+        length: rateCalculatorData.length,
+        width: rateCalculatorData.width,
+        height: rateCalculatorData.height,
+        pickup_location: "",
+        pickup_address: {
+          name: "",
+          phone: "",
+          email: "",
+          address: "",
+          city: "",
+          state: "",
+          pincode: rateCalculatorData.pickupPincode,
+        },
+        receiver_address: {
+          name: "",
+          phone: "",
+          email: "",
+          address: "",
+          city: "",
+          state: "",
+          pincode: rateCalculatorData.deliveryPincode,
+        },
+        products: [{ name: "", quantity: 1, price: rateCalculatorData.shipmentValue }],
+        save_pickup_address: false,
+        save_receiver_address: false,
+        courier_id: rateCalculatorData.selectedCourier?.courier_company_id,
+        courier_name: rateCalculatorData.selectedCourier?.courier_name,
+        shipping_charge: rateCalculatorData.selectedCourier?.rate,
+      });
+      setCourierRatePincode({ pickup: rateCalculatorData.pickupPincode, delivery: rateCalculatorData.deliveryPincode });
+      setCourierRateWeight(rateCalculatorData.weight);
+      setCourierRateValue(rateCalculatorData.shipmentValue);
+      setCourierRateDimensions({
+        length: rateCalculatorData.length,
+        width: rateCalculatorData.width,
+        height: rateCalculatorData.height
+      });
+      setCurrentStep(2);
+      clearRateData();
+    }
+  }, [rateCalculatorData, form, clearRateData]);
+
   const { data: savedAddresses } = useQuery<SavedAddress[]>(
     http.get(["saved-addresses"], "/addresses", true)
   );
@@ -327,6 +430,38 @@ export default function CreateOrderPage() {
   );
 
   const shiprocketPickupLocations = shiprocketPickups?.data?.shipping_address || [];
+
+  const { data: recentProductsData } = useQuery<{data: {products: {name: string}[] | null}[]}>({
+    queryKey: ['recent-products'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/orders?pageSize=20', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      return res.json();
+    },
+    select: (data) => {
+      const products = new Set<string>();
+      data.data?.forEach((order: any) => {
+        order.products?.forEach((p: any) => {
+          if (p.name) products.add(p.name);
+        });
+      });
+      return Array.from(products);
+    }
+  });
+
+  const allProductSuggestions = [...new Set([...PRODUCT_SUGGESTIONS, ...(recentProductsData || [])])];
+
+  useEffect(() => {
+    if (isShipped && createdOrderId) {
+      const timer = setTimeout(() => {
+        router.push('/dashboard/orders');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isShipped, createdOrderId, router]);
 
   // Fetch Pickup Locality Details
   const { data: pickupLocality, isLoading: isLoadingPickup } = useQuery<any>(
@@ -342,6 +477,22 @@ export default function CreateOrderPage() {
       ["pincode-details", formValues.receiver_address.pincode],
       `/orders/pincode-details?postcode=${formValues.receiver_address.pincode}`,
       formValues.receiver_address.pincode?.length === 6
+    )
+  );
+
+  const { data: courierPickupLocality, isLoading: isLoadingCourierPickup } = useQuery<any>(
+    http.get(
+      ["pincode-details-courier-pickup", courierRatePincode.pickup],
+      `/orders/pincode-details?postcode=${courierRatePincode.pickup}`,
+      courierRatePincode.pickup?.length === 6
+    )
+  );
+
+  const { data: courierDeliveryLocality, isLoading: isLoadingCourierDelivery } = useQuery<any>(
+    http.get(
+      ["pincode-details-courier-delivery", courierRatePincode.delivery],
+      `/orders/pincode-details?postcode=${courierRatePincode.delivery}`,
+      courierRatePincode.delivery?.length === 6
     )
   );
 
@@ -367,6 +518,8 @@ export default function CreateOrderPage() {
 
   const isPickupPincodeValid = pickupLocality?.success || !!pickupLocality?.postcode_details;
   const isDeliveryPincodeValid = deliveryLocality?.success || !!deliveryLocality?.postcode_details;
+  const isCourierPickupValid = courierPickupLocality?.success || !!courierPickupLocality?.postcode_details;
+  const isCourierDeliveryValid = courierDeliveryLocality?.success || !!courierDeliveryLocality?.postcode_details;
 
   // Real-time auto-fill for pickup address
   useEffect(() => {
@@ -386,44 +539,108 @@ export default function CreateOrderPage() {
     }
   }, [isDeliveryPincodeValid, deliveryLocality, form]);
 
-  // Courier Rates Query
-  const rateQueryParams = useMemo(() => new URLSearchParams({
-    pickup_postcode: formValues.pickup_address.pincode,
-    delivery_postcode: formValues.receiver_address.pincode,
-    weight: formValues.weight?.toString(),
-    cod: formValues.payment_mode === "COD" ? "1" : "0",
-    declared_value: formValues.total_amount?.toString(),
-    length: formValues.length?.toString(),
-    breadth: formValues.width?.toString(),
-    height: formValues.height?.toString(),
-    mode: formValues.order_type === "SURFACE" ? "Surface" : "Air"
-  }).toString(), [formValues, currentStep]);
+  const courierRateQueryParams = useMemo(() => {
+    const params = new URLSearchParams({
+      pickup_postcode: courierRatePincode.pickup,
+      delivery_postcode: courierRatePincode.delivery,
+      weight: courierRateWeight?.toString() || "0.5",
+      cod: formValues.payment_mode === "COD" ? "1" : "0",
+      declared_value: courierRateValue?.toString() || "0",
+      length: courierRateDimensions.length?.toString() || "10",
+      breadth: courierRateDimensions.width?.toString() || "10",
+      height: courierRateDimensions.height?.toString() || "10",
+      mode: formValues.order_type === "SURFACE" ? "Surface" : "Air"
+    });
+    return params.toString();
+  }, [courierRatePincode, courierRateWeight, courierRateValue, courierRateDimensions, formValues.payment_mode, formValues.order_type]);
 
   const { data: rateData, isLoading: isLoadingRates, refetch: refetchRates } = useQuery<RateResponse>(
     http.get(
-      ["order-rates", rateQueryParams],
-      `/orders/calculate-rates?${rateQueryParams}`,
-      currentStep === 5
+      ["order-rates", courierRateQueryParams],
+      `/orders/calculate-rates?${courierRateQueryParams}`,
+      currentStep === 2 && courierRatePincode.pickup.length === 6 && courierRatePincode.delivery.length === 6
     )
   );
 
+  const handleSameAsPickupChange = (checked: boolean) => {
+    form.setValue("same_as_pickup", checked);
+    if (checked && formValues.pickup_location) {
+      const selected = shiprocketPickupLocations.find(
+        (loc: ShiprocketPickupLocation) => loc.pickup_location === formValues.pickup_location
+      );
+      if (selected) {
+        form.setValue("pickup_address.name", selected.name, { shouldValidate: true });
+        form.setValue("pickup_address.phone", selected.phone, { shouldValidate: true });
+        form.setValue("pickup_address.email", selected.email || "", { shouldValidate: true });
+        form.setValue("pickup_address.pincode", selected.pin_code.toString(), { shouldValidate: true });
+        form.setValue("pickup_address.address", selected.address, { shouldValidate: true });
+        form.setValue("pickup_address.city", selected.city, { shouldValidate: true });
+        form.setValue("pickup_address.state", selected.state, { shouldValidate: true });
+      }
+    }
+  };
+
+  const handleMakePickupAddressChange = (checked: boolean) => {
+    form.setValue("make_pickup_address", checked);
+  };
+
+  const handleFetchCourierRates = () => {
+    if (courierRatePincode.pickup.length !== 6 || courierRatePincode.delivery.length !== 6) {
+      sileo.error({ title: "Error", description: "Please enter valid 6-digit pincodes" });
+      return;
+    }
+    if (!courierRateWeight || courierRateWeight < 0.1) {
+      sileo.error({ title: "Error", description: "Weight must be at least 0.1 kg" });
+      return;
+    }
+    if (!courierRateValue || courierRateValue < 1) {
+      sileo.error({ title: "Error", description: "Shipment value must be at least ₹1" });
+      return;
+    }
+    form.setValue("pickup_address.pincode", courierRatePincode.pickup, { shouldValidate: true });
+    form.setValue("receiver_address.pincode", courierRatePincode.delivery, { shouldValidate: true });
+    form.setValue("weight", courierRateWeight, { shouldValidate: true });
+    form.setValue("total_amount", courierRateValue, { shouldValidate: true });
+    form.setValue("length", courierRateDimensions.length, { shouldValidate: true });
+    form.setValue("width", courierRateDimensions.width, { shouldValidate: true });
+    form.setValue("height", courierRateDimensions.height, { shouldValidate: true });
+    refetchRates();
+  };
+
   const nextStep = async () => {
-    if (currentStep === 3 && !isPickupPincodeValid) {
-      sileo.error({ title: "Error" , description: "Please provide a valid pickup pincode" });
+    if (currentStep === 4 && !isPickupPincodeValid) {
+      sileo.error({ title: "Error", description: "Please provide a valid pickup pincode" });
       return;
     }
-    if (currentStep === 4 && !isDeliveryPincodeValid) {
-      sileo.error({ title: "Error" , description: "Please provide a valid delivery pincode" });
+    if (currentStep === 5 && !isDeliveryPincodeValid) {
+      sileo.error({ title: "Error", description: "Please provide a valid delivery pincode" });
       return;
     }
-    if (currentStep === 5 && !formValues.courier_id) {
-      sileo.error({ title: "Error" , description: "Please select a courier partner" });
+    if (currentStep === 2 && !formValues.courier_id) {
+      sileo.error({ title: "Error", description: "Please select a courier partner" });
       return;
     }
 
     const fieldsToValidate = getFieldsForStep(currentStep);
     const isValid = await form.trigger(fieldsToValidate as any);
     if (isValid) {
+      if (currentStep === 4 && formValues.make_pickup_address) {
+        const addr = formValues.pickup_address;
+        const pickupData = {
+          pickup_location: formValues.new_pickup_location_name || `Location-${Date.now()}`,
+          name: addr.name,
+          phone: addr.phone,
+          email: addr.email || "",
+          pin_code: addr.pincode,
+          address: addr.address,
+          city: addr.city,
+          state: addr.state,
+          country: "India",
+          gst: formValues.new_pickup_gst,
+          registered_name: formValues.new_pickup_registered_name,
+        };
+        saveShiprocketPickupMutation(pickupData as any);
+      }
       setCurrentStep((prev) => Math.min(prev + 1, steps.length));
     }
   };
@@ -434,12 +651,13 @@ export default function CreateOrderPage() {
 
   const getFieldsForStep = (step: number) => {
     switch (step) {
-      case 1: return ["order_type", "shipment_type", "payment_mode"];
-      case 2: return ["weight", "length", "width", "height", "total_amount", "pickup_location"];
-      case 3: return ["pickup_address.name", "pickup_address.phone", "pickup_address.pincode", "pickup_address.address"];
-      case 4: return ["receiver_address.name", "receiver_address.phone", "receiver_address.pincode", "receiver_address.address"];
-      case 5: return ["courier_id"];
+      case 1: return ["order_type", "shipment_type"];
+      case 2: return ["courier_id"];
+      case 3: return ["pickup_location"];
+      case 4: return ["pickup_address.name", "pickup_address.phone", "pickup_address.pincode", "pickup_address.address"];
+      case 5: return ["receiver_address.name", "receiver_address.phone", "receiver_address.pincode", "receiver_address.address"];
       case 6: return ["products"];
+      case 7: return ["payment_mode"];
       default: return [];
     }
   };
@@ -547,15 +765,14 @@ export default function CreateOrderPage() {
   };
 
   const selectSavedAddress = (address: SavedAddress, prefix: "pickup_address" | "receiver_address") => {
-    form.setValue(`${prefix}.name`, address.name);
-    form.setValue(`${prefix}.phone`, address.phone);
-    form.setValue(`${prefix}.email`, address.email || "");
-    form.setValue(`${prefix}.pincode`, address.pin_code);
-    form.setValue(`${prefix}.address`, address.complete_address);
-    form.setValue(`${prefix}.city`, address.city);
-    form.setValue(`${prefix}.state`, address.state);
+    form.setValue(`${prefix}.name`, address.name, { shouldValidate: true });
+    form.setValue(`${prefix}.phone`, address.phone, { shouldValidate: true });
+    form.setValue(`${prefix}.email`, address.email || "", { shouldValidate: true });
+    form.setValue(`${prefix}.pincode`, address.pincode, { shouldValidate: true });
+    form.setValue(`${prefix}.address`, address.complete_address, { shouldValidate: true });
+    form.setValue(`${prefix}.city`, address.city, { shouldValidate: true });
+    form.setValue(`${prefix}.state`, address.state, { shouldValidate: true });
 
-    // Close the corresponding popover
     if (prefix === "pickup_address") {
       setOpenPickupPopover(false);
     } else {
@@ -564,13 +781,13 @@ export default function CreateOrderPage() {
   };
 
   const selectShiprocketPickup = (addr: ShiprocketPickupLocation) => {
-    form.setValue("pickup_address.name", addr.name);
-    form.setValue("pickup_address.phone", addr.phone);
-    form.setValue("pickup_address.email", addr.email || "");
-    form.setValue("pickup_address.pincode", addr.pin_code.toString());
-    form.setValue("pickup_address.address", addr.address);
-    form.setValue("pickup_address.city", addr.city);
-    form.setValue("pickup_address.state", addr.state);
+    form.setValue("pickup_address.name", addr.name, { shouldValidate: true });
+    form.setValue("pickup_address.phone", addr.phone, { shouldValidate: true });
+    form.setValue("pickup_address.email", addr.email || "", { shouldValidate: true });
+    form.setValue("pickup_address.pincode", addr.pin_code.toString(), { shouldValidate: true });
+    form.setValue("pickup_address.address", addr.address, { shouldValidate: true });
+    form.setValue("pickup_address.city", addr.city, { shouldValidate: true });
+    form.setValue("pickup_address.state", addr.state, { shouldValidate: true });
     setOpenShiprocketPopover(false);
   };
 
@@ -725,6 +942,39 @@ export default function CreateOrderPage() {
                   <FieldError errors={[errors.payment_mode]} />
                 </div>
               </div>
+
+              {form.watch("payment_mode") === "COD" && (
+                <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <HugeiconsIcon icon={CreditCardIcon} size={20} className="text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <h4 className="font-semibold text-sm text-yellow-800 dark:text-yellow-200">Cash on Delivery</h4>
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400">Amount to collect from customer on delivery</p>
+                      </div>
+                      <Field>
+                        <FieldLabel className="text-xs text-yellow-700 dark:text-yellow-300">COD Amount (₹)</FieldLabel>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-yellow-600 dark:text-yellow-400">₹</span>
+                          <Input
+                            type="number"
+                            className="pl-7 bg-white dark:bg-background"
+                            placeholder="Enter amount to collect"
+                            {...form.register("cod_amount", { valueAsNumber: true })}
+                            value={form.watch("cod_amount") ?? form.watch("total_amount") ?? ""}
+                            onChange={(e) => {
+                              form.setValue("cod_amount", parseFloat(e.target.value) || 0);
+                            }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-yellow-500 dark:text-yellow-500 mt-1">
+                          Default: Product value (₹{form.watch("total_amount") || 0})
+                        </p>
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -1066,48 +1316,95 @@ export default function CreateOrderPage() {
               </div>
 
               {isPickup && (
-                <div className="mt-6 pt-6 border-t space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <HugeiconsIcon icon={RocketIcon} size={18} className="text-primary" />
-                      <h3 className="text-sm font-semibold">Pickup Registration</h3>
-                    </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 text-[10px] uppercase font-bold text-primary"
-                      onClick={syncPickupFromMain}
-                    >
-                      Fill from Sender Address
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Register this location to enable pickups. You must provide a unique nickname.</p>
-                  <div className="flex gap-4 items-end">
-                    <div className="flex-1">
-                      <Label className="text-[10px] uppercase font-bold text-muted-foreground">Location Nickname</Label>
-                      <Input
-                        placeholder="e.g. Warehouse-1"
-                        {...pickupForm.register("pickup_location")}
-                        className="h-9 mt-1"
+                <>
+                  <div className="mt-6 pt-6 border-t space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Controller
+                        control={form.control}
+                        name="same_as_pickup"
+                        render={({ field }) => (
+                          <Checkbox
+                            id="sameAsPickup"
+                            checked={field.value}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked);
+                              if (checked && formValues.pickup_location) {
+                                const selected = shiprocketPickupLocations.find(
+                                  (loc: ShiprocketPickupLocation) => loc.pickup_location === formValues.pickup_location
+                                );
+                                if (selected) {
+                                  form.setValue("pickup_address.name", selected.name, { shouldValidate: true });
+                                  form.setValue("pickup_address.phone", selected.phone, { shouldValidate: true });
+                                  form.setValue("pickup_address.email", selected.email || "", { shouldValidate: true });
+                                  form.setValue("pickup_address.pincode", selected.pin_code.toString(), { shouldValidate: true });
+                                  form.setValue("pickup_address.address", selected.address, { shouldValidate: true });
+                                  form.setValue("pickup_address.city", selected.city, { shouldValidate: true });
+                                  form.setValue("pickup_address.state", selected.state, { shouldValidate: true });
+                                }
+                              }
+                            }}
+                          />
+                        )}
                       />
+                      <Label htmlFor="sameAsPickup" className="text-sm font-medium">
+                        Same as selected pickup location
+                      </Label>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-9 gap-2"
-                      onClick={handleRegisterShiprocketPickup}
-                      disabled={isSavingShiprocketPickup || !pickupForm.watch("pickup_location")}
-                    >
-                      {isSavingShiprocketPickup ? <HugeiconsIcon icon={Loading03Icon} className="animate-spin" size={14} /> : <HugeiconsIcon icon={Add01Icon} size={14} />}
-                      Register Location
-                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Check this to auto-fill sender details from the selected Shiprocket pickup location
+                    </p>
                   </div>
-                  {pickupForm.formState.errors.pickup_location && (
-                    <p className="text-[10px] text-destructive">{pickupForm.formState.errors.pickup_location.message}</p>
-                  )}
-                </div>
+
+                  <div className="mt-6 pt-6 border-t space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Controller
+                        control={form.control}
+                        name="make_pickup_address"
+                        render={({ field }) => (
+                          <Checkbox
+                            id="saveAsPickup"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <Label htmlFor="saveAsPickup" className="text-sm font-medium">
+                        Save as pickup address for future orders
+                      </Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Register this sender address as a new Shiprocket pickup location
+                    </p>
+
+                    {formValues.make_pickup_address && (
+                      <div className="p-4 border rounded-lg bg-muted/50 space-y-3">
+                        <div className="font-medium text-sm">Pickup Location Details</div>
+                        <Field>
+                          <FieldLabel className="text-xs">Pickup Location Name</FieldLabel>
+                          <Input 
+                            placeholder="e.g. Warehouse 1"
+                            {...form.register("new_pickup_location_name")}
+                          />
+                          <p className="text-[10px] text-muted-foreground">A unique nickname for this pickup location</p>
+                        </Field>
+                        <Field>
+                          <FieldLabel className="text-xs">GST Number (optional)</FieldLabel>
+                          <Input 
+                            placeholder="e.g. 29ABCDE1234F1Z5"
+                            {...form.register("new_pickup_gst")}
+                          />
+                        </Field>
+                        <Field>
+                          <FieldLabel className="text-xs">Registered Business Name (optional)</FieldLabel>
+                          <Input 
+                            placeholder="e.g. ABC Enterprises"
+                            {...form.register("new_pickup_registered_name")}
+                          />
+                        </Field>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </Card>
           </div>
@@ -1244,7 +1541,18 @@ export default function CreateOrderPage() {
                       <div className="md:col-span-6">
                         <Field data-invalid={!!productError?.name}>
                           <FieldLabel className="text-xs">Item Name</FieldLabel>
-                          <Input className="" placeholder="e.g. Cotton Shirt" aria-invalid={!!productError?.name} {...form.register(`products.${index}.name` as const)} />
+                          <Input 
+                            className="" 
+                            placeholder="e.g. Cotton Shirt" 
+                            aria-invalid={!!productError?.name} 
+                            {...form.register(`products.${index}.name` as const)} 
+                            list={`product-suggestions-${index}`}
+                          />
+                          <datalist id={`product-suggestions-${index}`}>
+                            {allProductSuggestions.map(s => (
+                              <option key={s} value={s} />
+                            ))}
+                          </datalist>
                           <FieldError errors={[productError?.name]} />
                         </Field>
                       </div>
@@ -1318,12 +1626,12 @@ export default function CreateOrderPage() {
                   </div> */}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping Charges</span>
-                    <span className="text-green-600 font-medium">+ ₹{Number(values.shipping_charge || 0).toFixed(2)}</span>
+                    <span className="text-green-600 font-medium">+ ₹{formatPrice(values.shipping_charge || 0)}</span>
                   </div>
                   <Separator className="my-2" />
                   <div className="flex justify-between items-end">
                     <span className="font-semibold">Total Payable</span>
-                    <span className="text-2xl font-bold text-primary">₹{ Number(values.shipping_charge || 0).toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-primary">₹{formatPrice(values.shipping_charge || 0)}</span>
                   </div>
                 </div>
               </Card>
@@ -1380,7 +1688,7 @@ export default function CreateOrderPage() {
 
               <Card className="max-w-xs mx-auto p-6 bg-muted/30 border-dashed">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Final Amount</p>
-                <p className="text-4xl font-bold text-foreground">₹{ Number(formValues.shipping_charge || 0).toFixed(2)}</p>
+                <p className="text-4xl font-bold text-foreground">₹{formatPrice(formValues.shipping_charge || 0)}</p>
               </Card></> : <>
               <div className="mx-auto w-20 h-20 bg-green-600 text-green-100 rounded-full flex items-center justify-center mb-6">
                 <HugeiconsIcon icon={CheckmarkCircle01Icon} size={40} />
@@ -1388,13 +1696,27 @@ export default function CreateOrderPage() {
 
               <div className="space-y-2 max-w-md mx-auto">
                 <h2 className="text-2xl font-bold tracking-tight">Shipped!</h2>
-                <p className="text-muted-foreground">Your order is shipped. Proceed to generate the label and initiate the shipment.</p>
+                <p className="text-muted-foreground">Your order has been created successfully. Redirecting to orders in 3 seconds...</p>
               </div>
 
               <Card className="max-w-xs mx-auto p-6 bg-muted/30 border-dashed">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Final Amount</p>
-                <p className="text-4xl font-bold text-foreground">₹{ Number(formValues.shipping_charge || 0).toFixed(2)}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Order ID</p>
+                <p className="text-2xl font-bold text-foreground">#{createdOrderId?.slice(0, 8)}</p>
               </Card>
+
+              <div className="flex gap-4 mt-6 justify-center">
+                <Button onClick={() => router.push(`/dashboard/orders/${createdOrderId}`)}>
+                  View Order
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  form.reset();
+                  setCurrentStep(1);
+                  setShipped(false);
+                  setCreatedOrderId(null);
+                }}>
+                  Create Another Order
+                </Button>
+              </div>
             </>}
 
           </div>
@@ -1409,12 +1731,27 @@ export default function CreateOrderPage() {
     if (currentStep === 4) return isDeliveryPincodeValid;
     if (currentStep === 5) return !!formValues.courier_id;
     if (currentStep === 6) {
-      // Validate at least one product with name and valid quantity/price
       const products = formValues.products || [];
       return products.length > 0 && products.every(p => p.name && p.quantity >= 1 && p.price >= 1);
     }
     return true;
   }
+
+  const getStepErrors = () => {
+    const fieldsToValidate = getFieldsForStep(currentStep);
+    const stepErrors: { field: string; message: string }[] = [];
+    
+    fieldsToValidate.forEach((field) => {
+      const error = getNestedError(errors, field);
+      if (error?.message) {
+        stepErrors.push({ field, message: error.message });
+      }
+    });
+    
+    return stepErrors;
+  }
+
+  const hasStepErrors = () => getStepErrors().length > 0;
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4 space-y-10 pb-32">
@@ -1466,6 +1803,20 @@ export default function CreateOrderPage() {
           >
             {renderStepContent()}
 
+            {hasStepErrors() && (
+              <Alert variant="destructive" className="mt-4">
+                <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4" />
+                <AlertTitle>Validation Errors</AlertTitle>
+                <AlertDescription>
+                  <ul className="list-disc list-inside mt-2">
+                    {getStepErrors().map((error, index) => (
+                      <li key={index} className="text-sm">{error.message}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="flex justify-between pt-6 border-t">
               <Button
                 type="button"
@@ -1487,28 +1838,23 @@ export default function CreateOrderPage() {
                   onClick={async (e) => {
                     e.preventDefault();
                     
-                    // Validate current step fields before proceeding
                     const fieldsToValidate = getFieldsForStep(currentStep);
-        
                     const isValid = await form.trigger(fieldsToValidate as any);
    
                     if (!isValid) {
-                      // Show validation errors
                       const fieldErrors = fieldsToValidate.map((f: string) => {
                         const error = getNestedError(form.formState.errors, f);
                         return error ? `${f}: ${error.message}` : null;
                       }).filter(Boolean);
                       
                       console.error("[ORDER FORM] Validation errors:", fieldErrors);
-                      if (fieldErrors.length > 0) {
-                        sileo.error({ title: "Validation Error", description: fieldErrors[0] as string });
-                      }
+                      sileo.error({ title: "Validation Error", description: "Please fill in all required fields correctly" });
                       return;
                     }
                     
                     nextStep();
                   }}
-                  disabled={!isCurrentStepValid()}
+                  disabled={!isCurrentStepValid() || hasStepErrors()}
                 >
                   Continue <HugeiconsIcon icon={ArrowRight01Icon} size={18} />
                 </Button>

@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const getTransactions = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
-  const { page = 1, pageSize = 10, type, status, search } = req.query;
+  const { page = 1, pageSize = 10, type, category, status, search, fromDate, toDate } = req.query;
 
   const pageNum = parseInt(page, 10);
   const pageSizeNum = parseInt(pageSize, 10);
@@ -14,7 +14,20 @@ const getTransactions = async (req, res) => {
   try {
     const where = { user_id: userId };
     if (type) where.type = type;
+    if (category) where.category = category;
     if (status) where.status = status;
+    
+    if (fromDate || toDate) {
+      where.created_at = {};
+      if (fromDate) {
+        where.created_at.gte = new Date(fromDate);
+      }
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        where.created_at.lte = endOfDay;
+      }
+    }
     
     if (search) {
       where.OR = [
@@ -88,7 +101,11 @@ const verifyRazorpayPayment = async (req, res) => {
   const userId = req.user.id;
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
 
-  const key_secret = process.env.RAZORPAY_KEY_SECRET || 'your_key_secret';
+  if (!process.env.RAZORPAY_KEY_SECRET) {
+    return res.status(500).json({ message: 'Payment configuration error. Please contact support.' });
+  }
+
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
   const generated_signature = crypto
     .createHmac('sha256', key_secret)
     .update(razorpay_order_id + '|' + razorpay_payment_id)
@@ -103,6 +120,7 @@ const verifyRazorpayPayment = async (req, res) => {
             user_id: userId,
             amount: amount,
             type: 'CREDIT',
+            category: 'WALLET_TOPUP',
             status: 'SUCCESS',
             description: 'Wallet Top-up via Razorpay',
             reference_id: razorpay_payment_id

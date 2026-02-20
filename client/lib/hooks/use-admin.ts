@@ -85,8 +85,15 @@ export interface AdminTransaction {
   user_id: string;
   amount: number;
   type: string;
+  category: string;
   status: string;
+  status_reason: string | null;
+  description: string | null;
   created_at: string;
+  user?: {
+    name: string;
+    email: string;
+  };
 }
 
 export interface AdminTransactionsResponse {
@@ -162,16 +169,33 @@ export const useAdminOrders = (page: number = 1, pageSize: number = 10, status: 
   return useQuery(http.get<AdminOrdersResponse>(["admin-orders", page, pageSize, status, search, userId], `/admin/orders?${queryParams.toString()}`));
 };
 
-export const useAdminTransactions = (page: number = 1, pageSize: number = 10, type: string = "ALL", search: string = "", userId: string = "") => {
+export const useAdminOrder = (orderId: string) => {
+  const http = useHttp();
+  return useQuery(http.get<AdminOrder & { price_breakdown: PriceBreakdown }>(["admin-order", orderId], `/admin/orders/${orderId}`, !!orderId));
+};
+
+interface PriceBreakdown {
+  base_shipping_charge: number;
+  global_commission_rate: number;
+  global_commission_amount: number;
+  franchise_commission_rate: number;
+  franchise_commission_amount: number;
+  final_shipping_charge: number;
+}
+
+export const useAdminTransactions = (page: number = 1, pageSize: number = 10, type: string = "ALL", search: string = "", userId: string = "", category: string = "ALL", fromDate?: string, toDate?: string) => {
   const http = useHttp();
   const queryParams = new URLSearchParams({
     page: page.toString(),
     pageSize: pageSize.toString(),
     type,
+    category,
     search,
     userId
   });
-  return useQuery(http.get<AdminTransactionsResponse>(["admin-transactions", page, pageSize, type, search, userId], `/admin/transactions?${queryParams.toString()}`));
+  if (fromDate) queryParams.append("fromDate", fromDate);
+  if (toDate) queryParams.append("toDate", toDate);
+  return useQuery(http.get<AdminTransactionsResponse>(["admin-transactions", page, pageSize, type, category, search, userId, fromDate, toDate], `/admin/transactions?${queryParams.toString()}`));
 };
 
 export const useAdminWithdrawals = (page: number = 1, pageSize: number = 10, status: string = "ALL") => {

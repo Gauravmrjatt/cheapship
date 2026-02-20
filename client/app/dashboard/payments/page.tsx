@@ -22,19 +22,28 @@ import { Add01Icon } from "@hugeicons/core-free-icons";
 export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [filters, setFilters] = useState({ type: "ALL", search: "" });
+  const [filters, setFilters] = useState({ 
+    type: "ALL", 
+    category: "ALL",
+    search: "",
+    fromDate: undefined as string | undefined,
+    toDate: undefined as string | undefined
+  });
 
 
   const { data, isLoading } = useTransactions(
     page, 
     pageSize, 
     filters.type === "ALL" ? undefined : filters.type,
+    filters.category === "ALL" ? undefined : filters.category,
     undefined,
-    filters.search
+    filters.search,
+    filters.fromDate,
+    filters.toDate
   );
 
   const handleFilterChange = (newFilters: any) => {
-    setFilters(newFilters);
+    setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1);
   };
 

@@ -35,7 +35,13 @@ const getShiprocketToken = async () => {
 
 const getServiceability = async (params) => {
   const token = map.get('token') || await getShiprocketToken();
-  const queryParams = new URLSearchParams(params).toString();
+  
+  const { mode, ...restParams } = params;
+  const queryParams = new URLSearchParams(restParams).toString();
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Shiprocket] Serviceability API params:', restParams);
+  }
 
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/serviceability/?${queryParams}`, {
@@ -47,6 +53,11 @@ const getServiceability = async (params) => {
     });
 
     const data = await response.json();
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Shiprocket] Serviceability API response:', JSON.stringify(data, null, 2));
+      console.log('[Shiprocket] Couriers returned:', data?.data?.available_courier_companies?.length || 0);
+    }
 
     if (!response.ok) {
       return data;
@@ -389,10 +400,29 @@ const getLocalityDetails = async (postcode) => {
     });
 
     const data = await response.json();
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        postcode_details: {
+          postcode: postcode,
+          city: '',
+          state: ''
+        }
+      };
+    }
+    
     return data;
   } catch (error) {
     console.error('Shiprocket locality details error:', error);
-    throw error;
+    return {
+      success: false,
+      postcode_details: {
+        postcode: postcode,
+        city: '',
+        state: ''
+      }
+    };
   }
 };
 

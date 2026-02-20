@@ -43,6 +43,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { 
   LeftToRightListBulletIcon, 
@@ -56,10 +62,17 @@ import {
   SearchIcon,
   Cancel01Icon,
   MoneyReceiveCircleIcon,
-  MoneySendCircleIcon
+  MoneySendCircleIcon,
+  InformationSquareIcon,
+  Wallet01Icon,
+  PackageIcon,
+  Delete02Icon,
+  DeliveryIcon,
+  Coins01Icon
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { Transaction } from "@/lib/hooks/use-transactions"
+import { DateRangePicker } from "@/components/ui/date-picker"
 
 interface TransactionsDataTableProps {
   data: Transaction[]
@@ -73,11 +86,22 @@ interface TransactionsDataTableProps {
   }
   filters?: {
     type: string
+    category: string
     search: string
+    fromDate?: string
+    toDate?: string
   }
   onPageChange?: (page: number) => void
   onPageSizeChange?: (pageSize: number) => void
-  onFilterChange?: (filters: { type: string, search: string }) => void
+  onFilterChange?: (filters: { type: string; category: string; search: string; fromDate?: string; toDate?: string }) => void
+}
+
+const categoryLabels: Record<string, { label: string; icon: typeof Wallet01Icon }> = {
+  WALLET_TOPUP: { label: "Wallet Topup", icon: Wallet01Icon },
+  ORDER_PAYMENT: { label: "Order Payment", icon: PackageIcon },
+  REFUND: { label: "Refund", icon: Delete02Icon },
+  COD_REMITTANCE: { label: "COD Remittance", icon: DeliveryIcon },
+  COMMISSION: { label: "Commission", icon: Coins01Icon },
 }
 
 export function TransactionsDataTable({
@@ -147,9 +171,6 @@ export function TransactionsDataTable({
           </div>
         );
       },
-      // Only show if at least one row has user data
-      // Actually table doesn't easily support dynamic columns based on data content in this way without more logic
-      // But we can just check if any row has user in the first render or just always include it and it will be empty for users
     },
     {
       accessorKey: "type",
@@ -169,6 +190,20 @@ export function TransactionsDataTable({
       ),
     },
     {
+      accessorKey: "category",
+      header: "Category",
+      cell: ({ row }) => {
+        const category = row.original.category;
+        const config = categoryLabels[category] || { label: category, icon: Wallet01Icon };
+        return (
+          <Badge variant="secondary" className="text-xs gap-1.5 capitalize">
+            <HugeiconsIcon icon={config.icon} size={12} strokeWidth={2} />
+            {config.label}
+          </Badge>
+        );
+      },
+    },
+    {
       accessorKey: "description",
       header: "Description",
       cell: ({ row }) => (
@@ -183,7 +218,8 @@ export function TransactionsDataTable({
       header: "Status",
       cell: ({ row }) => {
         const status = row.original.status.toLowerCase();
-        return (
+        const statusReason = row.original.status_reason;
+        const statusContent = (
           <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
             {status === "success" ? (
               <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400 size-3" />
@@ -195,6 +231,26 @@ export function TransactionsDataTable({
             {status}
           </Badge>
         );
+        
+        if (statusReason) {
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1">
+                    {statusContent}
+                    <HugeiconsIcon icon={InformationSquareIcon} size={14} className="text-muted-foreground" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-[200px] text-xs">{statusReason}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        }
+        
+        return statusContent;
       },
     },
     {
@@ -238,69 +294,113 @@ export function TransactionsDataTable({
     getSortedRowModel: getSortedRowModel(),
   })
 
-  const handleFilterUpdate = (key: string, value: string) => {
+  const handleFilterUpdate = (key: string, value: string | undefined) => {
     onFilterChange?.({ ...(filters as any), [key]: value })
+  }
+
+  const handleDateChange = (fromDate?: Date, toDate?: Date) => {
+    onFilterChange?.({
+      ...(filters as any),
+      fromDate: fromDate?.toISOString().split('T')[0],
+      toDate: toDate?.toISOString().split('T')[0],
+    })
   }
 
   return (
     <Tabs
-      value={filters?.type ?? "ALL"}
-      onValueChange={(v) => handleFilterUpdate("type", v ?? "ALL")}
+      value={filters?.category ?? "ALL"}
+      onValueChange={(v) => handleFilterUpdate("category", v === "ALL" ? undefined : v)}
       className="w-full flex-col justify-start gap-6"
     >
-      <div className="flex items-center justify-between px-4 lg:px-6">
-        <div className="flex items-center gap-4">
-          <Select
-            value={filters?.type ?? "ALL"}
-            onValueChange={(v) => handleFilterUpdate("type", v ?? "ALL")}
-          >
-            <SelectTrigger className="flex w-fit lg:hidden" size="sm">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Transactions</SelectItem>
-              <SelectItem value="CREDIT">Credits</SelectItem>
-              <SelectItem value="DEBIT">Debits</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="flex flex-col gap-4 px-4 lg:px-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Select
+              value={filters?.category ?? "ALL"}
+              onValueChange={(v) => handleFilterUpdate("category", v === "ALL" ? undefined : v)}
+            >
+              <SelectTrigger className="flex w-fit lg:hidden" size="sm">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All</SelectItem>
+                <SelectItem value="WALLET_TOPUP">Wallet Topup</SelectItem>
+                <SelectItem value="ORDER_PAYMENT">Orders</SelectItem>
+                <SelectItem value="REFUND">Refunds</SelectItem>
+                <SelectItem value="COD_REMITTANCE">COD Remittance</SelectItem>
+                <SelectItem value="COMMISSION">Commission</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
-            <TabsTrigger value="ALL">All Transactions</TabsTrigger>
-            <TabsTrigger value="CREDIT">Credits</TabsTrigger>
-            <TabsTrigger value="DEBIT">Debits</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="relative hidden w-64 lg:block">
-            <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search transactions..."
-              className="pl-9 h-8"
-              value={filters?.search ?? ""}
-              onChange={(e) => handleFilterUpdate("search", e.target.value)}
-            />
+            <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
+              <TabsTrigger value="ALL">All</TabsTrigger>
+              <TabsTrigger value="WALLET_TOPUP">Wallet</TabsTrigger>
+              <TabsTrigger value="ORDER_PAYMENT">Orders</TabsTrigger>
+              <TabsTrigger value="REFUND">Refunds</TabsTrigger>
+              <TabsTrigger value="COD_REMITTANCE">COD</TabsTrigger>
+              <TabsTrigger value="COMMISSION">Commission</TabsTrigger>
+            </TabsList>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-              <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} data-icon="inline-start" />
-              <span className="hidden lg:inline">Columns</span>
-              <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              {table.getAllColumns().filter(c => c.getCanHide()).map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="capitalize"
-                  checked={column.getIsVisible()}
-                  onCheckedChange={v => column.toggleVisibility(!!v)}
-                >
-                  {column.id.replace(/_/g, " ")}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <DateRangePicker
+              fromDate={filters?.fromDate ? new Date(filters.fromDate) : undefined}
+              toDate={filters?.toDate ? new Date(filters.toDate) : undefined}
+              onFromDateChange={(d) => handleDateChange(d, filters?.toDate ? new Date(filters.toDate) : undefined)}
+              onToDateChange={(d) => handleDateChange(filters?.fromDate ? new Date(filters.fromDate) : undefined, d)}
+              className="hidden lg:flex"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Select
+              value={filters?.type ?? "ALL"}
+              onValueChange={(v) => handleFilterUpdate("type", v === "ALL" ? undefined : v)}
+            >
+              <SelectTrigger className="w-28" size="sm">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Types</SelectItem>
+                <SelectItem value="CREDIT">Credits</SelectItem>
+                <SelectItem value="DEBIT">Debits</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search transactions..."
+                className="pl-9 h-8"
+                value={filters?.search ?? ""}
+                onChange={(e) => handleFilterUpdate("search", e.target.value || undefined)}
+              />
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+                <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} data-icon="inline-start" />
+                <span className="hidden lg:inline">Columns</span>
+                <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {table.getAllColumns().filter(c => c.getCanHide()).map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={v => column.toggleVisibility(!!v)}
+                  >
+                    {column.id.replace(/_/g, " ")}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

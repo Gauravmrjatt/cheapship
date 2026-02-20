@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { getServiceability, getLocalityDetails, createShipment, cancelShipment, generateLabel, generateManifest, getShipmentTracking, getShipmentDetails, generateRTOLabel } = require('../utils/shiprocket');
+const { getServiceability, getLocalityDetails, createShipment, cancelShipment, generateLabel, generateManifest, printManifest, getShipmentTracking, getShipmentDetails, generateRTOLabel } = require('../utils/shiprocket');
 const { createReferralCommissions } = require('../utils/referral.commissions');
 
 // Helper to calculate final rates with commissions
@@ -83,8 +83,7 @@ const calculateRates = async (req, res) => {
     is_return = 0,
     length,
     breadth,
-    height,
-    mode = 'Surface'
+    height
   } = req.query;
 
   const prisma = req.app.locals.prisma;
@@ -122,8 +121,7 @@ const calculateRates = async (req, res) => {
       is_return,
       length,
       breadth,
-      height,
-      mode
+      height
     });
 
     if (!serviceabilityData || serviceabilityData.status !== 200) {
@@ -189,6 +187,7 @@ const createOrder = async (req, res) => {
     shipment_type,
     payment_mode,
     total_amount,
+    cod_amount,
     pickup_address,
     receiver_address,
     save_pickup_address,
@@ -198,7 +197,8 @@ const createOrder = async (req, res) => {
     length,
     width,
     height,
-    pickup_location
+    pickup_location,
+    products
   } = req.body;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
@@ -225,8 +225,7 @@ const createOrder = async (req, res) => {
       declared_value: total_amount,
       length,
       breadth: width,
-      height,
-      mode: order_type === 'SURFACE' ? 'Surface' : 'Air'
+      height
     });
 
     if (!serviceabilityData || serviceabilityData.status !== 200) {
@@ -321,20 +320,23 @@ const createOrder = async (req, res) => {
           shipment_status: 'PENDING',
           shipment_type,
           payment_mode,
-          total_amount: serverShippingCharge,
-          product_amount: total_amount,
+          total_amount: Math.round(parseFloat(serverShippingCharge) * 100) / 100,
+          product_amount: Math.round(parseFloat(total_amount) * 100) / 100,
+          products: products || null,
           weight,
           length,
           width,
           height,
           courier_id: chosenCourier.courier_company_id,
           courier_name: chosenCourier.courier_name,
-          shipping_charge: serverShippingCharge,
-          base_shipping_charge: serverBaseCharge,
+          shipping_charge: Math.round(parseFloat(serverShippingCharge) * 100) / 100,
+          base_shipping_charge: Math.round(parseFloat(serverBaseCharge) * 100) / 100,
           global_commission_rate: chosenCourier.global_commission_rate,
-          global_commission_amount: chosenCourier.global_commission_amount,
+          global_commission_amount: Math.round(parseFloat(chosenCourier.global_commission_amount) * 100) / 100,
           franchise_commission_rate: chosenCourier.franchise_commission_rate,
-          franchise_commission_amount: chosenCourier.franchise_commission_amount
+          franchise_commission_amount: Math.round(parseFloat(chosenCourier.franchise_commission_amount) * 100) / 100,
+          cod_amount: payment_mode === 'COD' ? Math.round(parseFloat(cod_amount || total_amount) * 100) / 100 : null,
+          remittance_status: payment_mode === 'COD' ? 'PENDING' : 'NOT_APPLICABLE'
         }
       });
       // Create multi-level referral commissions with cascading percentages
@@ -372,17 +374,27 @@ const createOrder = async (req, res) => {
           shipping_country: receiver_address.country || 'India',
           shipping_email: receiver_address.email,
           shipping_phone: receiver_address.phone,
-          order_items: [
-            {
-              name: `Order #${order.id}`,
-              sku: `SKU-${order.id}`,
-              units: 1,
-              selling_price: parseFloat(total_amount),
-              discount: 0,
-              tax: 0,
-              hsn: ''
-            }
-          ],
+          order_items: products && products.length > 0 
+            ? products.map((item, idx) => ({
+                name: item.name || `Item ${idx + 1}`,
+                sku: `SKU-${order.id}-${idx + 1}`,
+                units: parseInt(item.quantity) || 1,
+                selling_price: parseFloat(item.price) || 0,
+                discount: 0,
+                tax: 0,
+                hsn: ''
+              }))
+            : [
+              {
+                name: `Order #${order.id}`,
+                sku: `SKU-${order.id}`,
+                units: 1,
+                selling_price: parseFloat(total_amount),
+                discount: 0,
+                tax: 0,
+                hsn: ''
+              }
+            ],
           payment_method: payment_mode,
           shipping_charges: parseFloat(serverShippingCharge),
           sub_total: parseFloat(total_amount) + parseFloat(serverShippingCharge),
@@ -889,6 +901,228 @@ const getLiveOrderStatus = async (req, res) => {
   }
 };
 
+const generateOrderManifest = async (req, res) => {
+  const { id } = req.params;
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.user_id !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to generate manifest for this order' });
+    }
+
+    if (!order.shiprocket_shipment_id) {
+      return res.status(400).json({ message: 'No shipment found for this order' });
+    }
+
+    const manifestResult = await generateManifest([order.shiprocket_shipment_id]);
+
+    let manifestUrl = null;
+    if (manifestResult && manifestResult.manifest_url) {
+      manifestUrl = manifestResult.manifest_url;
+    } else if (manifestResult && manifestResult.data && manifestResult.data.manifest_url) {
+      manifestUrl = manifestResult.data.manifest_url;
+    }
+
+    if (manifestUrl) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          manifest_url: manifestUrl,
+          manifest_generated_at: new Date()
+        }
+      });
+    }
+
+    res.json({
+      message: 'Manifest generated successfully',
+      manifest_url: manifestUrl,
+      manifest_result: manifestResult
+    });
+  } catch (error) {
+    console.error('Error generating manifest:', error);
+    res.status(500).json({ message: error.message || 'Error generating manifest' });
+  }
+};
+
+const printOrderManifest = async (req, res) => {
+  const { id } = req.params;
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.user_id !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to print manifest for this order' });
+    }
+
+    if (!order.shiprocket_order_id) {
+      return res.status(400).json({ message: 'No shipment found for this order' });
+    }
+
+    const manifestResult = await printManifest([order.shiprocket_order_id]);
+
+    res.json({
+      message: 'Manifest retrieved successfully',
+      manifest: manifestResult
+    });
+  } catch (error) {
+    console.error('Error printing manifest:', error);
+    res.status(500).json({ message: error.message || 'Error printing manifest' });
+  }
+};
+
+const generateOrderLabel = async (req, res) => {
+  const { id } = req.params;
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.user_id !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to generate label for this order' });
+    }
+
+    if (!order.shiprocket_shipment_id) {
+      return res.status(400).json({ message: 'No shipment found for this order' });
+    }
+
+    const labelResult = await generateLabel([order.shiprocket_shipment_id]);
+
+    let labelUrl = null;
+    if (labelResult && labelResult.label_url) {
+      labelUrl = labelResult.label_url;
+    } else if (labelResult && labelResult.data && labelResult.data.label_url) {
+      labelUrl = labelResult.data.label_url;
+    }
+
+    if (labelUrl) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { label_url: labelUrl }
+      });
+    }
+
+    res.json({
+      message: 'Label generated successfully',
+      label_url: labelUrl,
+      label_result: labelResult
+    });
+  } catch (error) {
+    console.error('Error generating label:', error);
+    res.status(500).json({ message: error.message || 'Error generating label' });
+  }
+};
+
+const getPendingRemittances = async (req, res) => {
+  const userId = req.user.id;
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const pendingOrders = await prisma.order.findMany({
+      where: {
+        user_id: userId,
+        payment_mode: 'COD',
+        remittance_status: 'PENDING'
+      },
+      orderBy: { created_at: 'desc' },
+      include: {
+        order_receiver_address: true
+      }
+    });
+
+    const totalPending = pendingOrders.reduce((sum, order) => 
+      sum + (parseFloat(order.cod_amount) || 0), 0
+    );
+
+    res.json({ orders: pendingOrders, totalPending });
+  } catch (error) {
+    console.error('Error fetching pending remittances:', error);
+    res.status(500).json({ message: 'Error fetching pending remittances' });
+  }
+};
+
+const getRemittanceHistory = async (req, res) => {
+  const userId = req.user.id;
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const remittedOrders = await prisma.order.findMany({
+      where: {
+        user_id: userId,
+        remittance_status: 'REMITTED'
+      },
+      orderBy: { remitted_at: 'desc' },
+      include: {
+        order_receiver_address: true
+      }
+    });
+
+    res.json(remittedOrders);
+  } catch (error) {
+    console.error('Error fetching remittance history:', error);
+    res.status(500).json({ message: 'Error fetching remittance history' });
+  }
+};
+
+const updateRemittanceStatus = async (req, res) => {
+  const { id } = req.params;
+  const { remittance_status, remitted_amount, remittance_ref_id } = req.body;
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const updateData = { remittance_status };
+
+    if (remittance_status === 'REMITTED') {
+      updateData.remitted_amount = remitted_amount || order.cod_amount;
+      updateData.remitted_at = new Date();
+      if (remittance_ref_id) {
+        updateData.remittance_ref_id = remittance_ref_id;
+      }
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: BigInt(id) },
+      data: updateData
+    });
+
+    res.json({ message: 'Remittance status updated', order: updatedOrder });
+  } catch (error) {
+    console.error('Error updating remittance status:', error);
+    res.status(500).json({ message: 'Error updating remittance status' });
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
@@ -898,5 +1132,11 @@ module.exports = {
   cancelOrder,
   handleWebhook,
   getOrderTracking,
-  getLiveOrderStatus
+  getLiveOrderStatus,
+  generateOrderManifest,
+  printOrderManifest,
+  generateOrderLabel,
+  getPendingRemittances,
+  getRemittanceHistory,
+  updateRemittanceStatus
 };

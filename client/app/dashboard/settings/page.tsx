@@ -12,10 +12,12 @@ import {
   Settings02Icon,
   UserCircle02Icon,
   Notification03Icon,
-  Shield01Icon
+  Shield01Icon,
+  LinkIcon
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -47,6 +49,12 @@ export default function SettingsPage() {
           <TabsTrigger value="security" className="rounded-lg gap-2">
             <HugeiconsIcon icon={Shield01Icon} size={16} />
             Security
+          </TabsTrigger>
+          <TabsTrigger value="kyc" className="rounded-lg gap-2" asChild>
+            <Link href="/dashboard/settings/kyc">
+              <HugeiconsIcon icon={Shield01Icon} size={16} />
+              KYC Verification
+            </Link>
           </TabsTrigger>
         </TabsList>
 

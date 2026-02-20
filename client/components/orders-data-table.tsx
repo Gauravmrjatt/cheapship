@@ -70,7 +70,18 @@ import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { sileo } from "sileo"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQueryClient, useMutation } from "@tanstack/react-query"
+
+const generateManifest = async (orderId: string) => {
+  const res = await fetch(`/api/v1/orders/${orderId}/manifest`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  });
+  if (!res.ok) throw new Error('Failed to generate manifest');
+  return res.json();
+};
 
 export type Order = {
   id: string
@@ -87,11 +98,16 @@ export type Order = {
   courier_name?: string
   label_url?: string
   track_url?: string
+  manifest_url?: string
   user?: {
     name: string;
     email: string;
   }
 }
+
+const formatPrice = (price: number | string) => {
+  return parseFloat(String(price)).toFixed(2);
+};
 
 interface OrdersDataTableProps {
   data: Order[]
@@ -208,7 +224,7 @@ export function OrdersDataTable({
       header: () => <div className="text-right">Amount</div>,
       cell: ({ row }) => (
         <div className="text-right tabular-nums">
-          ₹{row.original.total_amount.toLocaleString("en-IN")}
+          ₹{formatPrice(row.original.total_amount)}
         </div>
       ),
     },
@@ -273,7 +289,24 @@ export function OrdersDataTable({
     },
     {
       id: "actions",
-      cell: ({ row }) => (
+      cell: ({ row }) => {
+        const [isGeneratingManifest, setIsGeneratingManifest] = React.useState(false);
+        
+        const handleGenerateManifest = async () => {
+          setIsGeneratingManifest(true);
+          try {
+            const result = await generateManifest(row.original.id);
+            sileo.success({ title: "Manifest generated successfully" });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to generate manifest";
+            sileo.error({ title: message });
+          } finally {
+            setIsGeneratingManifest(false);
+          }
+        };
+        
+        return (
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -305,6 +338,18 @@ export function OrdersDataTable({
                 </a>
               </DropdownMenuItem>
             )}
+            {row.original.shipment_status === "MANIFESTED" && !row.original.manifest_url && (
+              <DropdownMenuItem onClick={handleGenerateManifest} disabled={isGeneratingManifest}>
+                {isGeneratingManifest ? "Generating..." : "Generate Manifest"}
+              </DropdownMenuItem>
+            )}
+            {row.original.manifest_url && (
+              <DropdownMenuItem>
+                <a href={row.original.manifest_url} target="_blank" rel="noopener noreferrer" className="w-full">
+                  Print Manifest
+                </a>
+              </DropdownMenuItem>
+            )}
             {row.original.shipment_status === "PENDING" && (
               <>
                 <DropdownMenuSeparator />
@@ -318,7 +363,8 @@ export function OrdersDataTable({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-      ),
+        );
+      },
     },
   ], []);
 

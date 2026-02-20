@@ -152,19 +152,29 @@ const addShiprocketPickupLocation = async (req, res) => {
 
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
+  const { pickup_location, phone } = req.body;
 
   try {
+    const existingPickup = await prisma.address.findFirst({
+      where: {
+        user_id: userId,
+        pickup_nickname: pickup_location
+      }
+    });
+
+    if (existingPickup) {
+      return res.status(400).json({ message: 'Pickup location with this name already exists for your account.' });
+    }
+
     const pickupData = {
       ...req.body,
       phone: parseInt(req.body.phone, 10),
       pin_code: parseInt(req.body.pin_code, 10),
     };
 
-    // Call Shiprocket API
     const data = await addPickupLocation(pickupData);
 
     if (data.success) {
-      // Save to DB
       await prisma.address.create({
         data: {
           user_id: userId,

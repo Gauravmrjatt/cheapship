@@ -33,7 +33,8 @@ import {
   AddressBookIcon,
   UserCircle02Icon,
   MoneyReceiveCircleIcon,
-  Globe02Icon
+  Globe02Icon,
+  Wallet01Icon
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/hooks/use-auth"
 
@@ -52,6 +53,11 @@ const adminNav = [
     title: "All Orders",
     url: "/admin/orders",
     icon: <HugeiconsIcon icon={ShoppingBasket01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "COD Orders",
+    url: "/admin/cod-orders",
+    icon: <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />,
   },
   {
     title: "Transactions",
@@ -119,6 +125,13 @@ const data = {
       url: "/dashboard/payments",
       icon: (
         <HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} />
+      ),
+    },
+    {
+      title: "COD & Remittance",
+      url: "/dashboard/remittances",
+      icon: (
+        <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />
       ),
     },
     {

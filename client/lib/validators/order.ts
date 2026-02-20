@@ -26,6 +26,7 @@ export const calculateRateSchema = z.object({
   paymentType: z.enum(["PREPAID", "COD"]),
   shipmentValue: z.number().min(1, "Value is required"),
   dangerousGoods: z.boolean(),
+  order_type: z.enum(["SURFACE", "EXPRESS"]).optional().default("SURFACE"),
 });
 
 export const createOrderSchema = z.object({
@@ -37,6 +38,7 @@ export const createOrderSchema = z.object({
   width: z.number().min(1, "Width is required"),
   height: z.number().min(1, "Height is required"),
   total_amount: z.number().min(1, "Total amount is required"),
+  cod_amount: z.number().optional(),
   pickup_location: z.string().min(1, "Pickup location is required"),
   pickup_address: addressSchema,
   receiver_address: addressSchema,
@@ -47,6 +49,11 @@ export const createOrderSchema = z.object({
   courier_name: z.string().optional(),
   shipping_charge: z.number().optional(),
   base_shipping_charge: z.number().optional(),
+  make_pickup_address: z.boolean().optional().default(false),
+  same_as_pickup: z.boolean().optional().default(false),
+  new_pickup_location_name: z.string().optional(),
+  new_pickup_gst: z.string().optional(),
+  new_pickup_registered_name: z.string().optional(),
 });
 
 export const shiprocketPickupSchema = z.object({
@@ -61,4 +68,16 @@ export const shiprocketPickupSchema = z.object({
   state: z.string().min(1, "State is required"),
   pin_code: z.string().min(6, "Pincode must be 6 digits"),
   country: z.string(),
+});
+
+export const courierRateInputSchema = z.object({
+  pickup_pincode: z.string().min(6, "Pickup pincode is required"),
+  delivery_pincode: z.string().min(6, "Delivery pincode is required"),
+  weight: z.number().min(0.1, "Weight is required"),
+  cod: z.boolean(),
+  declared_value: z.number().min(1, "Value is required"),
+  length: z.number().min(1, "Length is required"),
+  width: z.number().min(1, "Width is required"),
+  height: z.number().min(1, "Height is required"),
+  mode: z.enum(["Surface", "Air"]),
 });

@@ -175,12 +175,56 @@ function OrdersContent() {
     },
     {
       accessorKey: "total_amount",
-      header: () => <div className="text-right">Amount</div>,
+      header: () => <div className="text-right">Final Rate</div>,
       cell: ({ row }) => {
         const order = row.original as any;
         return (
           <div className="text-right tabular-nums font-bold text-xs">
             ₹{Number(order.total_amount).toLocaleString("en-IN")}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "price_breakdown",
+      header: () => <div className="text-right">Base Rate</div>,
+      cell: ({ row }) => {
+        const order = row.original as any;
+        const baseCharge = order.price_breakdown?.base_shipping_charge;
+        return (
+          <div className="text-right tabular-nums text-xs text-muted-foreground">
+            {baseCharge ? `₹${Number(baseCharge).toLocaleString("en-IN")}` : "-"}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "commission",
+      header: () => <div className="text-right">Commission</div>,
+      cell: ({ row }) => {
+        const order = row.original as any;
+        const breakdown = order.price_breakdown;
+        if (!breakdown) return <div className="text-right text-xs">-</div>;
+        
+        const globalAmount = Number(breakdown.global_commission_amount || 0);
+        const franchiseAmount = Number(breakdown.franchise_commission_amount || 0);
+        const totalCommission = globalAmount + franchiseAmount;
+        
+        return (
+          <div className="text-right tabular-nums text-xs">
+            <span className="text-orange-600 dark:text-orange-400">
+              ₹{totalCommission.toLocaleString("en-IN")}
+            </span>
+            {breakdown.global_commission_rate > 0 && (
+              <span className="text-[10px] text-muted-foreground ml-1">
+                (G:{breakdown.global_commission_rate}%)
+              </span>
+            )}
+            {breakdown.franchise_commission_rate > 0 && (
+              <span className="text-[10px] text-muted-foreground ml-1">
+                (F:{breakdown.franchise_commission_rate}%)
+              </span>
+            )}
           </div>
         );
       },
