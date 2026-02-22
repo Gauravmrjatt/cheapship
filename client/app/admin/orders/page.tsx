@@ -66,17 +66,24 @@ import {
 
 function OrdersContent() {
   const searchParams = useSearchParams();
-  const userIdFromQuery = searchParams.get("userId") || "";
   
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("ALL");
-  const userIdFilter = userIdFromQuery;
+  const [userIdFilter, setUserIdFilter] = React.useState("");
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   
+  // Sync userId from searchParams after mount
+  React.useEffect(() => {
+    const userIdFromQuery = searchParams.get("userId") || "";
+    if (userIdFromQuery) {
+      setUserIdFilter(userIdFromQuery);
+    }
+  }, [searchParams]);
+
   const { data, isLoading } = useAdminOrders(page, pageSize, statusFilter, search, userIdFilter);
 
   const handleStatusChange = (status: string | null) => {

@@ -51,29 +51,6 @@ function SignUpForm() {
   const [countdown, setCountdown] = useState(0);
   const [resendDisabled, setResendDisabled] = useState(false);
   
-  const refCode = searchParams.get("ref");
-
-  const sendOtpMutation = useMutation<SendOtpResponse, Error, SignUpFormData>(
-    http.post<SendOtpResponse, SignUpFormData>("/auth/send-registration-otp", {
-      onSuccess: (data) => {
-        setStep(2);
-        setCountdown(data.expiresIn);
-        sileo.success({ title: "OTP Sent", description: data.message });
-      },
-    })
-  );
-
-  const verifyOtpMutation = useMutation<VerifyOtpResponse, Error, { email: string } & OtpFormData>(
-    http.post<VerifyOtpResponse, { email: string } & OtpFormData>("/auth/verify-registration-otp", {
-      onSuccess: (data) => {
-        setToken(data.token);
-        setUser(data.user);
-        sileo.success({ title: "Account Created", description: "Welcome to CheapShip!" });
-        router.push("/");
-      },
-    })
-  );
-
   const signUpForm = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -82,7 +59,7 @@ function SignUpForm() {
       mobile: "",
       password: "",
       confirmPassword: "",
-      referred_by: refCode || "",
+      referred_by: "",
     },
   });
 
@@ -94,10 +71,11 @@ function SignUpForm() {
   });
 
   useEffect(() => {
+    const refCode = searchParams.get("ref");
     if (refCode) {
       signUpForm.setValue("referred_by", refCode);
     }
-  }, [refCode, signUpForm]);
+  }, [searchParams, signUpForm]);
 
   useEffect(() => {
     if (countdown > 0) {

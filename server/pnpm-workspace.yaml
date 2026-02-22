@@ -2,4 +2,6 @@ ignoredBuiltDependencies:
   - '@scarf/scarf'
 
 onlyBuiltDependencies:
+  - '@prisma/engines'
   - bcrypt
+  - prisma

@@ -46,15 +46,19 @@ export const useTransactions = (
   if (fromDate) queryParams.append("fromDate", fromDate);
   if (toDate) queryParams.append("toDate", toDate);
 
-  return useQuery(http.get<{
-    data: Transaction[];
-    pagination: {
-      total: number;
-      totalPages: number;
-      currentPage: number;
-      pageSize: number;
-    }
-  }>(["transactions", page, pageSize, type, category, status, search, fromDate, toDate], `/transactions?${queryParams.toString()}`));
+  return useQuery({
+    queryKey: ["transactions", page, pageSize, type, category, status, search, fromDate, toDate],
+    queryFn: () => http.get<{
+      data: Transaction[];
+      pagination: {
+        total: number;
+        totalPages: number;
+        currentPage: number;
+        pageSize: number;
+      }
+    }>(["transactions", page, pageSize, type, category, status, search, fromDate, toDate], `/transactions?${queryParams.toString()}`).queryFn(),
+    enabled: true,
+  });
 };
 
 export const useTopUpWallet = () => {

@@ -121,7 +121,13 @@ export function TransactionsDataTable({
   const [sorting, setSorting] = React.useState<SortingState>([])
 
   React.useEffect(() => {
-    setColumnVisibility(prev => ({ ...prev, user: showUserColumn }));
+    setColumnVisibility(prev => {
+      const newUserVisibility = showUserColumn;
+      if (prev.user !== newUserVisibility) {
+        return { ...prev, user: newUserVisibility };
+      }
+      return prev;
+    });
   }, [showUserColumn]);
 
   const columns = React.useMemo<ColumnDef<Transaction>[]>(() => [
@@ -287,24 +293,26 @@ export function TransactionsDataTable({
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: React.useCallback((newVisibility) => {
+      setColumnVisibility(newVisibility);
+    }, []),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
 
-  const handleFilterUpdate = (key: string, value: string | undefined) => {
+  const handleFilterUpdate = React.useCallback((key: string, value: string | undefined) => {
     onFilterChange?.({ ...(filters as any), [key]: value })
-  }
+  }, [onFilterChange, filters]);
 
-  const handleDateChange = (fromDate?: Date, toDate?: Date) => {
+  const handleDateChange = React.useCallback((fromDate?: Date, toDate?: Date) => {
     onFilterChange?.({
       ...(filters as any),
       fromDate: fromDate?.toISOString().split('T')[0],
       toDate: toDate?.toISOString().split('T')[0],
     })
-  }
+  }, [onFilterChange, filters]);
 
   return (
     <Tabs

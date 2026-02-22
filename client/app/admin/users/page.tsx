@@ -80,7 +80,7 @@ import { useRouter } from "next/navigation";
 
 export default function AdminUsersPage() {
   const router = useRouter();
-  const isMounted = React.useRef(true);
+  const isMounted = React.useRef(false);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [search, setSearch] = React.useState("");

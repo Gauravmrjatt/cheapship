@@ -9,7 +9,6 @@ import { useSearchParams } from "next/navigation";
 
 function TransactionsContent() {
   const searchParams = useSearchParams();
-  const userIdFromQuery = searchParams.get("userId") || "";
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -17,10 +16,18 @@ function TransactionsContent() {
     type: "ALL", 
     category: "ALL",
     search: "", 
-    userId: userIdFromQuery,
+    userId: "",
     fromDate: undefined as string | undefined,
     toDate: undefined as string | undefined
   });
+
+  // Sync userId from searchParams after mount
+  React.useEffect(() => {
+    const userIdFromQuery = searchParams.get("userId") || "";
+    if (userIdFromQuery) {
+      setFilters(prev => ({ ...prev, userId: userIdFromQuery }));
+    }
+  }, [searchParams]);
 
   const { data, isLoading } = useAdminTransactions(
     page, 

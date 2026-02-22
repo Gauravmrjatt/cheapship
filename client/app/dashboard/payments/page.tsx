@@ -6,6 +6,14 @@ import { useTransactions, } from "@/lib/hooks/use-transactions";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { TransactionsDataTable } from "@/components/transactions-data-table";
 
+interface FilterValues {
+  type?: string;
+  category?: string;
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
 export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -29,7 +37,7 @@ export default function PaymentsPage() {
     filters.toDate
   );
 
-  const handleFilterChange = (newFilters: any) => {
+  const handleFilterChange = (newFilters: FilterValues) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setPage(1);
   };

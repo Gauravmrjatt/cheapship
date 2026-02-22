@@ -51,8 +51,12 @@ function SignInForm() {
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [countdown, setCountdown] = useState(0);
+  const [redirectTo, setRedirectTo] = useState("/");
 
-  const redirectTo = searchParams.get("redirect") || "/";
+  useEffect(() => {
+    const redirect = searchParams.get("redirect") || "/";
+    setRedirectTo(redirect);
+  }, [searchParams]);
 
   const passwordLoginMutation = useMutation<SignInResponse, Error, PasswordFormData>(
     http.post<SignInResponse, PasswordFormData>("/auth/login", {
