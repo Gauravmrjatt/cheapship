@@ -21,43 +21,47 @@ import { Alert02Icon } from "@hugeicons/core-free-icons";
 interface WalletTopUpProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  category?: 'WALLET_TOPUP' | 'SECURITY_DEPOSIT';
+  initialAmount?: string;
 }
 
-export function WalletTopUp({ open, onOpenChange }: WalletTopUpProps) {
-  const [topUpAmount, setTopUpAmount] = useState("");
-  const [razorpayError, setRazorpayError] = useState<string | null>(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+export function WalletTopUp({ open, onOpenChange, category = 'WALLET_TOPUP', initialAmount = "" }: WalletTopUpProps) {
+  const [topUpAmount, setTopUpAmount] = useState(initialAmount);
+
+  useEffect(() => {
+    if (initialAmount) {
+      setTopUpAmount(initialAmount);
+    }
+  }, [initialAmount]);
+
+  const [state, setState] = useState({
+    error: null as string | null,
+    isProcessing: false,
+  });
 
   const { data: user } = useUser();
   const { Razorpay, error: razorpayLoadError } = useRazorpay();
   const createOrderMutation = useCreateRazorpayOrder();
   const verifyPaymentMutation = useVerifyRazorpayPayment();
 
-  useEffect(() => {
-    if (open) {
-      setTopUpAmount("");
-      setRazorpayError(null);
-      setIsProcessingPayment(false);
-    }
-  }, [open]);
+  // Handle errors from useRazorpay directly
+  const displayError = state.error || (razorpayLoadError ? "Failed to load payment gateway. Please check your internet connection." : null);
 
-  useEffect(() => {
-    if (razorpayLoadError) {
-      setRazorpayError("Failed to load payment gateway. Please check your internet connection.");
-    }
-  }, [razorpayLoadError]);
+  const resetState = () => {
+    setTopUpAmount(initialAmount);
+    setState({ error: null, isProcessing: false });
+  };
 
   const handleTopUp = async () => {
     const amount = parseFloat(topUpAmount);
     if (isNaN(amount) || amount <= 0) return;
 
     if (!Razorpay) {
-      setRazorpayError("Payment gateway not available. Please refresh and try again.");
+      setState(prev => ({ ...prev, error: "Payment gateway not available. Please refresh and try again." }));
       return;
     }
 
-    setRazorpayError(null);
-    setIsProcessingPayment(true);
+    setState({ error: null, isProcessing: true });
 
     try {
       const order = await createOrderMutation.mutateAsync({ amount });
@@ -67,7 +71,7 @@ export function WalletTopUp({ open, onOpenChange }: WalletTopUpProps) {
         amount: order.amount,
         currency: order.currency as "INR",
         name: "Cheap Ship",
-        description: "Wallet Top-up",
+        description: category === 'SECURITY_DEPOSIT' ? "Security Deposit" : "Wallet Top-up",
         order_id: order.id,
         handler: (response) => {
           verifyPaymentMutation.mutate({
@@ -75,10 +79,10 @@ export function WalletTopUp({ open, onOpenChange }: WalletTopUpProps) {
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
             amount: amount,
+            category: category
           });
           onOpenChange(false);
-          setTopUpAmount("");
-          setRazorpayError(null);
+          resetState();
         },
         prefill: {
           name: user?.name,
@@ -88,28 +92,42 @@ export function WalletTopUp({ open, onOpenChange }: WalletTopUpProps) {
         theme: {
           color: "#000000",
         },
+        modal: {
+          ondismiss: () => {
+            setState(prev => ({ ...prev, isProcessing: false }));
+          }
+        }
       };
 
       const rzp1 = new Razorpay(options);
       rzp1.on('payment.failed', (response: any) => {
-        setRazorpayError(response.error.description || "Payment failed. Please try again.");
+        setState({
+          error: response.error.description || "Payment failed. Please try again.",
+          isProcessing: false
+        });
       });
       rzp1.open();
-      setIsProcessingPayment(false);
     } catch (error) {
       console.error("Payment initiation failed", error);
-      setRazorpayError("Failed to initiate payment. Please try again.");
-      setIsProcessingPayment(false);
+      setState({
+        error: "Failed to initiate payment. Please try again.",
+        isProcessing: false
+      });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(val) => {
+      if (!val) resetState();
+      onOpenChange(val);
+    }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Top Up Wallet</DialogTitle>
+          <DialogTitle>{category === 'SECURITY_DEPOSIT' ? "Pay Security Deposit" : "Top Up Wallet"}</DialogTitle>
           <DialogDescription>
-            Add funds to your wallet to pay for shipping charges.
+            {category === 'SECURITY_DEPOSIT' 
+              ? "Pay a one-time refundable security deposit to activate COD and higher limits."
+              : "Add funds to your wallet to pay for shipping charges."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -121,34 +139,37 @@ export function WalletTopUp({ open, onOpenChange }: WalletTopUpProps) {
               placeholder="Enter amount (e.g. 500)"
               value={topUpAmount}
               onChange={(e) => setTopUpAmount(e.target.value)}
+              disabled={category === 'SECURITY_DEPOSIT'}
               className="h-12 text-lg font-bold"
             />
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {[500, 1000, 2000].map(amt => (
-              <Button
-                key={amt}
-                variant="outline"
-                className="h-10 text-xs font-bold"
-                onClick={() => setTopUpAmount(amt.toString())}
-              >
-                ₹{amt}
-              </Button>
-            ))}
-          </div>
+          {category !== 'SECURITY_DEPOSIT' && (
+            <div className="grid grid-cols-3 gap-2">
+              {[500, 1000, 2000].map(amt => (
+                <Button
+                  key={amt}
+                  variant="outline"
+                  className="h-10 text-xs font-bold"
+                  onClick={() => setTopUpAmount(amt.toString())}
+                >
+                  ₹{amt}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
-        {razorpayError && (
+        {displayError && (
           <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
             <HugeiconsIcon icon={Alert02Icon} size={16} />
-            <span>{razorpayError}</span>
+            <span>{displayError}</span>
           </div>
         )}
         <DialogFooter>
           <Button
             onClick={handleTopUp}
-            disabled={isProcessingPayment || !topUpAmount || parseFloat(topUpAmount) <= 0}
+            disabled={state.isProcessing || !topUpAmount || parseFloat(topUpAmount) <= 0}
           >
-            {isProcessingPayment && !createOrderMutation.isPending ? "Processing..." : "Pay Now"}
+            {state.isProcessing && !createOrderMutation.isPending ? "Processing..." : "Pay Now"}
           </Button>
         </DialogFooter>
       </DialogContent>

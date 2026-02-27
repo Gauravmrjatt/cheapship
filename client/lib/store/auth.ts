@@ -11,6 +11,7 @@ export interface User {
   is_active?: boolean;
   min_commission_rate?: string;
   max_commission_rate?: string;
+  assigned_rates?: Record<string, { rate: number; slab: number }>;
   _count?: {
     orders: number;
   };

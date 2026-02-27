@@ -22,7 +22,7 @@ export function NavDocuments({
   }[]
 }) {
   const pathname = usePathname()
-  
+
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Documents</SidebarGroupLabel>
@@ -31,7 +31,7 @@ export function NavDocuments({
           const isActive = pathname === item.url || pathname.startsWith(item.url)
           return (
             <SidebarMenuItem key={item.name}>
-              <SidebarMenuButton 
+              <SidebarMenuButton
                 isActive={isActive}
                 render={<Link href={item.url} />}
               >
@@ -42,7 +42,7 @@ export function NavDocuments({
           )
         })}
         <SidebarMenuItem>
-          <SidebarMenuButton className="text-sidebar-foreground/70">
+          <SidebarMenuButton className="text-sidebar-foreground/70" render={<Link href="/dashboard/settings" />}>
             <HugeiconsIcon icon={MoreHorizontalCircle01Icon} strokeWidth={2} className="text-sidebar-foreground/70" />
             <span>More</span>
           </SidebarMenuButton>

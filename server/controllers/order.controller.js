@@ -1,22 +1,31 @@
 const { validationResult } = require('express-validator');
 const { getServiceability, getLocalityDetails, createShipment, cancelShipment, generateLabel, generateManifest, printManifest, getShipmentTracking, getShipmentDetails, generateRTOLabel } = require('../utils/shiprocket');
 const { createReferralCommissions } = require('../utils/referral.commissions');
+const labelCustomizer = require('../utils/label-customizer');
+const vyom = require('../utils/vyom');
 
 // Helper to calculate final rates with commissions
 const calculateFinalRates = async (prisma, userId, availableCouriers, recommendedId = null) => {
-  // Get user's commission settings and Global Settings
-  const [user, globalSetting] = await Promise.all([
+  // Get user's commission settings, Global Settings, and Courier configs
+  const [user, globalSetting, courierConfigs] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { commission_rate: true, assigned_rates: true, referred_by: true }
+      select: { commission_rate: true, assigned_rates: true, referred_by: true, active_discount: true }
     }),
     prisma.systemSetting.findUnique({
       where: { key: 'global_commission_rate' }
-    })
+    }),
+    prisma.courierConfiguration.findMany()
   ]);
+
+  const courierConfigMap = courierConfigs.reduce((acc, config) => {
+    acc[config.courier_company_id] = config;
+    return acc;
+  }, {});
 
   const globalCommissionRate = globalSetting ? parseFloat(globalSetting.value) : 0;
   const franchiseCommissionRate = user?.commission_rate ? parseFloat(user.commission_rate.toString()) : (user?.referred_by ? 5 : 0);
+  const activeDiscountRate = user?.active_discount ? parseFloat(user.active_discount.toString()) : 0;
   const assignedRates = user?.assigned_rates || {};
 
   return availableCouriers.map(courier => {
@@ -27,10 +36,28 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
     const baseRate = parseFloat(courier.rate);
 
     // Formula: base_shipment_price + franchise % on base_shipment price + global % on base_shipment price
-    const globalCommissionAmount = (baseRate * globalCommissionRate) / 100;
-    const franchiseCommissionAmount = (baseRate * markupPercent) / 100;
+    let finalGlobalCommRate = globalCommissionRate;
+    let finalFranchiseCommRate = markupPercent;
 
-    const finalRate = baseRate + globalCommissionAmount + franchiseCommissionAmount;
+    if (activeDiscountRate > 0) {
+      if (activeDiscountRate >= (finalGlobalCommRate + finalFranchiseCommRate)) {
+        finalGlobalCommRate = 0;
+        finalFranchiseCommRate = 0;
+      } else {
+        if (activeDiscountRate <= finalGlobalCommRate) {
+          finalGlobalCommRate -= activeDiscountRate;
+        } else {
+          const remainder = activeDiscountRate - finalGlobalCommRate;
+          finalGlobalCommRate = 0;
+          finalFranchiseCommRate -= remainder;
+        }
+      }
+    }
+
+    const globalCommissionAmount = (baseRate * finalGlobalCommRate) / 100;
+    const franchiseCommissionAmount = (baseRate * finalFranchiseCommRate) / 100;
+
+    const finalRate = parseFloat((baseRate + globalCommissionAmount + franchiseCommissionAmount).toFixed(2));
 
     // Debug logging in development
     if (process.env.NODE_ENV === 'development') {
@@ -40,6 +67,8 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
       console.log(`  Franchise Commission (${markupPercent}%): ₹${franchiseCommissionAmount}`);
       console.log(`  Final Rate: ₹${finalRate}`);
     }
+
+    const dbConfig = courierConfigMap[courier.courier_company_id] || {};
 
     return {
       courier_name: courier.courier_name,
@@ -56,7 +85,9 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
       franchise_commission_amount: franchiseCommissionAmount,
       is_surface: courier.is_surface,
       mode: courier.mode === 1 ? 'Air' : 'Surface',
-      is_recommended: courier.courier_company_id === recommendedId
+      is_recommended: courier.courier_company_id === recommendedId,
+      custom_tag: dbConfig.custom_tag || null,
+      is_vyom: dbConfig.is_vyom || false
     };
   });
 };
@@ -92,7 +123,8 @@ const calculateRates = async (req, res) => {
     is_return = 0,
     length,
     breadth,
-    height
+    height,
+    mode
   } = req.query;
 
   const prisma = req.app.locals.prisma;
@@ -103,7 +135,6 @@ const calculateRates = async (req, res) => {
       getLocalityDetails(pickup_postcode),
       getLocalityDetails(delivery_postcode)
     ]);
-
     if (!pickupLocality?.success && !pickupLocality?.postcode_details) {
       return res.status(400).json({
         success: false,
@@ -120,18 +151,21 @@ const calculateRates = async (req, res) => {
       });
     }
 
-    // If both are valid, then get prices
-    const serviceabilityData = await getServiceability({
-      pickup_postcode,
-      delivery_postcode,
-      weight,
-      cod,
-      declared_value,
-      is_return,
-      length,
-      breadth,
-      height
-    });
+    // If both are valid, then get prices from both Shiprocket and Vyom
+    const [serviceabilityData] = await Promise.all([
+      getServiceability({
+        pickup_postcode,
+        delivery_postcode,
+        weight,
+        cod,
+        declared_value,
+        is_return,
+        length,
+        breadth,
+        height,
+        mode: mode !== 'undefined' ? mode : undefined
+      }),
+    ]);
 
     if (!serviceabilityData || serviceabilityData.status !== 200) {
       return res.status(serviceabilityData?.status || 400).json({
@@ -141,9 +175,11 @@ const calculateRates = async (req, res) => {
       });
     }
 
-    const availableCouriers = serviceabilityData.data.available_courier_companies || [];
+    let availableCouriers = serviceabilityData.data.available_courier_companies || [];
 
-    const serviceableCouriers = await calculateFinalRates(
+ 
+
+    let serviceableCouriers = await calculateFinalRates(
       prisma,
       req.user.id,
       availableCouriers,
@@ -153,13 +189,13 @@ const calculateRates = async (req, res) => {
     // Format the response and sanitize sensitive fields (exclude internal base rates and commission breakdowns)
     const formattedResponse = {
       pickup_location: {
-        city: pickupLocality?.data?.postcode_details?.city || pickupLocality?.data?.city || '',
-        state: pickupLocality?.data?.postcode_details?.state || pickupLocality?.data?.state || '',
+        city: pickupLocality?.postcode_details?.city || pickupLocality?.data?.city || '',
+        state: pickupLocality?.postcode_details?.state || pickupLocality?.data?.state || '',
         postcode: pickup_postcode
       },
       delivery_location: {
-        city: deliveryLocality?.data?.postcode_details?.city || deliveryLocality?.data?.city || '',
-        state: deliveryLocality?.data?.postcode_details?.state || deliveryLocality?.data?.state || '',
+        city: deliveryLocality?.postcode_details?.city || deliveryLocality?.data?.city || '',
+        state: deliveryLocality?.postcode_details?.state || deliveryLocality?.data?.state || '',
         postcode: delivery_postcode
       },
       shipment_info: {
@@ -175,7 +211,7 @@ const calculateRates = async (req, res) => {
         franchise_commission_rate,
         franchise_commission_amount,
         ...publicData
-      }) => publicData)
+      }) => publicData).sort((a, b) => a.rate - b.rate)
     };
 
     res.json(formattedResponse);
@@ -207,12 +243,119 @@ const createOrder = async (req, res) => {
     width,
     height,
     pickup_location,
-    products
+    products,
+    is_insured,
+    is_draft
   } = req.body;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
 
   try {
+    // First shipment KYC & Security Deposit Check
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { kyc_status: true, security_deposit: true }
+    });
+
+    const nonDraftOrderCount = await prisma.order.count({
+      where: { user_id: userId, is_draft: false }
+    });
+
+    // Only enforce for the first non-draft order
+    if (nonDraftOrderCount === 0 && !is_draft) {
+      if (user.kyc_status !== 'VERIFIED') {
+        return res.status(403).json({
+          message: 'KYC verification (Aadhaar/PAN) is required for your first shipment.',
+          code: 'KYC_REQUIRED'
+        });
+      }
+      if (Number(user.security_deposit || 0) <= 0) {
+        return res.status(403).json({
+          message: 'Security deposit is required for your first shipment.',
+          code: 'SECURITY_DEPOSIT_REQUIRED'
+        });
+      }
+    }
+
+    // In-transit safety rule: User must have Wallet Balance + Security Deposit >= Double the sum of shipping charges for all in-transit orders
+    if (!is_draft) {
+      const inTransitOrders = await prisma.order.findMany({
+        where: {
+          user_id: userId,
+          shipment_status: 'IN_TRANSIT',
+          is_draft: false
+        },
+        select: { shipping_charge: true }
+      });
+
+      const totalInTransitShippingCharge = inTransitOrders.reduce((sum, o) => sum + parseFloat(o.shipping_charge || 0), 0);
+      const userBalance = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { wallet_balance: true, security_deposit: true }
+      });
+
+      const totalAvailable = parseFloat(userBalance.wallet_balance || 0) + parseFloat(userBalance.security_deposit || 0);
+
+      if (totalAvailable < (totalInTransitShippingCharge * 2)) {
+        return res.status(403).json({
+          message: 'Insufficient balance for risk mitigation. Your (Wallet Balance + Security Deposit) must be at least double the shipping charges of all in-transit orders.',
+          code: 'INSUFFICIENT_SAFETY_BALANCE',
+          required: (totalInTransitShippingCharge * 2),
+          available: totalAvailable
+        });
+      }
+    }
+
+    if (is_draft) {
+      const draftedOrder = await prisma.order.create({
+        data: {
+          user_id: userId,
+          order_type: order_type || 'SURFACE',
+          is_draft: true,
+          shipment_status: 'PENDING',
+          shipment_type: shipment_type || 'DOMESTIC',
+          payment_mode: payment_mode || 'PREPAID',
+          total_amount: total_amount || 0,
+          product_amount: total_amount || 0,
+          products: products || null,
+          weight: weight || 0,
+          length: length || 0,
+          width: width || 0,
+          height: height || 0,
+          courier_id: courier_id ? parseInt(courier_id) : null,
+          pickup_location: pickup_location || null,
+          is_insured: is_insured || false,
+          order_pickup_address: {
+            create: {
+              name: pickup_address.name,
+              phone: pickup_address.phone,
+              email: pickup_address.email,
+              address: pickup_address.address,
+              city: pickup_address.city,
+              state: pickup_address.state,
+              pincode: pickup_address.pincode
+            }
+          },
+          order_receiver_address: {
+            create: {
+              name: receiver_address.name,
+              phone: receiver_address.phone,
+              email: receiver_address.email,
+              address: receiver_address.address,
+              city: receiver_address.city,
+              state: receiver_address.state,
+              pincode: receiver_address.pincode
+            }
+          }
+        }
+      });
+
+      return res.status(201).json({
+        message: 'Order saved as draft successfully',
+        data: draftedOrder
+      });
+    }
+
     // Get max referral levels from settings (outside transaction)
     let maxLevels = 0;
     try {
@@ -234,7 +377,8 @@ const createOrder = async (req, res) => {
       declared_value: total_amount,
       length,
       breadth: width,
-      height
+      height,
+      mode: order_type === 'CARGO' ? 'Cargo' : order_type === 'SURFACE' ? 'Surface' : 'Air'
     });
 
     if (!serviceabilityData || serviceabilityData.status !== 200) {
@@ -258,13 +402,33 @@ const createOrder = async (req, res) => {
     const serverBaseCharge = chosenCourier.base_rate;
 
     const newOrder = await prisma.$transaction(async (tx) => {
-      // 1. Check wallet balance
+      // 1. Check wallet balance and in-transit safety rules
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { wallet_balance: true }
+        select: { wallet_balance: true, security_deposit: true }
       });
 
       const orderAmount = Number(serverShippingCharge || 0);
+
+      // In-Transit Safety logic
+      const inTransitOrders = await tx.order.findMany({
+        where: {
+          user_id: userId,
+          shipment_status: {
+            in: ['MANIFESTED', 'IN_TRANSIT', 'DISPATCHED', 'PENDING']
+          }
+        },
+        select: { shipping_charge: true }
+      });
+
+      const inTransitTotal = inTransitOrders.reduce((sum, order) => sum + Number(order.shipping_charge || 0), 0);
+      const newInTransitTotal = inTransitTotal + orderAmount;
+      const requiredSecureBalance = newInTransitTotal * 2;
+      const currentSecuredAmount = Number(user.wallet_balance) + Number(user.security_deposit || 0);
+
+      if (currentSecuredAmount < requiredSecureBalance) {
+        throw new Error(`In-transit safety limit exceeded. Required limits (Wallet + Security): ₹${requiredSecureBalance.toFixed(2)}, Available: ₹${currentSecuredAmount.toFixed(2)} based on your active in-transit shipping charges of ₹${newInTransitTotal.toFixed(2)}.`);
+      }
 
       if (Number(user.wallet_balance) < orderAmount) {
         throw new Error(`Insufficient wallet balance. Required: ₹${orderAmount}, Available: ₹${user.wallet_balance}`);
@@ -338,6 +502,7 @@ const createOrder = async (req, res) => {
           height,
           courier_id: chosenCourier.courier_company_id,
           courier_name: chosenCourier.courier_name,
+          is_vyom: !!chosenCourier.is_vyom,
           shipping_charge: Math.round(parseFloat(serverShippingCharge) * 100) / 100,
           base_shipping_charge: Math.round(parseFloat(serverBaseCharge) * 100) / 100,
           global_commission_rate: chosenCourier.global_commission_rate,
@@ -383,16 +548,16 @@ const createOrder = async (req, res) => {
           shipping_country: receiver_address.country || 'India',
           shipping_email: receiver_address.email,
           shipping_phone: receiver_address.phone,
-          order_items: products && products.length > 0 
+          order_items: products && products.length > 0
             ? products.map((item, idx) => ({
-                name: item.name || `Item ${idx + 1}`,
-                sku: `SKU-${order.id}-${idx + 1}`,
-                units: parseInt(item.quantity) || 1,
-                selling_price: parseFloat(item.price) || 0,
-                discount: 0,
-                tax: 0,
-                hsn: ''
-              }))
+              name: item.name || `Item ${idx + 1}`,
+              sku: `SKU-${order.id}-${idx + 1}`,
+              units: parseInt(item.quantity) || 1,
+              selling_price: parseFloat(item.price) || 0,
+              discount: 0,
+              tax: 0,
+              hsn: ''
+            }))
             : [
               {
                 name: `Order #${order.id}`,
@@ -410,40 +575,61 @@ const createOrder = async (req, res) => {
           length: parseFloat(length) || 10,
           breadth: parseFloat(width) || 10,
           height: parseFloat(height) || 10,
-          weight: parseFloat(weight) || 0.5
+          weight: parseFloat(weight) || 0.5,
+          is_insured: is_insured ? 1 : 0
         };
 
-        const shipmentResult = await createShipment(shipmentData);
-        
-        // Validate the Shiprocket response contains required fields
-        if (!shipmentResult || !shipmentResult.order_id || !shipmentResult.shipment_id) {
-          throw new Error('Failed to create shipment with Shiprocket. Invalid response received from shipping provider.');
-        }
-
-        shiprocketOrderId = shipmentResult.order_id?.toString();
-        shiprocketShipmentId = shipmentResult.shipment_id?.toString();
-
-        if (shipmentResult.label_url) {
-          labelUrl = shipmentResult.label_url;
-        }
-
-        if (shipmentResult.track_url) {
-          trackUrl = shipmentResult.track_url;
-        }
-
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            shiprocket_order_id: shiprocketOrderId,
-            shiprocket_shipment_id: shiprocketShipmentId,
-            label_url: labelUrl,
-            track_url: trackUrl
+        if (chosenCourier.is_vyom) {
+          const vyomResult = await vyom.createVyomShipment(shipmentData);
+          if (!vyomResult || !vyomResult.success) {
+            throw new Error('Failed to create shipment with Vyom Express.');
           }
-        });
+          const vyomOrderId = vyomResult.order_id || vyomResult.shipment_id;
+          const vyomShipmentId = vyomResult.shipment_id;
+          const vyomAwb = vyomResult.awb_code;
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              vyom_order_id: vyomOrderId?.toString(),
+              vyom_shipment_id: vyomShipmentId?.toString(),
+              tracking_number: vyomAwb?.toString(),
+              shipment_status: 'PROCESSING'
+            }
+          });
+        } else {
+          const shipmentResult = await createShipment(shipmentData);
+
+          // Validate the Shiprocket response contains required fields
+          if (!shipmentResult || !shipmentResult.order_id || !shipmentResult.shipment_id) {
+            throw new Error('Failed to create shipment with Shiprocket. Invalid response received from shipping provider.');
+          }
+
+          shiprocketOrderId = shipmentResult.order_id?.toString();
+          shiprocketShipmentId = shipmentResult.shipment_id?.toString();
+
+          if (shipmentResult.label_url) {
+            labelUrl = shipmentResult.label_url;
+          }
+
+          if (shipmentResult.track_url) {
+            trackUrl = shipmentResult.track_url;
+          }
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              shiprocket_order_id: shiprocketOrderId,
+              shiprocket_shipment_id: shiprocketShipmentId,
+              label_url: labelUrl,
+              track_url: trackUrl
+            }
+          });
+        }
       } catch (shipmentError) {
-        console.error('Error creating Shiprocket shipment:', shipmentError);
+        console.error('Error creating shipment:', shipmentError);
         // Re-throw the error to rollback the transaction
-        throw new Error(shipmentError.message || 'Failed to create shipment with Shiprocket');
+        throw new Error(shipmentError.message || 'Failed to create shipment');
       }
 
       // 4. Update transaction with order ID
@@ -513,8 +699,13 @@ const getOrders = async (req, res) => {
     user_id: userId
   };
 
-  if (shipment_status) {
-    where.shipment_status = shipment_status;
+  if (shipment_status === 'DRAFT') {
+    where.is_draft = true;
+  } else {
+    where.is_draft = false;
+    if (shipment_status && shipment_status !== 'ALL') {
+      where.shipment_status = shipment_status;
+    }
   }
 
   if (order_type) {
@@ -1028,6 +1219,9 @@ const generateOrderLabel = async (req, res) => {
     }
 
     if (labelUrl) {
+      // Customize the label with CheapShip branding
+      labelUrl = await labelCustomizer.customize(labelUrl, order.id.toString());
+
       await prisma.order.update({
         where: { id: order.id },
         data: { label_url: labelUrl }
@@ -1042,6 +1236,53 @@ const generateOrderLabel = async (req, res) => {
   } catch (error) {
     console.error('Error generating label:', error);
     res.status(500).json({ message: error.message || 'Error generating label' });
+  }
+};
+
+const generateOrderInvoice = async (req, res) => {
+  const { id } = req.params;
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.user_id !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to generate invoice for this order' });
+    }
+
+    if (!order.shiprocket_order_id) {
+      return res.status(400).json({ message: 'No shipment order found for this invoice' });
+    }
+
+    const { generateInvoice } = require('../utils/shiprocket');
+    const invoiceResult = await generateInvoice([order.shiprocket_order_id]);
+
+    let is_new_invoice = false;
+    let invoiceUrl = null;
+
+    if (invoiceResult && invoiceResult.is_invoice_created) {
+      invoiceUrl = invoiceResult.invoice_url;
+      is_new_invoice = true;
+    } else if (invoiceResult && invoiceResult.data && invoiceResult.data.invoice_url) {
+      invoiceUrl = invoiceResult.data.invoice_url;
+    }
+
+    res.json({
+      message: 'Invoice generated successfully',
+      invoice_url: invoiceUrl,
+      is_new_invoice,
+      invoice_result: invoiceResult
+    });
+  } catch (error) {
+    console.error('Error generating invoice:', error);
+    res.status(500).json({ message: error.message || 'Error generating invoice' });
   }
 };
 
@@ -1062,7 +1303,7 @@ const getPendingRemittances = async (req, res) => {
       }
     });
 
-    const totalPending = pendingOrders.reduce((sum, order) => 
+    const totalPending = pendingOrders.reduce((sum, order) =>
       sum + (parseFloat(order.cod_amount) || 0), 0
     );
 
@@ -1095,6 +1336,23 @@ const getRemittanceHistory = async (req, res) => {
     res.status(500).json({ message: 'Error fetching remittance history' });
   }
 };
+const getOrdersCount = async (req, res) => {
+  const userId = req.user.id;
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const ordersCount = await prisma.order.count({
+      where: {
+        user_id: userId
+      }
+    });
+
+    res.json({ ordersCount });
+  } catch (error) {
+    console.error('Error fetching orders count:', error);
+    res.status(500).json({ message: 'Error fetching orders count' });
+  }
+}
 
 const updateRemittanceStatus = async (req, res) => {
   const { id } = req.params;
@@ -1138,6 +1396,7 @@ module.exports = {
   getOrderById,
   calculateRates,
   getPincodeDetails,
+  getOrdersCount,
   cancelOrder,
   handleWebhook,
   getOrderTracking,
@@ -1147,5 +1406,6 @@ module.exports = {
   generateOrderLabel,
   getPendingRemittances,
   getRemittanceHistory,
-  updateRemittanceStatus
+  updateRemittanceStatus,
+  generateOrderInvoice
 };

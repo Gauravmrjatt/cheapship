@@ -11,6 +11,19 @@ const prisma = require('./utils/prisma');
 // Make Prisma client available throughout the application
 app.locals.prisma = prisma;
 
+// Database Connection Check
+async function checkDbConnection() {
+  try {
+    await prisma.$connect();
+    console.log('✅ Database connected successfully');
+  } catch (error) {
+    console.error('❌ Database connection failed:', error);
+    // process.exit(1); // Optional: Exit if DB connection fails
+  }
+}
+
+checkDbConnection();
+
 // Secure HTTP headers
 app.use(helmet());
 
@@ -24,6 +37,7 @@ console.log("CHEAPSHIP SERVER INITIALIZING WITH FRANCHISE ROUTES");
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(express.static(path.join(__dirname, 'public')));
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 
@@ -34,11 +48,19 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
    Health Check Route
 ============================== */
 
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
+app.get('/health', async (req, res) => {
+  let dbStatus = 'UP';
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch (error) {
+    dbStatus = 'DOWN';
+  }
+
+  res.status(dbStatus === 'UP' ? 200 : 503).json({
+    status: dbStatus === 'UP' ? 'OK' : 'DEGRADED',
+    database: dbStatus,
     uptime: process.uptime(),
-    timestamp: Date.now()
+    timestamp: new Date().toISOString()
   });
 });
 

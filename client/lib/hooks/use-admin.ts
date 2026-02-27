@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
 import { sileo } from "sileo";
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"; 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 interface RecentOrder {
   id: string;
@@ -52,8 +52,34 @@ export interface AdminUser {
   is_active: boolean;
   user_type: string;
   wallet_balance: number;
+  security_deposit: number;
   created_at: string;
+  min_commission_rate?: number;
+  max_commission_rate?: number;
+  assigned_rates?: any;
+  _count?: {
+    orders: number;
+  };
 }
+
+export const useRefundSecurityDeposit = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const mutator = http.post<any, {}>(`/admin/users/${userId}/refund-security-deposit`).mutationFn;
+      return mutator({});
+    },
+    onSuccess: () => {
+      sileo.success({ title: "Security deposit refunded successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
+    onError: (err: any) => {
+      sileo.error({ title: "Failed to refund security deposit", description: err.message });
+    }
+  });
+};
 
 export interface AdminOrder {
   id: string;
@@ -139,16 +165,16 @@ export const useToggleUserStatus = (isMounted?: React.MutableRefObject<boolean>)
     ...http.post<unknown, { userId: string, is_active: boolean }>("/admin/users/status", {
     }),
     mutationFn: async ({ userId, is_active }: { userId: string, is_active: boolean }) => {
-       const response = await fetch(`${BASE_URL}/api/v1/admin/users/${userId}/status`, {
-         method: 'PATCH',
-         headers: {
-           'Content-Type': 'application/json',
-           'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
-         },
-         body: JSON.stringify({ is_active })
-       });
-       if (!response.ok) throw new Error('Failed to update status');
-        return response.json() as Promise<unknown>;
+      const response = await fetch(`${BASE_URL}/api/v1/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
+        },
+        body: JSON.stringify({ is_active })
+      });
+      if (!response.ok) throw new Error('Failed to update status');
+      return response.json() as Promise<unknown>;
     },
     onSuccess: () => {
       if (isMounted?.current === false) return;
@@ -214,8 +240,8 @@ export const useProcessWithdrawal = () => {
   const http = useHttp();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string, status: 'APPROVED' | 'REJECTED' }) => {
-       const mutator = http.post<unknown, { status: string }>(`/admin/withdrawals/${id}/process`).mutationFn;
-       return mutator({ status });
+      const mutator = http.post<unknown, { status: string }>(`/admin/withdrawals/${id}/process`).mutationFn;
+      return mutator({ status });
     },
     onSuccess: () => {
       sileo.success({ title: "Withdrawal processed" });
@@ -278,6 +304,25 @@ export const useSetUserCommissionBounds = (isMounted?: React.MutableRefObject<bo
   });
 };
 
+export const useSetUserCustomRates = (isMounted?: React.MutableRefObject<boolean>) => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async ({ userId, assigned_rates }: { userId: string; assigned_rates: any }) => {
+      const mutator = http.post<any, { assigned_rates: any }>(`/admin/users/${userId}/custom-rates`).mutationFn;
+      return mutator({ assigned_rates });
+    },
+    onSuccess: () => {
+      if (isMounted?.current === false) return;
+      sileo.success({ title: "Custom rates updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (err: any) => {
+      sileo.error({ title: "Failed to update custom rates", description: err.message });
+    }
+  });
+};
+
 // Referral Level Setting (max levels only)
 export interface ReferralLevelSetting {
   max_levels: number;
@@ -315,4 +360,71 @@ export interface NetworkCommissionStats {
 export const useNetworkCommissionStats = () => {
   const http = useHttp();
   return useQuery(http.get<NetworkCommissionStats>(["network-commission-stats"], "/admin/network-commission-stats"));
+};
+
+export interface AdminKycUser {
+  id: string;
+  name: string;
+  email: string;
+  mobile: string;
+  kyc_status: string;
+  pan_number: string | null;
+  pan_verified: boolean;
+  aadhaar_number: string | null;
+  aadhaar_verified: boolean;
+  gst_number: string | null;
+  gst_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminKycResponse {
+  data: AdminKycUser[];
+  pagination: {
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  };
+}
+
+export const useAdminKyc = (page: number = 1, pageSize: number = 10, status: string = "ALL", search: string = "") => {
+  const http = useHttp();
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+    status,
+    search
+  });
+  return useQuery(http.get<AdminKycResponse>(["admin-kyc", page, pageSize, status, search], `/admin/kyc?${queryParams.toString()}`));
+};
+
+export const useUpdateKycStatus = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async ({ userId, kyc_status, pan_verified, aadhaar_verified, gst_verified }: { 
+      userId: string; 
+      kyc_status: string;
+      pan_verified?: boolean;
+      aadhaar_verified?: boolean;
+      gst_verified?: boolean;
+    }) => {
+      const response = await fetch(`${BASE_URL}/api/v1/admin/kyc/${userId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
+        },
+        body: JSON.stringify({ kyc_status, pan_verified, aadhaar_verified, gst_verified })
+      });
+      if (!response.ok) throw new Error('Failed to update KYC status');
+      return response.json() as Promise<{ message: string; user: AdminKycUser }>;
+    },
+    onSuccess: () => {
+      sileo.success({ title: "KYC status updated" });
+      queryClient.invalidateQueries({ queryKey: ["admin-kyc"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
+  });
 };

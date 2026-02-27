@@ -107,6 +107,27 @@ export function SectionCards({
       trend: "down",
     },
     {
+      label: "Total Weight Shipped",
+      value: data?.totalWeightShipped,
+      icon: BarChartIcon,
+      footer: "Accumulated weight over lifetime",
+      trend: "up",
+    },
+    {
+      label: "Weight Disputes",
+      value: data?.weightDisputeOrders,
+      icon: Alert02Icon,
+      footer: "Pending weight anomalies",
+      trend: "down",
+    },
+    {
+      label: "Last Month Orders",
+      value: data?.lastMonthOrders,
+      icon: Time04Icon,
+      footer: "Orders completed last month",
+      trend: "up",
+    },
+    {
       label: "Monthly Growth",
       value: data?.monthlyGrowth,
       icon: ChartUpIcon,
@@ -117,8 +138,8 @@ export function SectionCards({
 
   return (
     <div className="grid grid-cols-1 gap-3 px-3 sm:gap-4 sm:px-4 lg:px-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-      {cards.map((card, index) => (
-        <Card key={index} className="@container/card">
+      {cards.map((card) => (
+        <Card key={card.label} className="@container/card">
           <CardHeader>
             <CardDescription className="flex items-center gap-2">
               <HugeiconsIcon icon={card.icon} strokeWidth={2} className="size-4" />

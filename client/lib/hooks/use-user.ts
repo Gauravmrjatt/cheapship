@@ -1,9 +1,10 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
 import { useAuthStore } from "@/lib/store/auth";
 import { useEffect } from "react";
+import { sileo } from "sileo";
 
 export interface UserProfile {
   id: string;
@@ -15,6 +16,9 @@ export interface UserProfile {
   referer_code: string | null;
   referred_by: string | null;
   commission_rate: number | null;
+  min_commission_rate: number | null;
+  max_commission_rate: number | null;
+  default_referred_pickup_id: string | null;
   franchise_type: string | null;
   is_active: boolean;
   created_at: string;
@@ -41,4 +45,58 @@ export const useUser = () => {
   }, [query.data, setUser]);
 
   return query;
+};
+
+export const useUpdateMyCommissionRate = () => {
+  const http = useHttp();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (commission_rate: number) =>
+      fetch(`/api/v1/users/commission-rate`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ commission_rate })
+      }).then(res => {
+        if (!res.ok) return res.json().then(e => { throw new Error(e.message || "Failed to update") });
+        return res.json();
+      }),
+    onSuccess: () => {
+      sileo.success({ title: "Commission rate updated!" });
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+    },
+    onError: (err: any) => {
+      sileo.error({ title: "Update failed", description: err.message });
+    }
+  });
+};
+
+export const useSetDefaultPickup = () => {
+  const http = useHttp();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (address_id: string) =>
+      fetch(`/api/v1/users/default-pickup`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ address_id })
+      }).then(res => {
+        if (!res.ok) return res.json().then(e => { throw new Error(e.message || "Failed to update") });
+        return res.json();
+      }),
+    onSuccess: () => {
+      sileo.success({ title: "Default signup address updated!" });
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+    },
+    onError: (err: any) => {
+      sileo.error({ title: "Update failed", description: err.message });
+    }
+  });
 };

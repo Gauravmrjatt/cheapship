@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
 import { useAuth } from "./use-auth";
@@ -51,7 +52,7 @@ export const useCancelOrder = () => {
   const { put } = useHttp();
   const mutation = useMutation(put("/orders"));
   
-  return (orderId: string) => mutation.mutateAsync(`${orderId}/cancel`);
+  return React.useCallback((orderId: string) => mutation.mutateAsync(`${orderId}/cancel`), [mutation]);
 };
 
 export const useCheckPhoneVerification = (phone: string, enabled: boolean = false) => {

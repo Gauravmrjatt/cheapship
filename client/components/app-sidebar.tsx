@@ -34,7 +34,8 @@ import {
   UserCircle02Icon,
   MoneyReceiveCircleIcon,
   Globe02Icon,
-  Wallet01Icon
+  Wallet01Icon,
+  Comment01Icon
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/hooks/use-auth"
 
@@ -48,6 +49,11 @@ const adminNav = [
     title: "User Management",
     url: "/admin/users",
     icon: <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />,
+  },
+  {
+    title: "KYC Verification",
+    url: "/admin/kyc",
+    icon: <HugeiconsIcon icon={UserCircle02Icon} strokeWidth={2} />,
   },
   {
     title: "All Orders",
@@ -158,6 +164,13 @@ const data = {
       ),
     },
     {
+      title: "Feedback",
+      url: "/dashboard/feedback",
+      icon: (
+        <HugeiconsIcon icon={Comment01Icon} strokeWidth={2} />
+      ),
+    },
+    {
       title: "Search",
       url: "#",
       icon: (
@@ -197,7 +210,7 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
   const mainNavItems = user?.user_type === "ADMIN" ? [...adminNav, ...data.navMain] : data.navMain;
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -206,7 +219,7 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
               render={<a href={isAdmin ? "/admin" : "/dashboard"} />}
             >
               <HugeiconsIcon icon={ShippingTruck01Icon} strokeWidth={2} className="size-5!" />
-              <span className="text-base font-semibold">{user?.user_type === "ADMIN"  ? "Admin Panel" : "Cheap Ship"}</span>
+              <span className="text-base font-semibold">{user?.user_type === "ADMIN" ? "Admin Panel" : "Cheap Ship"}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

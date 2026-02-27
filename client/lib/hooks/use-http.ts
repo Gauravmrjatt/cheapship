@@ -11,6 +11,12 @@ interface HttpOptions<TData, TVariables = any> {
   onError?: (error: Error, variables: TVariables) => void;
 }
 
+interface GetOptions<TData> {
+  enabled?: boolean;
+  refetchInterval?: number;
+  onSuccess?: (data: TData) => void;
+}
+
 const getHeaders = (token: string | null) => {
   return {
     "Content-Type": "application/json",
@@ -21,7 +27,7 @@ const getHeaders = (token: string | null) => {
 export const useHttp = () => {
   const { token } = useAuth();
 
-  const get = <TData>(queryKey: QueryKey, endpoint: string, enabled: boolean = true, options?: { refetchInterval?: number }) => {
+  const get = <TData>(queryKey: QueryKey, endpoint: string, enabled: boolean = true, options?: GetOptions<TData>) => {
     return {
       queryKey,
       queryFn: async () => {
@@ -32,7 +38,11 @@ export const useHttp = () => {
           const errorData = await response.json();
           throw new Error(errorData.message || "Failed to fetch data");
         }
-        return response.json();
+        const data = await response.json();
+        if (options?.onSuccess) {
+          options.onSuccess(data);
+        }
+        return data;
       },
       enabled: !!token && enabled,
       ...(options?.refetchInterval && { refetchInterval: options.refetchInterval }),

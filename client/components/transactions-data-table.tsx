@@ -50,12 +50,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { 
-  LeftToRightListBulletIcon, 
-  ArrowDown01Icon, 
-  ArrowLeftDoubleIcon, 
-  ArrowLeft01Icon, 
-  ArrowRight01Icon, 
+import {
+  LeftToRightListBulletIcon,
+  ArrowDown01Icon,
+  ArrowLeftDoubleIcon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
   ArrowRightDoubleIcon,
   CheckmarkCircle01Icon,
   Loading03Icon,
@@ -68,11 +68,13 @@ import {
   PackageIcon,
   Delete02Icon,
   DeliveryViewIcon,
-  Coins01Icon
+  Coins01Icon,
+  Money03Icon
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { Transaction } from "@/lib/hooks/use-transactions"
 import { DateRangePicker } from "@/components/ui/date-picker"
+import { DataTablePagination } from "./orders-table-components"
 
 interface TransactionsDataTableProps {
   data: Transaction[]
@@ -102,6 +104,7 @@ const categoryLabels: Record<string, { label: string; icon: typeof Wallet01Icon 
   REFUND: { label: "Refund", icon: Delete02Icon },
   COD_REMITTANCE: { label: "COD Remittance", icon: DeliveryViewIcon },
   COMMISSION: { label: "Commission", icon: Coins01Icon },
+  SECURITY_DEPOSIT: { label: "Security Deposit", icon: Money03Icon },
 }
 
 export function TransactionsDataTable({
@@ -114,6 +117,11 @@ export function TransactionsDataTable({
   onPageSizeChange,
   onFilterChange,
 }: TransactionsDataTableProps) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
     user: showUserColumn
@@ -184,9 +192,9 @@ export function TransactionsDataTable({
       cell: ({ row }) => (
         <div className="w-24">
           <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
-            <HugeiconsIcon 
-              icon={row.original.type === "CREDIT" ? MoneyReceiveCircleIcon : MoneySendCircleIcon} 
-              size={12} 
+            <HugeiconsIcon
+              icon={row.original.type === "CREDIT" ? MoneyReceiveCircleIcon : MoneySendCircleIcon}
+              size={12}
               strokeWidth={2}
               className={cn(row.original.type === "CREDIT" ? "text-green-500" : "text-red-500")}
             />
@@ -212,32 +220,56 @@ export function TransactionsDataTable({
     {
       accessorKey: "description",
       header: "Description",
-      cell: ({ row }) => (
-        <div className="flex flex-col max-w-[200px]">
-          <span className="text-xs font-medium truncate">{row.original.description}</span>
-          {row.original.reference_id && <span className="text-[9px] text-muted-foreground font-mono">Ref: {row.original.reference_id}</span>}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const orderDetails = (row.original as any).order_details;
+        return (
+          <div className="flex flex-col max-w-[200px]">
+            <span className="text-xs font-medium truncate">{row.original.description}</span>
+            <div className="flex items-center gap-2 mt-0.5">
+              {row.original.reference_id && <span className="text-[9px] text-muted-foreground font-mono bg-muted px-1 py-0.5 rounded">Ref: {row.original.reference_id}</span>}
+              {orderDetails?.awb_code && <span className="text-[9px] text-primary font-mono font-medium bg-primary/10 px-1 py-0.5 rounded">AWB: {orderDetails.awb_code}</span>}
+            </div>
+          </div>
+        )
+      },
     },
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const status = row.original.status.toLowerCase();
+        const baseStatus = row.original.status.toLowerCase();
+        const category = row.original.category;
         const statusReason = row.original.status_reason;
+
+        let displayStatus = baseStatus;
+        let icon = null;
+        let colorClass = "";
+
+        if (baseStatus === "success") {
+          icon = CheckmarkCircle01Icon;
+          colorClass = "fill-green-500 text-green-500 dark:fill-green-400 dark:text-green-400";
+
+          if (category === "REFUND") displayStatus = "refunded";
+          else if (category === "ORDER_PAYMENT") displayStatus = "ordered";
+          else if (category === "COD_REMITTANCE") displayStatus = "remittance";
+          else if (category === "COMMISSION") displayStatus = "commission";
+          else displayStatus = "success";
+        } else if (baseStatus === "pending") {
+          icon = Loading03Icon;
+          colorClass = "text-yellow-600 animate-spin";
+        } else {
+          icon = Cancel01Icon;
+          colorClass = "text-red-500";
+          if (category === "ORDER_PAYMENT" && baseStatus === "failed") displayStatus = "cancelled";
+        }
+
         const statusContent = (
           <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
-            {status === "success" ? (
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400 size-3" />
-            ) : status === "pending" ? (
-              <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="animate-spin size-3" />
-            ) : (
-              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="text-red-500 size-3" />
-            )}
-            {status}
+            {icon && <HugeiconsIcon icon={icon} strokeWidth={2} className={cn("size-3", colorClass)} />}
+            {displayStatus}
           </Badge>
         );
-        
+
         if (statusReason) {
           return (
             <TooltipProvider>
@@ -255,7 +287,7 @@ export function TransactionsDataTable({
             </TooltipProvider>
           );
         }
-        
+
         return statusContent;
       },
     },
@@ -293,9 +325,7 @@ export function TransactionsDataTable({
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnVisibilityChange: React.useCallback((newVisibility) => {
-      setColumnVisibility(newVisibility);
-    }, []),
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -313,6 +343,7 @@ export function TransactionsDataTable({
       toDate: toDate?.toISOString().split('T')[0],
     })
   }, [onFilterChange, filters]);
+  if (!mounted) return null;
 
   return (
     <Tabs
@@ -325,7 +356,7 @@ export function TransactionsDataTable({
           <div className="flex items-center gap-4">
             <Select
               value={filters?.category ?? "ALL"}
-      onValueChange={(v) => { if (v) handleFilterUpdate("category", v === "ALL" ? undefined : v) }}
+              onValueChange={(v) => { if (v) handleFilterUpdate("category", v === "ALL" ? undefined : v) }}
             >
               <SelectTrigger className="flex w-fit lg:hidden" size="sm">
                 <SelectValue placeholder="Category" />
@@ -333,6 +364,7 @@ export function TransactionsDataTable({
               <SelectContent>
                 <SelectItem value="ALL">All</SelectItem>
                 <SelectItem value="WALLET_TOPUP">Wallet Topup</SelectItem>
+                <SelectItem value="SECURITY_DEPOSIT">Security Deposit</SelectItem>
                 <SelectItem value="ORDER_PAYMENT">Orders</SelectItem>
                 <SelectItem value="REFUND">Refunds</SelectItem>
                 <SelectItem value="COD_REMITTANCE">COD Remittance</SelectItem>
@@ -341,12 +373,9 @@ export function TransactionsDataTable({
             </Select>
 
             <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
-              <TabsTrigger value="ALL">All</TabsTrigger>
-              <TabsTrigger value="WALLET_TOPUP">Wallet</TabsTrigger>
-              <TabsTrigger value="ORDER_PAYMENT">Orders</TabsTrigger>
-              <TabsTrigger value="REFUND">Refunds</TabsTrigger>
-              <TabsTrigger value="COD_REMITTANCE">COD</TabsTrigger>
-              <TabsTrigger value="COMMISSION">Commission</TabsTrigger>
+              <TabsTrigger value="ALL">All Transactions</TabsTrigger>
+              <TabsTrigger value="WALLET_TOPUP">Wallet Transactions</TabsTrigger>
+              <TabsTrigger value="SECURITY_DEPOSIT">Security Deposit</TabsTrigger>
             </TabsList>
           </div>
 
@@ -454,73 +483,12 @@ export function TransactionsDataTable({
           </Table>
         </div>
 
-        <div className="flex items-center justify-between px-4">
-          <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {pagination?.total || 0} row(s) selected.
-          </div>
-          
-          <div className="flex w-full items-center gap-8 lg:w-fit">
-            <div className="hidden items-center gap-2 lg:flex">
-              <Label htmlFor="rows-per-page" className="text-sm font-medium">Rows per page</Label>
-              <Select
-                value={`${pagination?.pageSize || 10}`}
-                onValueChange={(value) => onPageSizeChange?.(Number(value))}
-              >
-                <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                  <SelectValue placeholder={pagination?.pageSize || 10} />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[10, 20, 50].map((size) => (
-                    <SelectItem key={size} value={`${size}`}>{size}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {pagination?.currentPage || 1} of {pagination?.totalPages || 1}
-            </div>
-
-            <div className="ml-auto flex items-center gap-2 lg:ml-0">
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => onPageChange?.(1)}
-                disabled={pagination?.currentPage === 1}
-              >
-                <HugeiconsIcon icon={ArrowLeftDoubleIcon} strokeWidth={2} />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => onPageChange?.((pagination?.currentPage || 1) - 1)}
-                disabled={pagination?.currentPage === 1}
-              >
-                <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => onPageChange?.((pagination?.currentPage || 1) + 1)}
-                disabled={pagination?.currentPage === pagination?.totalPages}
-              >
-                <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden size-8 lg:flex"
-                size="icon"
-                onClick={() => onPageChange?.(pagination?.totalPages || 1)}
-                disabled={pagination?.currentPage === pagination?.totalPages}
-              >
-                <HugeiconsIcon icon={ArrowRightDoubleIcon} strokeWidth={2} />
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DataTablePagination
+          pagination={pagination}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          filteredCount={table.getFilteredRowModel().rows.length}
+        />
       </div>
     </Tabs>
   )

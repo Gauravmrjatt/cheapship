@@ -19,9 +19,9 @@ const sendAdminForgotPasswordOtp = async (req, res) => {
 
     const rateLimitCheck = await otpService.checkRateLimit(prisma, email, 'admin_forgot_password');
     if (!rateLimitCheck.allowed) {
-      return res.status(429).json({ 
+      return res.status(429).json({
         message: rateLimitCheck.message,
-        retryAfter: rateLimitCheck.retryAfter 
+        retryAfter: rateLimitCheck.retryAfter
       });
     }
 
@@ -30,7 +30,7 @@ const sendAdminForgotPasswordOtp = async (req, res) => {
 
     await emailService.sendOtpEmail(email, otp, 'forgot_password');
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: 'OTP sent to your email',
       expiresIn: otpService.OTP_EXPIRY_MINUTES * 60
     });
@@ -55,7 +55,7 @@ const resetAdminPassword = async (req, res) => {
     }
 
     const verifyResult = await otpService.verifyOtp(prisma, email, otp, 'admin_forgot_password');
-    
+
     if (!verifyResult.valid) {
       return res.status(400).json({ message: verifyResult.error });
     }
@@ -76,7 +76,7 @@ const resetAdminPassword = async (req, res) => {
 
 const getDashboardStats = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  
+
   try {
     const [
       totalUsers,
@@ -127,7 +127,7 @@ const getDashboardStats = async (req, res) => {
 const getUsers = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { page = 1, pageSize = 10, search, status } = req.query;
-  
+
   const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
   const offset = (pageNum - 1) * pageSizeNum;
@@ -348,7 +348,7 @@ const processWithdrawal = async (req, res) => {
       // Note: The actual "money" logic depends on how you store commission.
       // If commission is already in wallet_balance, then Approved means money is sent out, so debit wallet.
       // If Rejected, money stays in wallet (or rather, the lock is released).
-      
+
       // Assuming 'withdraw' created a pending record but didn't debit yet?
       // Or typically, you debit on request (hold funds) and refund on reject.
       // Let's assume standard: Request -> Debit Wallet (Hold) -> Admin Approve (Done) or Reject (Refund).
@@ -358,63 +358,63 @@ const processWithdrawal = async (req, res) => {
       // Let's assume:
       // Approve -> Debit Wallet (Real payout)
       // Reject -> Do nothing (Balance remains)
-      
-               if (status === 'APPROVED') {
-                  // Check balance again
-                  const user = await tx.user.findUnique({ where: { id: withdrawal.user_id } });
-                  if (Number(user.wallet_balance) < Number(withdrawal.amount)) {
-                      throw new Error('Insufficient user balance for approval');
-                  }
-       
-                  await tx.user.update({
-                      where: { id: withdrawal.user_id },
-                      data: { wallet_balance: { decrement: withdrawal.amount } }
-                  });
-                  
-                  // If it's a franchise withdrawal, consume the orders
-                  if (withdrawal.franchise_id) {
-                    await tx.order.updateMany({
-                      where: {
-                        user_id: withdrawal.franchise_id,
-                        shipment_status: 'DELIVERED',
-                        is_franchise_withdrawn: false
-                      },
-                      data: {
-                        is_franchise_withdrawn: true,
-                        franchise_commission_amount: 0
-                      }
-                    });
-                  } else {
-                    // This is a multi-level referral commission withdrawal
-                    // Commission records are already marked as withdrawn when request was created
-                    // Just verify they exist and are marked properly
-                    const withdrawnCommissions = await tx.orderReferralCommission.findMany({
-                      where: {
-                        referrer_id: withdrawal.user_id,
-                        is_withdrawn: true,
-                        withdrawn_at: {
-                          gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Within last 24 hours
-                        }
-                      }
-                    });
-                    
-                    if (withdrawnCommissions.length === 0) {
-                      console.warn(`No withdrawn commission records found for withdrawal ${withdrawal.id}`);
-                    }
-                  }
-       
-                   await tx.transaction.create({
-                       data: {
-                           user_id: withdrawal.user_id,
-                           amount: withdrawal.amount,
-                           type: 'DEBIT',
-                           category: 'COMMISSION',
-                           status: 'SUCCESS',
-                           description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
-                           reference_id: withdrawal.id
-                       }
-                   });
-               }
+
+      if (status === 'APPROVED') {
+        // Check balance again
+        const user = await tx.user.findUnique({ where: { id: withdrawal.user_id } });
+        if (Number(user.wallet_balance) < Number(withdrawal.amount)) {
+          throw new Error('Insufficient user balance for approval');
+        }
+
+        await tx.user.update({
+          where: { id: withdrawal.user_id },
+          data: { wallet_balance: { decrement: withdrawal.amount } }
+        });
+
+        // If it's a franchise withdrawal, consume the orders
+        if (withdrawal.franchise_id) {
+          await tx.order.updateMany({
+            where: {
+              user_id: withdrawal.franchise_id,
+              shipment_status: 'DELIVERED',
+              is_franchise_withdrawn: false
+            },
+            data: {
+              is_franchise_withdrawn: true,
+              franchise_commission_amount: 0
+            }
+          });
+        } else {
+          // This is a multi-level referral commission withdrawal
+          // Commission records are already marked as withdrawn when request was created
+          // Just verify they exist and are marked properly
+          const withdrawnCommissions = await tx.orderReferralCommission.findMany({
+            where: {
+              referrer_id: withdrawal.user_id,
+              is_withdrawn: true,
+              withdrawn_at: {
+                gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Within last 24 hours
+              }
+            }
+          });
+
+          if (withdrawnCommissions.length === 0) {
+            console.warn(`No withdrawn commission records found for withdrawal ${withdrawal.id}`);
+          }
+        }
+
+        await tx.transaction.create({
+          data: {
+            user_id: withdrawal.user_id,
+            amount: withdrawal.amount,
+            type: 'DEBIT',
+            category: 'COMMISSION',
+            status: 'SUCCESS',
+            description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
+            reference_id: withdrawal.id
+          }
+        });
+      }
       return updatedWithdrawal;
     });
 
@@ -446,7 +446,7 @@ const updateGlobalSettings = async (req, res) => {
     const setting = await prisma.systemSetting.upsert({
       where: { key: 'global_commission_rate' },
       update: { value: rate.toString() },
-      create: { 
+      create: {
         key: 'global_commission_rate',
         value: rate.toString(),
         description: 'Global commission rate percentage added to all orders'
@@ -522,8 +522,31 @@ const getAllTransactions = async (req, res) => {
       prisma.transaction.count({ where })
     ]);
 
+    const orderIds = transactions
+      .map(t => t.reference_id)
+      .filter(id => id && /^\d+$/.test(id));
+
+    let orderDetailsMap = {};
+    if (orderIds.length > 0) {
+      const numericOrderIds = orderIds.map(id => BigInt(id));
+      const orders = await prisma.order.findMany({
+        where: { id: { in: numericOrderIds } },
+        select: { id: true, awb_code: true }
+      });
+      orders.forEach(o => {
+        orderDetailsMap[o.id.toString()] = { awb_code: o.awb_code };
+      });
+    }
+
+    const enhancedTransactions = transactions.map(t => {
+      if (t.reference_id && orderDetailsMap[t.reference_id]) {
+        return { ...t, order_details: orderDetailsMap[t.reference_id] };
+      }
+      return t;
+    });
+
     res.json({
-      data: transactions,
+      data: enhancedTransactions,
       pagination: {
         total,
         totalPages: Math.ceil(total / pageSizeNum),
@@ -616,7 +639,7 @@ const getReferralLevelSetting = async (req, res) => {
       where: { key: 'max_referral_levels' }
     });
     res.json({
-      max_levels: setting ? parseInt(setting.value) : 1, 
+      max_levels: setting ? parseInt(setting.value) : 1,
     });
   } catch (error) {
     console.error(error);
@@ -670,7 +693,7 @@ const updateReferralLevelSetting = async (req, res) => {
 // Get network commission stats for admin
 const getNetworkCommissionStats = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  
+
   try {
     const [
       totalReferralCommissions,
@@ -692,7 +715,7 @@ const getNetworkCommissionStats = async (req, res) => {
         _count: true
       })
     ]);
-    
+
     res.json({
       total_commission: totalReferralCommissions._sum.amount || 0,
       total_count: totalReferralCommissions._count,
@@ -787,7 +810,8 @@ const getUserCommissionBounds = async (req, res) => {
 
 const getAllCODOrders = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  const { page = 1, pageSize = 10, remittance_status, search } = req.query;
+  const { page = 1, pageSize = 10, remittance_status, search, order_source } = req.query;
+  const adminId = req.user.id; // Get the currently logged-in admin ID
 
   const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
@@ -796,6 +820,13 @@ const getAllCODOrders = async (req, res) => {
   const where = {
     payment_mode: 'COD'
   };
+
+  // Filter based on whether it's the admin's own order or a standard user's order
+  if (order_source === 'MY_ORDERS') {
+    where.user_id = adminId;
+  } else if (order_source === 'USER_ORDERS') {
+    where.user_id = { not: adminId };
+  }
 
   if (remittance_status && remittance_status !== 'ALL') {
     where.remittance_status = remittance_status;
@@ -818,7 +849,7 @@ const getAllCODOrders = async (req, res) => {
         orderBy: { created_at: 'desc' },
         include: {
           user: {
-            select: { id: true, name: true, email: true }
+            select: { id: true, name: true, email: true, upi_id: true }
           },
           order_receiver_address: {
             select: { name: true, city: true, state: true }
@@ -858,11 +889,7 @@ const getAllCODOrders = async (req, res) => {
 const updateOrderRemittance = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { id } = req.params;
-  const { remittance_status, remitted_amount, remittance_ref_id } = req.body;
-
-  if (!['NOT_APPLICABLE', 'PENDING', 'PROCESSING', 'REMITTED', 'FAILED'].includes(remittance_status)) {
-    return res.status(400).json({ message: 'Invalid remittance status' });
-  }
+  const { remittance_status, remitted_amount, remittance_ref_id, payout_status } = req.body;
 
   try {
     const order = await prisma.order.findUnique({
@@ -874,17 +901,32 @@ const updateOrderRemittance = async (req, res) => {
     }
 
     if (order.payment_mode !== 'COD') {
-      return res.status(400).json({ message: 'Only COD orders can have remittance status updated' });
+      return res.status(400).json({ message: 'Only COD orders can have status updated' });
     }
 
-    const updateData = { remittance_status };
+    const updateData = {};
 
-    if (remittance_status === 'REMITTED') {
-      updateData.remitted_amount = remitted_amount || order.cod_amount;
-      updateData.remitted_at = new Date();
-      if (remittance_ref_id) {
-        updateData.remittance_ref_id = remittance_ref_id;
+    if (remittance_status && ['NOT_APPLICABLE', 'PENDING', 'PROCESSING', 'REMITTED', 'FAILED'].includes(remittance_status)) {
+      updateData.remittance_status = remittance_status;
+      if (remittance_status === 'REMITTED') {
+        updateData.remitted_amount = remitted_amount || order.cod_amount;
+        updateData.remitted_at = new Date();
+        if (remittance_ref_id) {
+          updateData.remittance_ref_id = remittance_ref_id;
+        }
       }
+    } else if (remittance_status) {
+      return res.status(400).json({ message: 'Invalid remittance status' });
+    }
+
+    if (payout_status && ['PENDING', 'COMPLETED'].includes(payout_status)) {
+      updateData.payout_status = payout_status;
+    } else if (payout_status) {
+      return res.status(400).json({ message: 'Invalid payout status' });
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'No valid status provided to update' });
     }
 
     const updatedOrder = await prisma.order.update({
@@ -892,7 +934,7 @@ const updateOrderRemittance = async (req, res) => {
       data: updateData,
       include: {
         user: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, upi_id: true }
         }
       }
     });
@@ -944,6 +986,207 @@ const getOrderById = async (req, res) => {
   }
 };
 
+const getKycUsers = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { page = 1, pageSize = 10, status, search } = req.query;
+
+  const pageNum = Math.max(1, parseInt(page, 10));
+  const pageSizeNum = parseInt(pageSize, 10);
+  const offset = (pageNum - 1) * pageSizeNum;
+
+  const where = {
+    
+  };
+
+  if (status && status !== 'ALL') {
+    where.kyc_status = status;
+  } else {
+    // By default, maybe show everything except PENDING if not specified? 
+    // Or just show everything. Let's show everything but provide filter.
+  }
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { mobile: { contains: search, mode: 'insensitive' } },
+      { pan_number: { contains: search, mode: 'insensitive' } },
+      { aadhaar_number: { contains: search, mode: 'insensitive' } },
+      { gst_number: { contains: search, mode: 'insensitive' } }
+    ];
+  }
+
+  try {
+    const [users, total] = await prisma.$transaction([
+      prisma.user.findMany({
+        where,
+        skip: offset,
+        take: pageSizeNum,
+        orderBy: { updated_at: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          mobile: true,
+          kyc_status: true,
+          pan_number: true,
+          pan_verified: true,
+          aadhaar_number: true,
+          aadhaar_verified: true,
+          gst_number: true,
+          gst_verified: true,
+          created_at: true,
+          updated_at: true
+        }
+      }),
+      prisma.user.count({ where })
+    ]);
+
+    res.json({
+      data: users,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / pageSizeNum),
+        currentPage: pageNum,
+        pageSize: pageSizeNum
+      }
+    });
+  } catch (error) {
+    console.error('Get KYC users error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const updateKycStatus = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { userId } = req.params;
+  const { kyc_status, pan_verified, aadhaar_verified, gst_verified } = req.body;
+
+  if (!['PENDING', 'SUBMITTED', 'VERIFIED', 'REJECTED'].includes(kyc_status)) {
+    return res.status(400).json({ message: 'Invalid KYC status' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const updateData = { kyc_status };
+    if (pan_verified !== undefined) updateData.pan_verified = pan_verified;
+    if (aadhaar_verified !== undefined) updateData.aadhaar_verified = aadhaar_verified;
+    if (gst_verified !== undefined) updateData.gst_verified = gst_verified;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        kyc_status: true,
+        pan_verified: true,
+        aadhaar_verified: true,
+        gst_verified: true
+      }
+    });
+
+    res.json({ message: 'KYC status updated successfully', user: updatedUser });
+  } catch (error) {
+    console.error('Update KYC status error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const setUserCustomRates = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { id } = req.params;
+  const { min_commission_rate, max_commission_rate } = req.body;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: BigInt(id) },
+      data: {
+        min_commission_rate: min_commission_rate,
+        max_commission_rate: max_commission_rate
+      }
+    });
+
+    res.json({ message: 'User custom rates updated', user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+const refundSecurityDeposit = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { userId } = req.params;
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { id: true, security_deposit: true, wallet_balance: true }
+      });
+
+      if (!user) throw new Error('User not found');
+      
+      const depositAmount = Number(user.security_deposit);
+      if (depositAmount <= 0) throw new Error('No security deposit to refund');
+
+      // 1. Reset security deposit to 0
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          security_deposit: 0,
+          wallet_balance: { increment: depositAmount }
+        }
+      });
+
+      // 2. Create Debit transaction for security deposit
+      await tx.transaction.create({
+        data: {
+          user_id: userId,
+          amount: depositAmount,
+          type: 'DEBIT',
+          category: 'SECURITY_DEPOSIT',
+          status: 'SUCCESS',
+          description: 'Security Deposit Refunded to Wallet',
+        }
+      });
+
+      // 3. Create Credit transaction for wallet refund
+      await tx.transaction.create({
+        data: {
+          user_id: userId,
+          amount: depositAmount,
+          type: 'CREDIT',
+          category: 'REFUND',
+          status: 'SUCCESS',
+          description: 'Security Deposit Refund',
+        }
+      });
+
+      return { userId, refundedAmount: depositAmount };
+    });
+
+    res.json({ message: 'Security deposit refunded to wallet successfully', data: result });
+  } catch (error) {
+    console.error('Refund security deposit error:', error);
+    res.status(400).json({ message: error.message || 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   sendAdminForgotPasswordOtp,
   resetAdminPassword,
@@ -963,7 +1206,11 @@ module.exports = {
   getNetworkCommissionStats,
   setUserCommissionBounds,
   getUserCommissionBounds,
+  setUserCustomRates,
   getAllCODOrders,
   updateOrderRemittance,
-  getOrderById
+  getOrderById,
+  getKycUsers,
+  updateKycStatus,
+  refundSecurityDeposit
 };

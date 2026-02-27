@@ -82,8 +82,14 @@ export function AddressFormDialog({
     },
   });
 
-  useEffect(() => {
-    if (open) {
+  const handleSubmit = form.handleSubmit((data) => {
+    onSubmit(data);
+  });
+
+  const { errors } = form.formState;
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen) {
       if (editingAddress) {
         form.reset({
           name: editingAddress.name,
@@ -112,16 +118,11 @@ export function AddressFormDialog({
         });
       }
     }
-  }, [open, editingAddress, form]);
-
-  const handleSubmit = form.handleSubmit((data) => {
-    onSubmit(data);
-  });
-
-  const { errors } = form.formState;
+    onOpenChange(newOpen);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
@@ -254,25 +255,26 @@ export function PickupAddressFormDialog({
     },
   });
 
-  useEffect(() => {
-    if (!open) {
-      form.reset();
-    }
-  }, [open, form]);
-
   const handleSubmit = form.handleSubmit((data) => {
     onSubmit(data);
   });
 
   const { errors } = form.formState;
 
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      form.reset();
+    }
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Register Pickup Location</DialogTitle>
           <DialogDescription>
-            Create a new pickup location with Shiprocket for order pickups.
+            Create a new pickup location order pickups from your warehouses.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -299,11 +301,6 @@ export function PickupAddressFormDialog({
               <FieldError errors={[errors.phone]} />
             </Field>
           </div>
-          <Field data-invalid={!!errors.email}>
-            <FieldLabel className="text-xs">Email Address</FieldLabel>
-            <Input {...form.register("email")} />
-            <FieldError errors={[errors.email]} />
-          </Field>
           <Field data-invalid={!!errors.address}>
             <FieldLabel className="text-xs">Full Address</FieldLabel>
             <Input

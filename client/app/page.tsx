@@ -1,5 +1,12 @@
 import Link from "next/link";
+import { Metadata } from "next";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "Home",
+  description: "Ship smarter and save bigger with CheapShip. Compare shipping rates from 25+ carriers in seconds.",
+};
+
 import {
   Card,
   CardContent,

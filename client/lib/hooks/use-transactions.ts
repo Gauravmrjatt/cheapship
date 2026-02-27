@@ -9,7 +9,7 @@ export interface Transaction {
   user_id: string;
   amount: number;
   type: 'CREDIT' | 'DEBIT';
-  category: 'WALLET_TOPUP' | 'ORDER_PAYMENT' | 'REFUND' | 'COD_REMITTANCE' | 'COMMISSION';
+  category: 'WALLET_TOPUP' | 'ORDER_PAYMENT' | 'REFUND' | 'COD_REMITTANCE' | 'COMMISSION' | 'SECURITY_DEPOSIT';
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
   status_reason: string | null;
   description: string | null;
@@ -30,7 +30,8 @@ export const useTransactions = (
   status?: string, 
   search?: string,
   fromDate?: string,
-  toDate?: string
+  toDate?: string,
+  enabled: boolean = true
 ) => {
   const http = useHttp();
   
@@ -46,18 +47,19 @@ export const useTransactions = (
   if (fromDate) queryParams.append("fromDate", fromDate);
   if (toDate) queryParams.append("toDate", toDate);
 
+  const queryOptions = http.get<{
+    data: Transaction[];
+    pagination: {
+      total: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    }
+  }>(["transactions", page, pageSize, type, category, status, search, fromDate, toDate], `/transactions?${queryParams.toString()}`);
+
   return useQuery({
-    queryKey: ["transactions", page, pageSize, type, category, status, search, fromDate, toDate],
-    queryFn: () => http.get<{
-      data: Transaction[];
-      pagination: {
-        total: number;
-        totalPages: number;
-        currentPage: number;
-        pageSize: number;
-      }
-    }>(["transactions", page, pageSize, type, category, status, search, fromDate, toDate], `/transactions?${queryParams.toString()}`).queryFn(),
-    enabled: true,
+    ...queryOptions,
+    enabled: queryOptions.enabled && enabled,
   });
 };
 
@@ -88,11 +90,12 @@ export const useVerifyRazorpayPayment = () => {
   const http = useHttp();
 
   return useMutation({
-    ...http.post<unknown, { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string; amount: number }>("/transactions/razorpay/verify", {
+    ...http.post<unknown, { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string; amount: number; category?: string }>("/transactions/razorpay/verify", {
       onSuccess: () => {
-        sileo.success({ title: "Payment successful", description: "Wallet balance updated." });
+        sileo.success({ title: "Payment successful", description: "Account status updated." });
         queryClient.invalidateQueries({ queryKey: ["user-profile"] });
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["me"] });
       },
       onError: () => {
         sileo.error({ title: "Payment verification failed", description: "Please contact support if amount was deducted." });

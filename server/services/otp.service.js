@@ -152,6 +152,13 @@ const cleanupExpiredOtps = async (prisma) => {
   });
 };
 
+const sendSmsOtp = async (mobile, otp, purpose) => {
+  // In a real application, you would integrate with an SMS provider.
+  // For now, logging to console as requested/implied for dev.
+  console.log(`[SMS OTP] To: ${mobile}, OTP: ${otp}, Purpose: ${purpose}`);
+  return true;
+};
+
 module.exports = {
   generateOtp,
   createOtpRecord,
@@ -161,5 +168,6 @@ module.exports = {
   storeTempRegistrationData,
   getTempRegistrationData,
   deleteTempRegistrationData,
+  sendSmsOtp,
   OTP_EXPIRY_MINUTES,
 };

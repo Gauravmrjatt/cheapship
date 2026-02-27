@@ -92,7 +92,7 @@ const getDashboardStats = async (req, res) => {
 
     // Group orders by date and status
     const graphDataMap = {};
-    
+
     // Initialize with all dates in the range
     for (let i = 0; i <= 30; i++) {
       const date = new Date();
@@ -125,6 +125,18 @@ const getDashboardStats = async (req, res) => {
 
     const graphData = Object.values(graphDataMap).sort((a, b) => a.date.localeCompare(b.date));
 
+    const monthlyGrowthRaw = lastMonthOrders > 0 ? ((totalOrders - lastMonthOrders) / lastMonthOrders) * 100 : 100;
+    const monthlyGrowth = `${monthlyGrowthRaw > 0 ? '+' : ''}${monthlyGrowthRaw.toFixed(1)}%`;
+
+    // Real counts for disputes
+    const weightDisputeOrders = await prisma.weightDispute.count({
+      where: { user_id: userId, status: 'PENDING' }
+    });
+
+    const actionRequired = weightDisputeOrders + (await prisma.rTODispute.count({
+      where: { user_id: userId, status: 'PENDING' }
+    }));
+
     res.json({
       deliveredOrders: deliveredOrdersCount,
       inTransitOrders: inTransitOrdersCount,
@@ -140,6 +152,9 @@ const getDashboardStats = async (req, res) => {
       deliverySuccessRate: `${deliverySuccessRate} %`,
       returnRate: `${returnRate} %`,
       cancelledOrder: cancelledOrdersCount,
+      monthlyGrowth,
+      weightDisputeOrders,
+      actionRequired,
       graphData
     });
   } catch (error) {

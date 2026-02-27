@@ -26,11 +26,11 @@ export const calculateRateSchema = z.object({
   paymentType: z.enum(["PREPAID", "COD"]),
   shipmentValue: z.number().min(1, "Value is required"),
   dangerousGoods: z.boolean(),
-  order_type: z.enum(["SURFACE", "EXPRESS"]),
+  order_type: z.enum(["SURFACE", "EXPRESS", "CARGO"]),
 });
 
 export const createOrderSchema = z.object({
-  order_type: z.enum(["SURFACE", "EXPRESS"]),
+  order_type: z.enum(["SURFACE", "EXPRESS", "CARGO"]),
   shipment_type: z.enum(["DOMESTIC", "INTERNATIONAL"]),
   payment_mode: z.enum(["PREPAID", "COD"]),
   weight: z.number().min(0.1, "Weight is required"),
@@ -54,6 +54,7 @@ export const createOrderSchema = z.object({
   new_pickup_location_name: z.string().optional(),
   new_pickup_gst: z.string().optional(),
   new_pickup_registered_name: z.string().optional(),
+  is_insured: z.boolean().optional().default(false),
 });
 
 export const shiprocketPickupSchema = z.object({

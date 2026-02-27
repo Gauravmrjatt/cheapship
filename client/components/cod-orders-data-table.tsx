@@ -21,7 +21,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -42,29 +41,18 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { 
-  LeftToRightListBulletIcon, 
-  ArrowDown01Icon, 
-  ArrowLeftDoubleIcon, 
-  ArrowLeft01Icon, 
-  ArrowRight01Icon, 
-  ArrowRightDoubleIcon,
+import {
+  LeftToRightListBulletIcon,
+  ArrowDown01Icon,
   Loading03Icon,
   SearchIcon,
   Location01Icon,
   Calendar01Icon,
-  MoneyReceiveCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { DataTablePagination } from "./orders-table-components"
+import { CODStatsCards, RemittanceDialog } from "./cod-orders-table-components"
 
 export interface CODOrder {
   id: string
@@ -73,6 +61,7 @@ export interface CODOrder {
   payment_mode: string
   cod_amount: number
   remittance_status: string
+  payout_status: string
   remitted_amount: number | null
   remitted_at: string | null
   remittance_ref_id: string | null
@@ -81,6 +70,7 @@ export interface CODOrder {
     id: string
     name: string
     email: string
+    upi_id?: string
   }
   order_receiver_address?: {
     name: string
@@ -105,11 +95,12 @@ interface CODOrdersDataTableProps {
   filters?: {
     status: string
     search: string
+    order_source: string
   }
   onPageChange?: (page: number) => void
   onPageSizeChange?: (pageSize: number) => void
-  onFilterChange?: (filters: { status: string; search: string }) => void
-  onUpdateRemittance?: (order: CODOrder, data: { remittance_status: string; remitted_amount?: number; remittance_ref_id?: string }) => void
+  onFilterChange?: (filters: { status: string; search: string; order_source: string }) => void
+  onUpdateRemittance?: (order: CODOrder, data: { remittance_status: string; payout_status?: string; remitted_amount?: number; remittance_ref_id?: string }) => void
   isUpdating?: boolean
 }
 
@@ -154,20 +145,28 @@ export function CODOrdersDataTable({
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [selectedOrder, setSelectedOrder] = React.useState<CODOrder | null>(null)
   const [showDialog, setShowDialog] = React.useState(false)
+  const [isMounted, setIsMounted] = React.useState(false)
   const [remittanceForm, setRemittanceForm] = React.useState({
     remittance_status: "REMITTED",
+    payout_status: "PENDING",
     remitted_amount: "",
     remittance_ref_id: "",
   })
 
-  const handleFilterUpdate = (key: string, value: string) => {
+  React.useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  const handleFilterUpdate = React.useCallback((key: string, value: string) => {
+    if (!isMounted) return
     onFilterChange?.({ ...(filters as any), [key]: value })
-  }
+  }, [filters, onFilterChange, isMounted])
 
   const openDialog = (order: CODOrder) => {
     setSelectedOrder(order)
     setRemittanceForm({
       remittance_status: order.remittance_status || "REMITTED",
+      payout_status: order.payout_status || "PENDING",
       remitted_amount: order.cod_amount?.toString() || "",
       remittance_ref_id: order.remittance_ref_id || "",
     })
@@ -178,6 +177,7 @@ export function CODOrdersDataTable({
     if (!selectedOrder) return
     onUpdateRemittance?.(selectedOrder, {
       remittance_status: remittanceForm.remittance_status,
+      payout_status: remittanceForm.payout_status,
       remitted_amount: parseFloat(remittanceForm.remitted_amount) || undefined,
       remittance_ref_id: remittanceForm.remittance_ref_id || undefined,
     })
@@ -250,6 +250,18 @@ export function CODOrdersDataTable({
       },
     },
     {
+      accessorKey: "payout_status",
+      header: "Payout",
+      cell: ({ row }) => {
+        const status = row.original.payout_status || "PENDING"
+        return (
+          <Badge variant="secondary" className={cn("text-xs capitalize", status === "COMPLETED" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300")}>
+            {status}
+          </Badge>
+        )
+      },
+    },
+    {
       accessorKey: "remitted_amount",
       header: () => <div className="text-right">Remitted</div>,
       cell: ({ row }) => (
@@ -306,40 +318,13 @@ export function CODOrdersDataTable({
       className="w-full flex-col justify-start gap-6"
     >
       <div className="flex flex-col gap-4">
-        {summary && (
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm font-medium text-muted-foreground">Pending Remittance</p>
-              {isLoading ? (
-                <div className="h-7 w-32 bg-muted animate-pulse rounded mt-1" />
-              ) : (
-                <p className="text-2xl font-bold text-yellow-600">{formatCurrency(summary.totalPendingCOD)}</p>
-              )}
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm font-medium text-muted-foreground">Total Remitted</p>
-              {isLoading ? (
-                <div className="h-7 w-32 bg-muted animate-pulse rounded mt-1" />
-              ) : (
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(summary.totalRemitted)}</p>
-              )}
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm font-medium text-muted-foreground">Total COD Orders</p>
-              {isLoading ? (
-                <div className="h-7 w-20 bg-muted animate-pulse rounded mt-1" />
-              ) : (
-                <p className="text-2xl font-bold">{pagination?.total || 0}</p>
-              )}
-            </div>
-          </div>
-        )}
+        <CODStatsCards summary={summary} totalOrders={pagination?.total} isLoading={isLoading} />
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Select
               value={filters?.status ?? "ALL"}
-              onValueChange={(v) => { if (v) { handleFilterUpdate("status", v); onPageChange?.(1) }}}
+              onValueChange={(v) => { if (v) { handleFilterUpdate("status", v); onPageChange?.(1) } }}
             >
               <SelectTrigger className="flex w-fit lg:hidden" size="sm">
                 <SelectValue placeholder="Status" />
@@ -363,6 +348,11 @@ export function CODOrdersDataTable({
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="hidden md:flex bg-muted/60 p-1 rounded-lg">
+              <Button variant={filters?.order_source === "ALL" ? "secondary" : "ghost"} size="sm" onClick={() => { handleFilterUpdate("order_source", "ALL"); onPageChange?.(1); }} className="h-7 text-xs px-3 shadow-none">All</Button>
+              <Button variant={filters?.order_source === "USER_ORDERS" ? "secondary" : "ghost"} size="sm" onClick={() => { handleFilterUpdate("order_source", "USER_ORDERS"); onPageChange?.(1); }} className="h-7 text-xs px-3 shadow-none">User COD</Button>
+              <Button variant={filters?.order_source === "MY_ORDERS" ? "secondary" : "ghost"} size="sm" onClick={() => { handleFilterUpdate("order_source", "MY_ORDERS"); onPageChange?.(1); }} className="h-7 text-xs px-3 shadow-none">My Orders</Button>
+            </div>
             <div className="relative w-64">
               <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
@@ -438,143 +428,23 @@ export function CODOrdersDataTable({
           </Table>
         </div>
 
-        <div className="flex items-center justify-between px-4">
-          <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-            {pagination?.total || 0} total orders
-          </div>
-          
-          <div className="flex w-full items-center gap-8 lg:w-fit">
-            <div className="hidden items-center gap-2 lg:flex">
-              <Label htmlFor="rows-per-page" className="text-sm font-medium">Rows per page</Label>
-              <Select
-                value={`${pagination?.pageSize || 10}`}
-                onValueChange={(value) => onPageSizeChange?.(Number(value))}
-              >
-                <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                  <SelectValue placeholder={pagination?.pageSize || 10} />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[10, 20, 50].map((size) => (
-                    <SelectItem key={size} value={`${size}`}>{size}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {pagination?.currentPage || 1} of {pagination?.totalPages || 1}
-            </div>
-
-            <div className="ml-auto flex items-center gap-2 lg:ml-0">
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => onPageChange?.(1)}
-                disabled={pagination?.currentPage === 1}
-              >
-                <HugeiconsIcon icon={ArrowLeftDoubleIcon} strokeWidth={2} />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => onPageChange?.((pagination?.currentPage || 1) - 1)}
-                disabled={pagination?.currentPage === 1}
-              >
-                <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => onPageChange?.((pagination?.currentPage || 1) + 1)}
-                disabled={pagination?.currentPage === pagination?.totalPages}
-              >
-                <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden size-8 lg:flex"
-                size="icon"
-                onClick={() => onPageChange?.(pagination?.totalPages || 1)}
-                disabled={pagination?.currentPage === pagination?.totalPages}
-              >
-                <HugeiconsIcon icon={ArrowRightDoubleIcon} strokeWidth={2} />
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DataTablePagination
+          pagination={pagination}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          filteredCount={table.getFilteredRowModel().rows.length}
+        />
       </div>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <HugeiconsIcon icon={MoneyReceiveCircleIcon} size={20} />
-              Update Remittance Status
-            </DialogTitle>
-            <DialogDescription>
-              Order #{selectedOrder?.id?.slice(0, 8)} - COD Amount: {formatCurrency(selectedOrder?.cod_amount || 0)}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Remittance Status</Label>
-              <Select
-                value={remittanceForm.remittance_status}
-                onValueChange={(v) => { if (v) setRemittanceForm(prev => ({ ...prev, remittance_status: v })) }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="PROCESSING">Processing</SelectItem>
-                  <SelectItem value="REMITTED">Remitted</SelectItem>
-                  <SelectItem value="FAILED">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {remittanceForm.remittance_status === "REMITTED" && (
-              <>
-                <div className="space-y-2">
-                  <Label>Remitted Amount</Label>
-                  <Input
-                    type="number"
-                    value={remittanceForm.remitted_amount}
-                    onChange={(e) => setRemittanceForm(prev => ({ ...prev, remitted_amount: e.target.value }))}
-                    placeholder="Enter remitted amount"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Reference ID (Optional)</Label>
-                  <Input
-                    value={remittanceForm.remittance_ref_id}
-                    onChange={(e) => setRemittanceForm(prev => ({ ...prev, remittance_ref_id: e.target.value }))}
-                    placeholder="Transaction reference ID"
-                  />
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdate} disabled={isUpdating}>
-              {isUpdating ? (
-                <>
-                  <HugeiconsIcon icon={Loading03Icon} className="animate-spin mr-2" size={16} />
-                  Updating...
-                </>
-              ) : (
-                "Update Status"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RemittanceDialog 
+        open={showDialog}
+        onOpenChange={setShowDialog}
+        selectedOrder={selectedOrder}
+        remittanceForm={remittanceForm}
+        setRemittanceForm={setRemittanceForm}
+        onUpdate={handleUpdate}
+        isUpdating={isUpdating}
+      />
     </Tabs>
   )
 }

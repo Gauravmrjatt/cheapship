@@ -33,6 +33,10 @@ router.get('/dashboard', adminController.getDashboardStats);
 router.get('/users', adminController.getUsers);
 router.patch('/users/:userId/status', adminController.toggleUserStatus);
 
+// KYC
+router.get('/kyc', adminController.getKycUsers);
+router.patch('/kyc/:userId/status', adminController.updateKycStatus);
+
 // Orders
 router.get('/orders', adminController.getAllOrders);
 router.get('/orders/:id', adminController.getOrderById);
@@ -44,7 +48,7 @@ router.get(
     check('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
     check('pageSize').optional().isInt({ min: 1 }).withMessage('Page size must be a positive integer'),
     check('type').optional().isIn(['ALL', 'CREDIT', 'DEBIT']).withMessage('Invalid transaction type'),
-    check('category').optional().isIn(['ALL', 'WALLET_TOPUP', 'ORDER_PAYMENT', 'REFUND', 'COD_REMITTANCE', 'COMMISSION']).withMessage('Invalid transaction category'),
+    check('category').optional().isIn(['ALL', 'WALLET_TOPUP', 'ORDER_PAYMENT', 'REFUND', 'COD_REMITTANCE', 'COMMISSION', 'SECURITY_DEPOSIT']).withMessage('Invalid transaction category'),
     check('userId').optional().custom((value) => {
       if (value === '' || value === 'ALL') return true;
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -58,6 +62,9 @@ router.get(
   ],
   adminController.getAllTransactions
 );
+
+// Refund Security Deposit
+router.post('/users/:userId/refund-security-deposit', adminController.refundSecurityDeposit);
 
 // Withdrawals
 router.get('/withdrawals', adminController.getWithdrawals);
@@ -79,6 +86,8 @@ router.get('/network-commission-stats', adminController.getNetworkCommissionStat
 // User Commission Bounds (Admin only)
 router.get('/users/:userId/commission-bounds', adminController.getUserCommissionBounds);
 router.post('/users/:userId/commission-bounds', adminController.setUserCommissionBounds);
+// User Custom Rates (Admin only)
+router.post('/users/:userId/custom-rates', adminController.setUserCustomRates);
 
 // COD Remittance Management
 router.get('/cod-orders', adminController.getAllCODOrders);

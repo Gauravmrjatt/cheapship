@@ -27,6 +27,45 @@ const authMiddleware = require('../middleware/auth.middleware');
  *         description: Unauthorized
  */
 router.get('/me', authMiddleware, authController.getMe);
+router.get('/login-history', authMiddleware, authController.getLoginHistory);
+
+/**
+ * @swagger
+ * /auth/profile:
+ *   put:
+ *     summary: Update current user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               mobile:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Bad request
+ */
+router.put(
+  '/profile',
+  authMiddleware,
+  [
+    check('name', 'Name cannot be empty').optional().not().isEmpty(),
+    check('email', 'Please include a valid email').optional().isEmail(),
+    check('mobile', 'Mobile number cannot be empty').optional().not().isEmpty()
+  ],
+  authController.updateProfile
+);
 
 /**
  * @swagger
@@ -71,6 +110,114 @@ router.post(
     check('mobile', 'Mobile number is required').not().isEmpty()
   ],
   authController.register
+);
+
+/**
+ * @swagger
+ * /auth/init-mobile-reg:
+ *   post:
+ *     summary: Initialize mobile registration (Send OTP)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobile
+ *             properties:
+ *               mobile:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *       400:
+ *         description: Bad request
+ */
+router.post(
+  '/init-mobile-reg',
+  [
+    check('mobile', 'Mobile number is required').not().isEmpty()
+  ],
+  authController.initMobileRegistration
+);
+
+/**
+ * @swagger
+ * /auth/verify-mobile-reg:
+ *   post:
+ *     summary: Verify mobile registration OTP
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobile
+ *               - otp
+ *             properties:
+ *               mobile:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Mobile verified, token returned
+ *       400:
+ *         description: Invalid or expired OTP
+ */
+router.post(
+  '/verify-mobile-reg',
+  [
+    check('mobile', 'Mobile number is required').not().isEmpty(),
+    check('otp', 'OTP is required').not().isEmpty()
+  ],
+  authController.verifyMobileRegistration
+);
+
+/**
+ * @swagger
+ * /auth/complete-reg:
+ *   post:
+ *     summary: Complete registration with details
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - verificationToken
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               verificationToken:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User created
+ */
+router.post(
+  '/complete-reg',
+  [
+    check('verificationToken', 'Verification token is required').not().isEmpty(),
+    check('name', 'Name is required').not().isEmpty(),
+    check('email', 'Please include a valid email').isEmail(),
+    check('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 }),
+    check('terms_accepted', 'You must accept the terms and conditions').equals('true')
+  ],
+  authController.completeRegistration
 );
 
 /**

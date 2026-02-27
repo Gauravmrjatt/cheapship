@@ -49,14 +49,14 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { 
-  MoreVerticalCircle01Icon, 
-  LeftToRightListBulletIcon, 
-  ArrowDown01Icon, 
-  Add01Icon, 
-  ArrowLeftDoubleIcon, 
-  ArrowLeft01Icon, 
-  ArrowRight01Icon, 
+import {
+  MoreVerticalCircle01Icon,
+  LeftToRightListBulletIcon,
+  ArrowDown01Icon,
+  Add01Icon,
+  ArrowLeftDoubleIcon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
   ArrowRightDoubleIcon,
   CheckmarkCircle01Icon,
   Loading03Icon,
@@ -70,18 +70,8 @@ import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { sileo } from "sileo"
-import { useQueryClient, useMutation } from "@tanstack/react-query"
-
-const generateManifest = async (orderId: string) => {
-  const res = await fetch(`/api/v1/orders/${orderId}/manifest`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-  if (!res.ok) throw new Error('Failed to generate manifest');
-  return res.json();
-};
+import { useQueryClient } from "@tanstack/react-query"
+import { ActionsCell, DataTablePagination } from "./orders-table-components"
 
 export type Order = {
   id: string
@@ -99,6 +89,9 @@ export type Order = {
   label_url?: string
   track_url?: string
   manifest_url?: string
+  cod_amount?: number
+  order_pickup_address?: { name: string; city: string; state: string }
+  order_receiver_address?: { name: string; city: string; state: string }
   user?: {
     name: string;
     email: string;
@@ -136,11 +129,16 @@ export function OrdersDataTable({
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [sorting, setSorting] = React.useState<SortingState>([])
-  
+  const [isMounted, setIsMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const cancelOrder = useCancelOrder();
   const queryClient = useQueryClient();
 
-  const handleCancelOrder = async (orderId: string) => {
+  const handleCancelOrder = React.useCallback(async (orderId: string) => {
     try {
       await cancelOrder(orderId);
       sileo.success({ title: "Order cancelled successfully" });
@@ -149,7 +147,7 @@ export function OrdersDataTable({
       const message = error instanceof Error ? error.message : "Failed to cancel order";
       sileo.error({ title: message });
     }
-  };
+  }, [cancelOrder, queryClient]);
 
   const columns = React.useMemo<ColumnDef<Order>[]>(() => [
     {
@@ -183,12 +181,17 @@ export function OrdersDataTable({
       accessorKey: "id",
       header: "Shipment ID",
       cell: ({ row }) => (
-        <Link
-          href={`/dashboard/orders/${row.original.id}`}
-          className="text-foreground hover:underline font-medium"
-        >
-          #{row.original.id.slice(0, 8)}
-        </Link>
+        <div className="flex flex-col gap-1">
+          <Link
+            href={`/dashboard/orders/${row.original.id}`}
+            className="text-foreground hover:underline font-medium"
+          >
+            #{row.original.id.slice(0, 8)}
+          </Link>
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {row.original.created_at ? new Date(row.original.created_at).toLocaleString() : "-"}
+          </span>
+        </div>
       ),
       enableHiding: false,
     },
@@ -213,6 +216,21 @@ export function OrdersDataTable({
       ),
     },
     {
+      id: "addresses",
+      header: "Routing",
+      cell: ({ row }) => {
+        const pickup = row.original.order_pickup_address;
+        const receiver = row.original.order_receiver_address;
+        if (!pickup || !receiver) return <span className="text-muted-foreground text-xs">-</span>;
+        return (
+          <div className="flex flex-col text-[10px] text-muted-foreground max-w-[150px] truncate">
+            <span className="font-semibold text-foreground truncate">{pickup.city}, {pickup.state}</span>
+            <span className="truncate">to {receiver.city}, {receiver.state}</span>
+          </div>
+        )
+      }
+    },
+    {
       accessorKey: "payment_mode",
       header: "Payment",
       cell: ({ row }) => (
@@ -225,6 +243,15 @@ export function OrdersDataTable({
       cell: ({ row }) => (
         <div className="text-right tabular-nums">
           ₹{formatPrice(row.original.total_amount)}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "cod_amount",
+      header: () => <div className="text-right">COD</div>,
+      cell: ({ row }) => (
+        <div className="text-right tabular-nums">
+          {row.original.payment_mode === "COD" && row.original.cod_amount ? `₹${formatPrice(row.original.cod_amount)}` : "-"}
         </div>
       ),
     },
@@ -270,103 +297,37 @@ export function OrdersDataTable({
     },
     {
       accessorKey: "tracking_number",
-      header: "Tracking",
+      header: "AWB & Label",
       cell: ({ row }) => {
         const tracking = row.original.tracking_number;
         const trackUrl = row.original.track_url;
-        if (!tracking) return <span className="text-muted-foreground text-xs">-</span>;
+        const labelUrl = row.original.label_url;
         return (
-          <a 
-            href={trackUrl || `https://shiprocket.co/tracking/${tracking}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-xs font-mono hover:underline"
-          >
-            {tracking.slice(0, 12)}...
-          </a>
+          <div className="flex flex-col gap-1">
+            {tracking ? (
+              <a
+                href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-mono hover:underline text-primary font-medium bg-primary/10 px-1 py-0.5 rounded w-fit"
+              >
+                {tracking.slice(0, 12)}...
+              </a>
+            ) : <span className="text-muted-foreground text-[10px]">-</span>}
+            {labelUrl && (
+              <a href={labelUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] hover:underline text-blue-500 font-medium w-fit">
+                Label
+              </a>
+            )}
+          </div>
         );
       },
     },
     {
       id: "actions",
-      cell: ({ row }) => {
-        const [isGeneratingManifest, setIsGeneratingManifest] = React.useState(false);
-        
-        const handleGenerateManifest = async () => {
-          setIsGeneratingManifest(true);
-          try {
-            const result = await generateManifest(row.original.id);
-            sileo.success({ title: "Manifest generated successfully" });
-            queryClient.invalidateQueries({ queryKey: ["orders"] });
-          } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to generate manifest";
-            sileo.error({ title: message });
-          } finally {
-            setIsGeneratingManifest(false);
-          }
-        };
-        
-        return (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                className="data-open:bg-muted text-muted-foreground flex size-8"
-                size="icon"
-              />
-            }
-          >
-            <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
-            <span className="sr-only">Open menu</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem render={<Link href={`/dashboard/orders/${row.original.id}`} />}>
-              View Details
-            </DropdownMenuItem>
-            {row.original.tracking_number && row.original.track_url && (
-              <DropdownMenuItem>
-                <a href={row.original.track_url} target="_blank" rel="noopener noreferrer" className="w-full">
-                  Track Shipment
-                </a>
-              </DropdownMenuItem>
-            )}
-            {row.original.label_url && (
-              <DropdownMenuItem>
-                <a href={row.original.label_url} target="_blank" rel="noopener noreferrer" className="w-full">
-                  Download Label
-                </a>
-              </DropdownMenuItem>
-            )}
-            {row.original.shipment_status === "MANIFESTED" && !row.original.manifest_url && (
-              <DropdownMenuItem onClick={handleGenerateManifest} disabled={isGeneratingManifest}>
-                {isGeneratingManifest ? "Generating..." : "Generate Manifest"}
-              </DropdownMenuItem>
-            )}
-            {row.original.manifest_url && (
-              <DropdownMenuItem>
-                <a href={row.original.manifest_url} target="_blank" rel="noopener noreferrer" className="w-full">
-                  Print Manifest
-                </a>
-              </DropdownMenuItem>
-            )}
-            {row.original.shipment_status === "PENDING" && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  variant="destructive" 
-                  onClick={() => handleCancelOrder(row.original.id)}
-                >
-                  Cancel Order
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        );
-      },
+      cell: ({ row }) => <ActionsCell row={row} handleCancelOrder={handleCancelOrder} />,
     },
-  ], []);
+  ], [handleCancelOrder]);
 
   const table = useReactTable({
     data,
@@ -386,11 +347,13 @@ export function OrdersDataTable({
     getSortedRowModel: getSortedRowModel(),
   })
 
-  const handleFilterUpdate = (key: keyof OrderFilters, value: string) => {
+  const handleFilterUpdate = React.useCallback((key: keyof OrderFilters, value: string) => {
+    if (!isMounted) return
     onFilterChange?.({ ...filters, [key]: value })
-  }
+  }, [onFilterChange, filters, isMounted])
 
-  const clearAllFilters = () => {
+  const clearAllFilters = React.useCallback(() => {
+    if (!isMounted) return
     onFilterChange?.({
       order_type: "ALL",
       shipment_status: "ALL",
@@ -400,11 +363,62 @@ export function OrdersDataTable({
       to: "",
       search: "",
     })
-  }
+  }, [onFilterChange, isMounted])
 
   const activeFiltersCount = Object.entries(filters || {}).filter(
     ([key, value]) => value && value !== "ALL" && key !== "search" && key !== "shipment_status"
   ).length
+
+  const handleExportCSV = React.useCallback(() => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows.map(r => r.original);
+    if (selectedRows.length === 0) return;
+
+    const headers = ["Order ID", "Date", "Service", "Protocol", "Payment", "Amount", "COD", "Status", "AWB", "Pickup City", "Receiver City"];
+    const csvContent = [
+      headers.join(","),
+      ...selectedRows.map(row => [
+        row.id,
+        row.created_at ? new Date(row.created_at).toLocaleString() : "",
+        row.shipment_type,
+        row.order_type,
+        row.payment_mode,
+        row.total_amount,
+        row.cod_amount || 0,
+        row.shipment_status,
+        row.tracking_number || "",
+        row.order_pickup_address?.city || "",
+        row.order_receiver_address?.city || ""
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `cheapship_orders_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [table]);
+
+  const handleBulkLabels = React.useCallback(() => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows.map(r => r.original);
+    const labelUrls = selectedRows.map(r => r.label_url).filter(Boolean);
+
+    if (labelUrls.length === 0) {
+      sileo.error({ title: "No labels found for selected orders." });
+      return;
+    }
+
+    sileo.info({ title: `Opening ${labelUrls.length} labels in new tabs... Ensure popups are allowed.` });
+
+    labelUrls.forEach((url, i) => {
+      setTimeout(() => {
+        window.open(url, "_blank");
+      }, i * 300);
+    });
+  }, [table]);
 
   return (
     <Tabs
@@ -435,6 +449,8 @@ export function OrdersDataTable({
                 <SelectItem value="PROCESSING">Processing</SelectItem>
                 <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
                 <SelectItem value="DELIVERED">Delivered</SelectItem>
+                <SelectItem value="RTO">RTO</SelectItem>
+                <SelectItem value="DRAFT">Drafts</SelectItem>
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectGroup>
             </SelectContent>
@@ -446,6 +462,8 @@ export function OrdersDataTable({
             <TabsTrigger value="PROCESSING">Processing</TabsTrigger>
             <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
             <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
+            <TabsTrigger value="RTO">RTO</TabsTrigger>
+            <TabsTrigger value="DRAFT">Drafts</TabsTrigger>
             <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
           </TabsList>
         </div>
@@ -579,11 +597,24 @@ export function OrdersDataTable({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-<Link href="/dashboard/orders/new">
-          <Button size="sm">
-            <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
-            <span className="hidden lg:inline">New Order</span>
-          </Button>
+          {table.getFilteredSelectedRowModel().rows.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button size="sm" variant="secondary" className="gap-2 border shadow-sm" />}>
+                <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-4" />
+                <span className="hidden lg:inline">Bulk Actions</span>
+                <Badge className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full p-0 text-[10px]">{table.getFilteredSelectedRowModel().rows.length}</Badge>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV}>Export CSV</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleBulkLabels}>Download Labels</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Link href="/dashboard/orders/new">
+            <Button size="sm">
+              <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
+              <span className="hidden lg:inline">New Order</span>
+            </Button>
           </Link>
         </div>
       </div>
@@ -664,89 +695,12 @@ export function OrdersDataTable({
           </Table>
         </div>
 
-        <div className="flex items-center justify-between px-4">
-          <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {pagination?.total || 0} row(s) selected.
-          </div>
-          <div className="flex w-full items-center gap-8 lg:w-fit">
-            <div className="hidden items-center gap-2 lg:flex">
-              <Label htmlFor="rows-per-page" className="text-sm font-medium">
-                Rows per page
-              </Label>
-              <Select
-                value={`${pagination?.pageSize || 10}`}
-                onValueChange={(value) => {
-                  onPageSizeChange?.(Number(value))
-                }}
-                items={[10, 20, 50].map((pageSize) => ({
-                  label: `${pageSize}`,
-                  value: `${pageSize}`,
-                }))}
-              >
-                <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                  <SelectValue
-                    placeholder={pagination?.pageSize || 10}
-                  />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  <SelectGroup>
-                    {[10, 20, 50].map((pageSize) => (
-                      <SelectItem key={pageSize} value={`${pageSize}`}>
-                        {pageSize}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {pagination?.currentPage || 1} of{" "}
-              {pagination?.totalPages || 1}
-            </div>
-            <div className="ml-auto flex items-center gap-2 lg:ml-0">
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => onPageChange?.(1)}
-                disabled={pagination?.currentPage === 1}
-              >
-                <span className="sr-only">Go to first page</span>
-                <HugeiconsIcon icon={ArrowLeftDoubleIcon} strokeWidth={2} />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => onPageChange?.((pagination?.currentPage || 1) - 1)}
-                disabled={pagination?.currentPage === 1}
-              >
-                <span className="sr-only">Go to previous page</span>
-                <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
-                size="icon"
-                onClick={() => onPageChange?.((pagination?.currentPage || 1) + 1)}
-                disabled={pagination?.currentPage === pagination?.totalPages}
-              >
-                <span className="sr-only">Go to next page</span>
-                <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden size-8 lg:flex"
-                size="icon"
-                onClick={() => onPageChange?.(pagination?.totalPages || 1)}
-                disabled={pagination?.currentPage === pagination?.totalPages}
-              >
-                <span className="sr-only">Go to last page</span>
-                <HugeiconsIcon icon={ArrowRightDoubleIcon} strokeWidth={2} />
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DataTablePagination
+          pagination={pagination}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          filteredCount={table.getFilteredRowModel().rows.length}
+        />
       </div>
     </Tabs>
   )

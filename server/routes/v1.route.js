@@ -8,6 +8,9 @@ const orderRoute = require("./order.route");
 const dashboardRoute = require("./dashboard.route");
 const transactionRoute = require("./transaction.route");
 const adminRoute = require("./admin.route");
+const supportRoute = require("./support.route");
+const disputeRoute = require("./dispute.route");
+const feedbackRoute = require("./feedback.route");
 
 route.use('/users', userRoute);
 route.use('/auth', authRoute);
@@ -17,6 +20,9 @@ route.use('/franchise', franchiseRoute);
 route.use('/dashboard', dashboardRoute);
 route.use('/transactions', transactionRoute);
 route.use('/admin', adminRoute);
+route.use('/support', supportRoute);
+route.use('/disputes', disputeRoute);
+route.use('/feedback', feedbackRoute);
 
 route.get('/test-db', async (req, res) => {
   try {

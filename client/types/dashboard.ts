@@ -12,7 +12,7 @@ export interface DashboardData {
   deliverySuccessRate: string;
   returnRate: string;
   cancelledOrder: number;
-  weightDisputedOrders: number;
+  weightDisputeOrders: number;
   monthlyGrowth: string;
   actionRequired: number;
 }

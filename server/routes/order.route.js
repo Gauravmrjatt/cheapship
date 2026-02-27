@@ -169,7 +169,7 @@ router.post(
 router.get('/', orderController.getOrders);
 
 router.get('/remittances/pending', orderController.getPendingRemittances);
-
+router.get('/count', orderController.getOrdersCount);
 router.get('/remittances/history', orderController.getRemittanceHistory);
 
 /**
@@ -339,5 +339,7 @@ router.post('/:id/manifest', authMiddleware, orderController.generateOrderManife
 router.get('/:id/manifest', authMiddleware, orderController.printOrderManifest);
 
 router.post('/:id/label', authMiddleware, orderController.generateOrderLabel);
+
+router.get('/:id/invoice', authMiddleware, orderController.generateOrderInvoice);
 
 module.exports = router;

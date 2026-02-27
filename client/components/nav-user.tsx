@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link";
 import {
   Avatar,
   AvatarFallback,
@@ -20,7 +21,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { MoreVerticalCircle01Icon, UserCircle02Icon, CreditCardIcon, Notification03Icon, Logout01Icon } from "@hugeicons/core-free-icons"
+import { MoreVerticalCircle01Icon, UserCircle02Icon, CreditCardIcon, Notification03Icon, Logout01Icon, Shield01Icon, Sun01Icon } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/hooks/use-auth"
 
 export function NavUser({
@@ -77,20 +78,26 @@ export function NavUser({
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            {/* <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <HugeiconsIcon icon={UserCircle02Icon} strokeWidth={2} />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <HugeiconsIcon icon={Notification03Icon} strokeWidth={2} />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup> */}
+            <DropdownMenuGroup>
+              <Link href="/dashboard/settings?tab=profile">
+                <DropdownMenuItem>
+                  <HugeiconsIcon icon={UserCircle02Icon} strokeWidth={2} />
+                  Profile
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/dashboard/settings?tab=kyc">
+                <DropdownMenuItem>
+                  <HugeiconsIcon icon={Shield01Icon} strokeWidth={2} />
+                  Verification
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/dashboard/settings?tab=appearance">
+                <DropdownMenuItem>
+                  <HugeiconsIcon icon={Sun01Icon} strokeWidth={2} />
+                  Appearance
+                </DropdownMenuItem>
+              </Link>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>
               <HugeiconsIcon icon={Logout01Icon} strokeWidth={2} />

@@ -16,7 +16,7 @@ const getTransactions = async (req, res) => {
     if (type) where.type = type;
     if (category) where.category = category;
     if (status) where.status = status;
-    
+
     if (fromDate || toDate) {
       where.created_at = {};
       if (fromDate) {
@@ -28,13 +28,16 @@ const getTransactions = async (req, res) => {
         where.created_at.lte = endOfDay;
       }
     }
-    
+
     if (search) {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(search);
       where.OR = [
         { description: { contains: search, mode: 'insensitive' } },
-        { id: { contains: search, mode: 'insensitive' } },
         { reference_id: { contains: search, mode: 'insensitive' } }
       ];
+      if (isUUID) {
+        where.OR.push({ id: search });
+      }
     }
 
     const [transactions, total] = await prisma.$transaction([
@@ -47,8 +50,31 @@ const getTransactions = async (req, res) => {
       prisma.transaction.count({ where })
     ]);
 
+    const orderIds = transactions
+      .map(t => t.reference_id)
+      .filter(id => id && /^\d+$/.test(id));
+
+    let orderDetailsMap = {};
+    if (orderIds.length > 0) {
+      const numericOrderIds = orderIds.map(id => BigInt(id));
+      const orders = await prisma.order.findMany({
+        where: { id: { in: numericOrderIds } },
+        select: { id: true, awb_code: true }
+      });
+      orders.forEach(o => {
+        orderDetailsMap[o.id.toString()] = { awb_code: o.awb_code };
+      });
+    }
+
+    const enhancedTransactions = transactions.map(t => {
+      if (t.reference_id && orderDetailsMap[t.reference_id]) {
+        return { ...t, order_details: orderDetailsMap[t.reference_id] };
+      }
+      return t;
+    });
+
     res.json({
-      data: transactions,
+      data: enhancedTransactions,
       pagination: {
         total,
         totalPages: Math.ceil(total / pageSizeNum),
@@ -89,9 +115,9 @@ const createRazorpayOrder = async (req, res) => {
       reason: error.reason,
       metadata: error.metadata
     });
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to create Razorpay order',
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -99,7 +125,7 @@ const createRazorpayOrder = async (req, res) => {
 const verifyRazorpayPayment = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, category = 'WALLET_TOPUP' } = req.body;
 
   if (!process.env.RAZORPAY_KEY_SECRET) {
     return res.status(500).json({ message: 'Payment configuration error. Please contact support.' });
@@ -114,31 +140,62 @@ const verifyRazorpayPayment = async (req, res) => {
   if (generated_signature === razorpay_signature) {
     try {
       const transaction = await prisma.$transaction(async (tx) => {
+        const isSecurityDeposit = category === 'SECURITY_DEPOSIT';
+
         // 1. Create transaction record
         const newTransaction = await tx.transaction.create({
           data: {
             user_id: userId,
             amount: amount,
             type: 'CREDIT',
-            category: 'WALLET_TOPUP',
+            category: category,
             status: 'SUCCESS',
-            description: 'Wallet Top-up via Razorpay',
+            description: isSecurityDeposit ? 'Security Deposit via Razorpay' : 'Wallet Top-up via Razorpay',
             reference_id: razorpay_payment_id
           }
         });
 
-        // 2. Update user wallet balance
-        await tx.user.update({
-          where: { id: userId },
-          data: {
-            wallet_balance: { increment: amount }
+        if (isSecurityDeposit) {
+          // Update security deposit
+          await tx.user.update({
+            where: { id: userId },
+            data: {
+              security_deposit: { increment: amount }
+            }
+          });
+        } else {
+          // 2. Check for matching WalletPlan based on recharge amount
+          const applicablePlans = await tx.walletPlan.findMany({
+            where: {
+              is_active: true,
+              recharge_amount: { lte: amount }
+            },
+            orderBy: {
+              discount_percentage: 'desc'
+            },
+            take: 1
+          });
+
+          const newDiscount = applicablePlans.length > 0 ? applicablePlans[0].discount_percentage : null;
+
+          // 3. Update user wallet balance (and active_discount if the new discount is higher)
+          const user = await tx.user.findUnique({ where: { id: userId }, select: { active_discount: true } });
+          const updateData = { wallet_balance: { increment: amount } };
+
+          if (newDiscount && Number(newDiscount) > Number(user.active_discount || 0)) {
+            updateData.active_discount = newDiscount;
           }
-        });
+
+          await tx.user.update({
+            where: { id: userId },
+            data: updateData
+          });
+        }
 
         return newTransaction;
       });
 
-      res.json({ message: 'Payment verified and wallet topped up', transaction });
+      res.json({ message: isSecurityDeposit ? 'Security deposit paid' : 'Payment verified and wallet topped up', transaction });
     } catch (error) {
       console.error('Verification Error:', error);
       res.status(500).json({ message: 'Internal Server Error' });

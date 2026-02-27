@@ -8,7 +8,7 @@ export const useAuth = () => {
   const logout = () => {
     setUser(null);
     setToken(null);
-    router.push("/auth/signin");
+    router.push("/auth/signin?source=logout");
   };
 
   return { user, token, setUser, setToken, logout };
