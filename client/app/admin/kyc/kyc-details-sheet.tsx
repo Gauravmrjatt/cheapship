@@ -132,7 +132,7 @@ export function KycDetailsSheet({ user, open, onOpenChange }: Props) {
                 Overall KYC Status
               </Label>
 
-              <Select value={kycStatus} onValueChange={setKycStatus}>
+              <Select value={kycStatus} onValueChange={(v) => v && setKycStatus(v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
@@ -174,7 +174,7 @@ export function KycDetailsSheet({ user, open, onOpenChange }: Props) {
 
 /* ----------------- SMALL COMPONENTS ----------------- */
 
-function Info({ label, value }) {
+function Info({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="space-y-1">
       <p className="text-xs text-muted-foreground">{label}</p>
@@ -183,7 +183,17 @@ function Info({ label, value }) {
   )
 }
 
-function DocRow({ label, value, checked, onChange }) {
+function DocRow({
+  label,
+  value,
+  checked,
+  onChange,
+}: {
+  label: string
+  value: string | null | undefined
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
   const available = Boolean(value)
 
   return (

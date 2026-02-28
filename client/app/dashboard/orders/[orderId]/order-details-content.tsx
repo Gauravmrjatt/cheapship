@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useOrder, useLiveOrderStatus } from "@/lib/hooks/use-order";
+import { useOrder, useLiveOrderStatus, useAssignAWB, useSchedulePickup, useGenerateLabel } from "@/lib/hooks/use-order";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { OrderDetailSkeleton } from "@/components/skeletons";
@@ -17,7 +17,10 @@ import {
   Timer01Icon, 
   CheckmarkCircle01Icon, 
   CircleDot,
-  Clock01Icon as ClockIcon
+  Clock01Icon as ClockIcon,
+  Add01Icon,
+  ShippingTruck01Icon,
+  Calendar01Icon
 } from "@hugeicons/core-free-icons";
 
 const statusColors: Record<string, string> = {
@@ -51,6 +54,11 @@ export default function OrderDetailsPage({
   const { orderId } = React.use(params);
   const { data: order, isLoading, isError, refetch } = useOrder(orderId);
   const { data: liveStatus, isLoading: liveStatusLoading, refetch: refetchLiveStatus } = useLiveOrderStatus(orderId, !!order?.shiprocket_shipment_id);
+  
+  const assignAWBMutation = useAssignAWB();
+  const schedulePickupMutation = useSchedulePickup();
+  const generateLabelMutation = useGenerateLabel();
+
   const [lastUpdated, setLastUpdated] = React.useState<Date>(new Date());
 
   React.useEffect(() => {
@@ -64,21 +72,75 @@ export default function OrderDetailsPage({
     refetchLiveStatus();
   };
 
+    const handleAssignAWB = () => {
+      assignAWBMutation.mutate({ orderId });
+    };
+  
+    const handleSchedulePickup = () => {
+      schedulePickupMutation.mutate({ orderId });
+    };
+  
+    const handleGenerateLabel = () => {
+      generateLabelMutation.mutate({ orderId });
+    };
+
   if (isLoading) return <OrderDetailSkeleton />;
   if (isError) return <div className="max-w-7xl mx-auto py-10 px-4">Error fetching order details</div>;
   if (!order) return <div className="max-w-7xl mx-auto py-10 px-4">Order not found</div>;
 
   const isDelivered = order.shipment_status === "DELIVERED";
   const isCancelled = order.shipment_status === "CANCELLED";
+  const hasAWB = !!order.tracking_number;
+  const isPending = order.shipment_status === "PENDING";
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-700">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Order Details</h1>
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={liveStatusLoading}>
-          <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 mr-2 ${liveStatusLoading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Order Details</h1>
+          <p className="text-muted-foreground">Order ID: #{orderId}</p>
+        </div>
+        <div className="flex gap-2">
+          {isPending && !hasAWB && (
+            <Button 
+              onClick={handleAssignAWB} 
+              disabled={assignAWBMutation.isPending}
+              className="rounded-xl font-bold gap-2"
+            >
+              {assignAWBMutation.isPending ? <HugeiconsIcon icon={RefreshIcon} className="h-4 w-4 animate-spin" /> : <HugeiconsIcon icon={Add01Icon} className="h-4 w-4" />}
+              Assign AWB
+            </Button>
+          )}
+          
+          {hasAWB && !order.label_url && (
+            <Button 
+              onClick={handleGenerateLabel} 
+              disabled={generateLabelMutation.isPending}
+              variant="outline"
+              className="rounded-xl font-bold gap-2"
+            >
+              {generateLabelMutation.isPending ? <HugeiconsIcon icon={RefreshIcon} className="h-4 w-4 animate-spin" /> : <HugeiconsIcon icon={PackageIcon} className="h-4 w-4" />}
+              Generate Label
+            </Button>
+          )}
+
+          {hasAWB && !order.pickup_scheduled_date && (
+            <Button 
+              onClick={handleSchedulePickup} 
+              disabled={schedulePickupMutation.isPending}
+              variant="secondary"
+              className="rounded-xl font-bold gap-2"
+            >
+              {schedulePickupMutation.isPending ? <HugeiconsIcon icon={RefreshIcon} className="h-4 w-4 animate-spin" /> : <HugeiconsIcon icon={ShippingTruck01Icon} className="h-4 w-4" />}
+              Schedule Pickup
+            </Button>
+          )}
+
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={liveStatusLoading} className="rounded-xl">
+            <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 mr-2 ${liveStatusLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-8">
@@ -135,6 +197,13 @@ export default function OrderDetailsPage({
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Order Date</p>
               <p className="font-semibold">{formatDate(order.created_at)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
+                <HugeiconsIcon icon={Calendar01Icon} size={12} />
+                Pickup Scheduled
+              </p>
+              <p className="font-semibold text-primary">{formatDate(order.pickup_scheduled_date)}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Delivered Date</p>

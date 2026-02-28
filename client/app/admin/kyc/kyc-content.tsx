@@ -55,9 +55,11 @@ export default function AdminKycPage() {
     setDetailsSheetOpen(true);
   };
 
-  const handleStatusChange = (status: string) => {
-    setStatusFilter(status);
-    setPage(1);
+  const handleStatusChange = (status: string | null) => {
+    if (status) {
+      setStatusFilter(status);
+      setPage(1);
+    }
   };
 
   const handleSearchChange = (value: string) => {

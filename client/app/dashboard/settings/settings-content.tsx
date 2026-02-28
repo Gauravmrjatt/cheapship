@@ -37,7 +37,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { sileo } from "sileo";
-import { useLoginHistory } from "@/lib/hooks/use-sessions";
+import { useLoginHistory, LoginSession } from "@/lib/hooks/use-sessions";
 import { format } from "date-fns";
 
 interface KycData {
@@ -626,7 +626,7 @@ function SecurityTab() {
               </div>
             ) : sessions && sessions.length > 0 ? (
               <div className="space-y-2">
-                {sessions.map((session) => (
+                {sessions.map((session: LoginSession) => (
                   <div key={session.id} className="group p-4 rounded-xl bg-background border border-border/50 hover:border-primary/20 transition-all flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className={cn(

@@ -49,10 +49,11 @@ export const useHttp = () => {
     };
   };
 
-  const post = <TData = unknown, TVariables = unknown>(endpoint: string, options?: HttpOptions<TData, TVariables>) => {
+  const post = <TData = unknown, TVariables = any>(endpoint: string | ((vars: TVariables) => string), options?: HttpOptions<TData, TVariables>) => {
     return {
       mutationFn: async (variables: TVariables) => {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const resolvedEndpoint = typeof endpoint === "function" ? endpoint(variables) : endpoint;
+        const response = await fetch(`${API_BASE_URL}${resolvedEndpoint}`, {
           method: "POST",
           headers: getHeaders(token),
           body: JSON.stringify(variables),
@@ -73,13 +74,14 @@ export const useHttp = () => {
     };
   };
 
-  const put = <TData = unknown, TVariables = unknown>(endpoint: string, options?: HttpOptions<TData, TVariables>) => {
+  const put = <TData = unknown, TVariables = any>(endpoint: string | ((vars: TVariables) => string), options?: HttpOptions<TData, TVariables>) => {
     return {
       mutationFn: async (variables: TVariables) => {
-        let url = `${API_BASE_URL}${endpoint}`;
+        const resolvedEndpoint = typeof endpoint === "function" ? endpoint(variables) : endpoint;
+        let url = `${API_BASE_URL}${resolvedEndpoint}`;
         let body = JSON.stringify(variables);
 
-        if (typeof variables === "string") {
+        if (typeof variables === "string" && typeof endpoint !== "function") {
           url = `${url}/${variables}`;
           body = JSON.stringify({});
         }
@@ -105,10 +107,11 @@ export const useHttp = () => {
     };
   };
 
-  const patch = <TData = unknown, TVariables = unknown>(endpoint: string, options?: HttpOptions<TData, TVariables>) => {
+  const patch = <TData = unknown, TVariables = any>(endpoint: string | ((vars: TVariables) => string), options?: HttpOptions<TData, TVariables>) => {
     return {
       mutationFn: async (variables: TVariables) => {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const resolvedEndpoint = typeof endpoint === "function" ? endpoint(variables) : endpoint;
+        const response = await fetch(`${API_BASE_URL}${resolvedEndpoint}`, {
           method: "PATCH",
           headers: getHeaders(token),
           body: JSON.stringify(variables),
@@ -129,12 +132,13 @@ export const useHttp = () => {
     };
   };
 
-  const del = <TData = unknown, TVariables = unknown>(endpoint: string, options?: HttpOptions<TData, TVariables>) => {
+  const del = <TData = unknown, TVariables = any>(endpoint: string | ((vars: TVariables) => string), options?: HttpOptions<TData, TVariables>) => {
     return {
       mutationFn: async (variables: TVariables) => {
-        const url = typeof variables === "string" 
-          ? `${API_BASE_URL}${endpoint}/${variables}` 
-          : `${API_BASE_URL}${endpoint}`;
+        const resolvedEndpoint = typeof endpoint === "function" ? endpoint(variables) : endpoint;
+        const url = (typeof variables === "string" && typeof endpoint !== "function")
+          ? `${API_BASE_URL}${resolvedEndpoint}/${variables}` 
+          : `${API_BASE_URL}${resolvedEndpoint}`;
 
         const response = await fetch(url, {
           method: "DELETE",

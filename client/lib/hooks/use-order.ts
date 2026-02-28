@@ -1,12 +1,76 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
+import { sileo } from "sileo";
 
 export const useOrder = (orderId: string) => {
   const { get } = useHttp();
 
   return useQuery(get(["order", orderId], `/orders/${orderId}`, !!orderId));
+};
+
+export const useAssignAWB = () => {
+  const { post } = useHttp();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...post<any, { orderId: string; status?: string }>(
+      ({ orderId }) => `/orders/${orderId}/awb`,
+      {
+        onSuccess: (_, { orderId }) => {
+          sileo.success({ title: "AWB Assigned", description: "AWB has been successfully assigned to the shipment." });
+          queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+          queryClient.invalidateQueries({ queryKey: ["orders"] });
+        },
+        onError: (error: any) => {
+          sileo.error({ title: "Failed to assign AWB", description: error.message || "An error occurred while assigning AWB." });
+        }
+      }
+    )
+  });
+};
+
+export const useSchedulePickup = () => {
+  const { post } = useHttp();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...post<any, { orderId: string }>(
+      ({ orderId }) => `/orders/${orderId}/pickup`,
+      {
+        onSuccess: (_, { orderId }) => {
+          sileo.success({ title: "Pickup Scheduled", description: "Pickup has been successfully scheduled." });
+          queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+          queryClient.invalidateQueries({ queryKey: ["orders"] });
+        },
+        onError: (error: any) => {
+          sileo.error({ title: "Failed to schedule pickup", description: error.message || "An error occurred while scheduling pickup." });
+        }
+      }
+    )
+  });
+};
+
+export const useGenerateLabel = () => {
+  const { post } = useHttp();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...post<any, { orderId: string }>(
+      ({ orderId }) => `/orders/${orderId}/label`,
+      {
+        onSuccess: (_, { orderId }) => {
+          sileo.success({ title: "Label Generated", description: "Shipping label has been successfully generated." });
+          queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+          queryClient.invalidateQueries({ queryKey: ["orders"] });
+        },
+        onError: (error: any) => {
+          sileo.error({ title: "Failed to generate label", description: error.message || "An error occurred while generating label." });
+        }
+      }
+    )
+  });
 };
 
 export const useLiveOrderStatus = (orderId: string, enabled: boolean = true) => {

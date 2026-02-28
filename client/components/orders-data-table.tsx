@@ -446,7 +446,8 @@ export function OrdersDataTable({
               <SelectGroup>
                 <SelectItem value="ALL">All Orders</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="PROCESSING">Processing</SelectItem>
+                {/* <SelectItem value="PROCESSING">Processing</SelectItem> */}
+                <SelectItem value="MANIFESTED">Manifested</SelectItem>
                 <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
                 <SelectItem value="DELIVERED">Delivered</SelectItem>
                 <SelectItem value="RTO">RTO</SelectItem>
@@ -459,7 +460,8 @@ export function OrdersDataTable({
           <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
             <TabsTrigger value="ALL">All Orders</TabsTrigger>
             <TabsTrigger value="PENDING">Pending</TabsTrigger>
-            <TabsTrigger value="PROCESSING">Processing</TabsTrigger>
+            {/* <TabsTrigger value="PROCESSING">Processing</TabsTrigger> */}
+            <TabsTrigger value="MANIFESTED">Manifested</TabsTrigger>
             <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
             <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
             <TabsTrigger value="RTO">RTO</TabsTrigger>
