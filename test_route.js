@@ -1,21 +1,10 @@
-const { getServiceability } = require('./server/utils/shiprocket.js');
-async function test() {
-  try {
-    const res = await getServiceability({
-      pickup_postcode: "335526",
-      delivery_postcode: "110001",
-      weight: 1,
-      cod: 0,
-      declared_value: 500,
-      is_return: 0,
-      length: 10,
-      breadth: 10,
-      height: 10,
-      mode: "Surface"
-    });
-    console.log("Total Couriers Returned:", res.data?.available_courier_companies?.length || res);
-  } catch(e) {
-    console.error(e);
-  }
-}
-test();
+const labelCustomizer = require('./server/utils/label-customizer.js');
+
+(async () => {
+  let labelUrl =
+    'https://shiprocket-db-mum.s3.ap-south-1.amazonaws.com/pdfs/label_9257848_019ca340-c900-713f-b0f6-a04e278bc60b.pdf';
+
+  labelUrl = await labelCustomizer.customize(labelUrl, "132444");
+
+  console.log(labelUrl);
+})();

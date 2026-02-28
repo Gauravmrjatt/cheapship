@@ -169,6 +169,7 @@ router.post(
 router.get('/', orderController.getOrders);
 
 router.get('/remittances/pending', orderController.getPendingRemittances);
+router.get('/remittances/summary', orderController.getRemittanceSummary);
 router.get('/count', orderController.getOrdersCount);
 router.get('/remittances/history', orderController.getRemittanceHistory);
 
@@ -328,18 +329,20 @@ router.get('/:id', orderController.getOrderById);
  */
 router.put('/:id/cancel', orderController.cancelOrder);
 
-router.post('/webhook', orderController.handleWebhook);
+router.get('/:id/tracking', orderController.getOrderTracking);
 
-router.get('/:id/tracking', authMiddleware, orderController.getOrderTracking);
+router.get('/:id/live-status', orderController.getLiveOrderStatus);
 
-router.get('/:id/live-status', authMiddleware, orderController.getLiveOrderStatus);
+router.post('/:id/manifest', orderController.generateOrderManifest);
 
-router.post('/:id/manifest', authMiddleware, orderController.generateOrderManifest);
+router.get('/:id/manifest', orderController.printOrderManifest);
 
-router.get('/:id/manifest', authMiddleware, orderController.printOrderManifest);
+router.post('/:id/label', orderController.generateOrderLabel);
 
-router.post('/:id/label', authMiddleware, orderController.generateOrderLabel);
+router.post('/:id/awb', orderController.assignOrderAWB);
 
-router.get('/:id/invoice', authMiddleware, orderController.generateOrderInvoice);
+router.post('/:id/pickup', orderController.scheduleOrderPickup);
+
+router.get('/:id/invoice', orderController.generateOrderInvoice);
 
 module.exports = router;

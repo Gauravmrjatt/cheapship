@@ -8,6 +8,7 @@ router.use(auth);
 
 router.get('/weight', disputeController.getWeightDisputes);
 router.get('/rto', disputeController.getRTODisputes);
+router.post('/weight/user', disputeController.userRaiseWeightDispute);
 
 // Admin routes for creating and resolving disputes
 router.post('/weight', admin, disputeController.createWeightDispute);

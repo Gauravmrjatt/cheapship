@@ -208,9 +208,84 @@ const resolveWeightDispute = async (req, res) => {
     }
 };
 
+/**
+ * User raises a weight dispute
+ */
+const userRaiseWeightDispute = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const userId = req.user.id;
+    const { 
+        awb_number, 
+        declared_weight, 
+        charged_weight, 
+        product_category, 
+        description, 
+        weight_scale_image, 
+        packed_box_image 
+    } = req.body;
+
+    try {
+        // Find the order by AWB (tracking_number)
+        const order = await prisma.order.findFirst({
+            where: { 
+                tracking_number: awb_number,
+                user_id: userId
+            },
+            select: { id: true, weight: true, shipping_charge: true }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order with this AWB number not found in your account.' });
+        }
+
+        const applied_weight = parseFloat(order.weight || 0);
+        const applied_amount = parseFloat(order.shipping_charge || 0);
+        
+        // Use provided charged_weight or calculate from system if we had a way, 
+        // but here the user says what they were charged.
+        // We'll trust the user input for the dispute record creation.
+        const diff_amount = 0; // Will be calculated by admin during resolution
+
+        const dispute = await prisma.weightDispute.upsert({
+            where: { order_id: order.id },
+            update: {
+                applied_weight,
+                charged_weight: parseFloat(charged_weight),
+                applied_amount,
+                product_category,
+                discrepancy_description: description,
+                weight_scale_image,
+                packed_box_image,
+                status: 'PENDING',
+                updated_at: new Date()
+            },
+            create: {
+                order_id: order.id,
+                user_id: userId,
+                applied_weight,
+                charged_weight: parseFloat(charged_weight),
+                applied_amount,
+                charged_amount: 0, // Admin will set this
+                difference_amount: 0, // Admin will set this
+                product_category,
+                discrepancy_description: description,
+                weight_scale_image,
+                packed_box_image,
+                status: 'PENDING'
+            }
+        });
+
+        res.status(201).json({ message: 'Weight dispute request submitted successfully. Our experts will review it within 5-7 working days.', data: dispute });
+    } catch (error) {
+        console.error('Error raising weight dispute:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     getWeightDisputes,
     getRTODisputes,
     createWeightDispute,
-    resolveWeightDispute
+    resolveWeightDispute,
+    userRaiseWeightDispute
 };

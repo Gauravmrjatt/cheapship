@@ -189,6 +189,7 @@ model Order {
   label_url              String?                  @db.Text
   manifest_url           String?                  @db.Text
   manifest_generated_at  DateTime?                @db.Timestamp()
+  pickup_scheduled_date  DateTime?                @db.Timestamp()
   track_url              String?                  @db.Text
   rto_label_url          String?                  @db.Text()
   rto_charges           Decimal?                 @db.Decimal(12, 2)
@@ -318,6 +319,7 @@ enum OrderType {
 }
 
 enum ShipmentStatus {
+  PROCESSING
   MANIFESTED
   IN_TRANSIT
   DISPATCHED
@@ -389,6 +391,10 @@ model WeightDispute {
   applied_amount   Decimal       @db.Decimal(12, 2)
   charged_amount   Decimal       @db.Decimal(12, 2)
   difference_amount Decimal      @db.Decimal(12, 2)
+  product_category  String?      @db.VarChar(100)
+  discrepancy_description String?  @db.Text
+  weight_scale_image String?      @db.Text
+  packed_box_image   String?      @db.Text
   status           DisputeStatus @default(PENDING)
   action_reason    String?       @db.Text
   created_at       DateTime      @default(now()) @db.Timestamp()

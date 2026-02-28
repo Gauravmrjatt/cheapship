@@ -1,8 +1,20 @@
 const { validationResult } = require('express-validator');
-const { getServiceability, getLocalityDetails, createShipment, cancelShipment, generateLabel, generateManifest, printManifest, getShipmentTracking, getShipmentDetails, generateRTOLabel } = require('../utils/shiprocket');
+const { getServiceability, getLocalityDetails, createShipment, cancelShipment, assignAWB: shiprocketAssignAWB, generateLabel, generateManifest, printManifest, getShipmentTracking, getShipmentDetails, schedulePickup, generateRTOLabel } = require('../utils/shiprocket');
 const { createReferralCommissions } = require('../utils/referral.commissions');
 const labelCustomizer = require('../utils/label-customizer');
 const vyom = require('../utils/vyom');
+
+// Helper to sanitize error messages from shipping providers
+const sanitizeErrorMessage = (message) => {
+  if (!message) return 'An unexpected error occurred';
+  
+  const msg = message.toLowerCase();
+  // Check if it contains provider name and financial keywords
+  if (msg.includes('shiprocket') || msg.includes('recharge') || msg.includes('wallet') || msg.includes('balance') || msg.includes('amount')) {
+    return 'Courier service is temporarily unavailable. Please try again later or contact support.';
+  }
+  return message;
+};
 
 // Helper to calculate final rates with commissions
 const calculateFinalRates = async (prisma, userId, availableCouriers, recommendedId = null) => {
@@ -177,7 +189,7 @@ const calculateRates = async (req, res) => {
 
     let availableCouriers = serviceabilityData.data.available_courier_companies || [];
 
- 
+
 
     let serviceableCouriers = await calculateFinalRates(
       prisma,
@@ -679,10 +691,8 @@ const createOrder = async (req, res) => {
     if (error.message.includes('Insufficient wallet balance')) {
       return res.status(400).json({ message: error.message });
     }
-    if (error.message.includes('Shiprocket') || error.message.includes('shipping provider')) {
-      return res.status(400).json({ message: error.message });
-    }
-    res.status(500).json({ message: 'Internal Server Error' });
+    
+    return res.status(400).json({ message: sanitizeErrorMessage(error.message) });
   }
 };
 
@@ -813,10 +823,10 @@ const cancelOrder = async (req, res) => {
       return res.status(403).json({ message: 'You are not authorized to cancel this order' });
     }
 
-    // Only allow cancellation if status is PENDING
-    if (order.shipment_status !== 'PENDING') {
+    // Only allow cancellation if status is PENDING or PROCESSING
+    if (order.shipment_status !== 'PENDING' && order.shipment_status !== 'PROCESSING') {
       return res.status(400).json({
-        message: 'Order can only be cancelled if status is PENDING',
+        message: 'Order can only be cancelled if status is PENDING or PROCESSING',
         current_status: order.shipment_status
       });
     }
@@ -898,20 +908,27 @@ const cancelOrder = async (req, res) => {
 };
 
 const mapShiprocketStatus = (shiprocketStatus) => {
+  if (!shiprocketStatus) return 'PENDING';
+  
+  const status = shiprocketStatus.toString().toLowerCase().trim();
   const statusMap = {
     'pending': 'PENDING',
+    'processing': 'PROCESSING',
     'manifested': 'MANIFESTED',
     'in_transit': 'IN_TRANSIT',
     'out_for_delivery': 'IN_TRANSIT',
     'delivered': 'DELIVERED',
     'cancelled': 'CANCELLED',
+    'canceled': 'CANCELLED',
     'rto': 'RTO',
     'rto_delivered': 'RTO',
     'lost': 'CANCELLED',
     'damaged': 'CANCELLED',
     'not_picked': 'NOT_PICKED',
+    'pickup_exception': 'PENDING',
+    'pickup_error': 'PENDING'
   };
-  return statusMap[shiprocketStatus?.toLowerCase()] || 'PENDING';
+  return statusMap[status] || 'PENDING';
 };
 
 const handleWebhook = async (req, res) => {
@@ -920,72 +937,102 @@ const handleWebhook = async (req, res) => {
   try {
     const payload = req.body;
 
-    if (!payload || !payload.shipment_id) {
-      return res.status(400).json({ success: false, message: 'Invalid webhook payload' });
+    if (!payload) {
+      return res.status(400).json({ success: false, message: 'Empty webhook payload' });
     }
 
-    const shipmentId = payload.shipment_id.toString();
-    const order = await prisma.order.findFirst({
-      where: { shiprocket_shipment_id: shipmentId }
-    });
+    // Per user instruction: sr_order_id is the actual ID in our DB
+    let orderId = payload.sr_order_id;
+    let order = null;
 
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found for shipment' });
-    }
-
-    const newStatus = mapShiprocketStatus(payload.status);
-    const updateData = {
-      shipment_status: newStatus
-    };
-
-    if (payload.tracking_number) {
-      updateData.tracking_number = payload.tracking_number;
-    }
-
-    if (payload.label_url) {
-      updateData.label_url = payload.label_url;
-    }
-
-    if (newStatus === 'DELIVERED') {
-      updateData.delivered_at = new Date();
-    }
-
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
-      data: updateData,
-      include: {
-        order_pickup_address: true,
-        order_receiver_address: true
-      }
-    });
-
-    if (payload.track_url) {
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { track_url: payload.track_url }
+    if (orderId) {
+      order = await prisma.order.findUnique({
+        where: { id: BigInt(orderId) }
       });
     }
 
-    if (payload.status_history && Array.isArray(payload.status_history)) {
-      for (const history of payload.status_history) {
-        await prisma.shipmentHistory.create({
-          data: {
-            order_id: order.id,
-            status: history.status || payload.status,
-            status_date: new Date(history.status_date || history.date || Date.now()),
-            location: history.location || history.current_location,
-            shipment_status: history.status,
-            activity: history.status
-          }
+    // If not found by sr_order_id, try order_id as fallback PK
+    if (!order && payload.order_id) {
+      try {
+        order = await prisma.order.findUnique({
+          where: { id: BigInt(payload.order_id) }
         });
+      } catch (e) {
+        // order_id might not be a valid bigint PK in some payloads
       }
     }
 
-    res.json({ success: true, message: 'Webhook processed successfully' });
+    // If still not found, try finding by shiprocket_order_id field
+    if (!order && payload.sr_order_id) {
+      order = await prisma.order.findFirst({
+        where: { shiprocket_order_id: payload.sr_order_id.toString() }
+      });
+    }
+
+    if (!order) {
+      // Fallback: Try to find by shiprocket_shipment_id
+      if (payload.shipment_id || payload.awb) {
+        const shipmentId = (payload.shipment_id || payload.awb).toString();
+        const fallbackOrder = await prisma.order.findFirst({
+          where: {
+            OR: [
+              { shiprocket_shipment_id: shipmentId },
+              { tracking_number: shipmentId }
+            ]
+          }
+        });
+        if (fallbackOrder) {
+          return await processOrderUpdate(prisma, fallbackOrder, payload, res);
+        }
+      }
+      return res.status(404).json({ success: false, message: `Order not found for sr_order_id: ${payload.sr_order_id}` });
+    }
+
+    return await processOrderUpdate(prisma, order, payload, res);
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
+};
+
+// Internal helper to process the validated order update
+const processOrderUpdate = async (prisma, order, payload, res) => {
+  const newStatus = mapShiprocketStatus(payload.shipment_status || payload.status || payload.current_status);
+  const updateData = {
+    shipment_status: newStatus
+  };
+
+  if (payload.awb || payload.tracking_number) {
+    updateData.tracking_number = payload.awb || payload.tracking_number;
+  }
+
+  if (payload.pickup_scheduled_date) {
+    // Shiprocket date format can be "YYYY-MM-DD HH:mm:ss" or similar
+    updateData.pickup_scheduled_date = new Date(payload.pickup_scheduled_date);
+  }
+
+  if (newStatus === 'DELIVERED') {
+    updateData.delivered_at = new Date();
+  }
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: order.id },
+    data: updateData
+  });
+
+  // Log history
+  await prisma.shipmentHistory.create({
+    data: {
+      order_id: order.id,
+      status: payload.shipment_status || payload.current_status || 'UPDATED',
+      status_date: new Date(),
+      location: payload.location || payload.current_location || '',
+      shipment_status: newStatus,
+      activity: payload.current_status || payload.shipment_status
+    }
+  });
+
+  return res.json({ success: true, message: 'Webhook processed successfully' });
 };
 
 const getOrderTracking = async (req, res) => {
@@ -1286,17 +1333,84 @@ const generateOrderInvoice = async (req, res) => {
   }
 };
 
+const getRemittanceSummary = async (req, res) => {
+  const userId = req.user.id;
+  const prisma = req.app.locals.prisma;
+  const { fromDate, toDate } = req.query;
+
+  try {
+    const where = {
+      user_id: userId,
+      payment_mode: 'COD',
+    };
+
+    if (fromDate || toDate) {
+      where.created_at = {};
+      if (fromDate) where.created_at.gte = new Date(fromDate);
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        where.created_at.lte = endOfDay;
+      }
+    }
+
+    const [totalCollected, pendingRemittance, lastRemitted] = await Promise.all([
+      prisma.order.aggregate({
+        where,
+        _sum: { cod_amount: true }
+      }),
+      prisma.order.aggregate({
+        where: { ...where, remittance_status: 'PENDING' },
+        _sum: { cod_amount: true }
+      }),
+      prisma.order.findFirst({
+        where: { user_id: userId, remittance_status: 'REMITTED' },
+        orderBy: { remitted_at: 'desc' },
+        select: { remitted_amount: true, remitted_at: true }
+      })
+    ]);
+
+    // Estimated next remittance date (Fixed logic: next Tuesday/Friday or 3 days from now)
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + 3);
+
+    res.json({
+      totalCODCollected: totalCollected._sum.cod_amount || 0,
+      pendingRemittanceAmount: pendingRemittance._sum.cod_amount || 0,
+      lastRemittedAmount: lastRemitted?.remitted_amount || 0,
+      lastRemittedAt: lastRemitted?.remitted_at || null,
+      estimatedNextRemittanceDate: nextDate.toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching remittance summary:', error);
+    res.status(500).json({ message: 'Error fetching remittance summary' });
+  }
+};
+
 const getPendingRemittances = async (req, res) => {
   const userId = req.user.id;
   const prisma = req.app.locals.prisma;
+  const { fromDate, toDate } = req.query;
 
   try {
+    const where = {
+      user_id: userId,
+      payment_mode: 'COD',
+      remittance_status: 'PENDING'
+    };
+
+    if (fromDate || toDate) {
+      where.created_at = {};
+      if (fromDate) where.created_at.gte = new Date(fromDate);
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        where.created_at.lte = endOfDay;
+      }
+    }
+
     const pendingOrders = await prisma.order.findMany({
-      where: {
-        user_id: userId,
-        payment_mode: 'COD',
-        remittance_status: 'PENDING'
-      },
+      where,
       orderBy: { created_at: 'desc' },
       include: {
         order_receiver_address: true
@@ -1317,13 +1431,26 @@ const getPendingRemittances = async (req, res) => {
 const getRemittanceHistory = async (req, res) => {
   const userId = req.user.id;
   const prisma = req.app.locals.prisma;
+  const { fromDate, toDate } = req.query;
 
   try {
+    const where = {
+      user_id: userId,
+      remittance_status: 'REMITTED'
+    };
+
+    if (fromDate || toDate) {
+      where.remitted_at = {};
+      if (fromDate) where.remitted_at.gte = new Date(fromDate);
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        where.remitted_at.lte = endOfDay;
+      }
+    }
+
     const remittedOrders = await prisma.order.findMany({
-      where: {
-        user_id: userId,
-        remittance_status: 'REMITTED'
-      },
+      where,
       orderBy: { remitted_at: 'desc' },
       include: {
         order_receiver_address: true
@@ -1390,6 +1517,119 @@ const updateRemittanceStatus = async (req, res) => {
   }
 };
 
+const assignOrderAWB = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.user_id !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to assign AWB for this order' });
+    }
+
+    // Server-side status validation
+    if (order.shipment_status !== 'PENDING' && status !== 'reassign') {
+      return res.status(400).json({ message: `Cannot assign AWB for order in ${order.shipment_status} status` });
+    }
+
+    if (!order.shiprocket_shipment_id) {
+      return res.status(400).json({ message: 'No shipment ID found for this order' });
+    }
+
+    const awbResult = await shiprocketAssignAWB({
+      shipment_id: order.shiprocket_shipment_id,
+      courier_id:  order.courier_id,
+      status
+    });
+
+    if (awbResult && awbResult.awb_assign_status === 1 && awbResult.response && awbResult.response.data) {
+      const awbData = awbResult.response.data;
+      
+      const updateData = {
+        tracking_number: awbData.awb_code,
+        shipment_status: 'MANIFESTED',
+        courier_name: awbData.courier_name || order.courier_name,
+        courier_id: awbData.courier_company_id ? parseInt(awbData.courier_company_id) : order.courier_id
+      };
+
+      if (awbData.pickup_scheduled_date) {
+        updateData.pickup_scheduled_date = new Date(awbData.pickup_scheduled_date);
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: BigInt(id) },
+        data: updateData
+      });
+
+      return res.json({
+        message: 'AWB assigned successfully',
+        awb_code: awbData.awb_code,
+        pickup_scheduled_date: awbData.pickup_scheduled_date,
+        order: updatedOrder
+      });
+    }
+
+    const errorMessage = awbResult?.message || 
+                        awbResult?.response?.data?.awb_assign_error || 
+                        'Failed to assign AWB';
+
+    res.status(400).json({ 
+      message: sanitizeErrorMessage(errorMessage)
+    });
+  } catch (error) {
+    console.error('Error assigning AWB:', error);
+    res.status(500).json({ message: sanitizeErrorMessage(error.message) });
+  }
+}
+
+const scheduleOrderPickup = async (req, res) => {
+  const { id } = req.params;
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.user_id !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to schedule pickup for this order' });
+    }
+
+    // Validate that AWB is assigned before scheduling pickup
+    if (!order.tracking_number) {
+      return res.status(400).json({ message: 'Cannot schedule pickup without an assigned AWB' });
+    }
+
+    if (!order.shiprocket_shipment_id) {
+      return res.status(400).json({ message: 'No shipment ID found for this order' });
+    }
+
+    const pickupResult = await schedulePickup([order.shiprocket_shipment_id]);
+
+    res.json({
+      message: 'Pickup scheduled successfully',
+      pickup_result: pickupResult
+    });
+  } catch (error) {
+    console.error('Error scheduling pickup:', error);
+    res.status(500).json({ message: error.message || 'Error scheduling pickup' });
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
@@ -1406,6 +1646,9 @@ module.exports = {
   generateOrderLabel,
   getPendingRemittances,
   getRemittanceHistory,
+  getRemittanceSummary,
   updateRemittanceStatus,
-  generateOrderInvoice
+  generateOrderInvoice,
+  assignOrderAWB,
+  scheduleOrderPickup
 };
