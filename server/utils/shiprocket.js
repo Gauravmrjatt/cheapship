@@ -5,6 +5,8 @@ const userToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vYXBp
 const getShiprocketToken = async () => {
   const email = process.env.SHIPROCKET_EMAIL;
   const password = process.env.SHIPROCKET_PASSWORD;
+const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
+
 
   if (!email || !password) {
     throw new Error('Shiprocket credentials not found in environment variables');
@@ -24,7 +26,10 @@ const getShiprocketToken = async () => {
     if (!response.ok) {
       throw new Error(data.message || 'Failed to login to Shiprocket');
     }
-    map.set('token', data.token);
+  map.set('token', {
+  value: data.token,
+  expiresAt: Date.now() + NINE_DAYS
+});
     return data.token;
 
   } catch (error) {
