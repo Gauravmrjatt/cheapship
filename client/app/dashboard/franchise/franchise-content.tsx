@@ -71,7 +71,7 @@ export default function FranchisePage() {
   };
 
   const getReferralLink = () => {
-    if (myReferral?.referral_link) return myReferral.referral_link;
+    // if (myReferral?.referral_link) return myReferral.referral_link;
     if (myReferral?.referer_code) return `${window.location.origin}/register?ref=${myReferral.referer_code}`;
     return "";
   };
