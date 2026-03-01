@@ -59,10 +59,10 @@ const getTransactions = async (req, res) => {
       const numericOrderIds = orderIds.map(id => BigInt(id));
       const orders = await prisma.order.findMany({
         where: { id: { in: numericOrderIds } },
-        select: { id: true, awb_code: true }
+        select: { id: true, tracking_number: true }
       });
       orders.forEach(o => {
-        orderDetailsMap[o.id.toString()] = { awb_code: o.awb_code };
+        orderDetailsMap[o.id.toString()] = { awb_code: o.tracking_number };
       });
     }
 

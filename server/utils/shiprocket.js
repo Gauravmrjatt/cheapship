@@ -3,9 +3,12 @@ const map = new Map();
 const userToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vYXBpdjIuc2hpcHJvY2tldC5jby92MS9hdXRoL3JlZ2lzdGVyL21v92YWxpZYmlsZSGF0ZS1vdHAiLCJpYXQiOjE3NzEzMzA2NTEsImV4cCI6MTc3MjE5NDY1MSwibmJmIjoxNzcxMzMwNjUxLCJqdGkiOiJ5dTJGalVhbDV0MWt4TW1DIiwic3ViIjo5NTIxODcwLCJwcnYiOiIwNWJiNjYwZjY3Y2FjNzQ1ZjdiM2RhMWVlZjE5NzE5NWEyMTFlNmQ5IiwiY2lkIjo5MjU3ODQ4fQ.WQAJ94vFYaxrP1s6a76a-ZWJmgcn6h67OBZuBA81wjY";
 
 const getShiprocketToken = async () => {
+  if (map.has('token') ) {
+    return map.get('token').value;
+  }
   const email = process.env.SHIPROCKET_EMAIL;
   const password = process.env.SHIPROCKET_PASSWORD;
-const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
+  const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
 
 
   if (!email || !password) {
@@ -26,10 +29,10 @@ const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
     if (!response.ok) {
       throw new Error(data.message || 'Failed to login to Shiprocket');
     }
-  map.set('token', {
-  value: data.token,
-  expiresAt: Date.now() + NINE_DAYS
-});
+    map.set('token', {
+      value: data.token,
+      expiresAt: Date.now() + NINE_DAYS
+    });
     return data.token;
 
   } catch (error) {
@@ -39,8 +42,8 @@ const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
 };
 
 const getServiceability = async (params) => {
-  const token = map.get('token') || await getShiprocketToken();
-  
+  const token = await getShiprocketToken();
+
   const { mode, ...restParams } = params;
   const queryParams = new URLSearchParams(restParams).toString();
 
@@ -56,9 +59,10 @@ const getServiceability = async (params) => {
         'Authorization': `Bearer ${token}`,
       },
     });
-
+    console.log(JSON.stringify(token) + " this is \n");
+    console.log(queryParams + "\n")
     const data = await response.json();
-
+    console.log(data)
     if (process.env.NODE_ENV === 'development') {
       console.log('[Shiprocket] Serviceability API response:', JSON.stringify(data, null, 2));
       console.log('[Shiprocket] Couriers returned:', data?.data?.available_courier_companies?.length || 0);
@@ -76,7 +80,7 @@ const getServiceability = async (params) => {
 };
 
 const createQuickOrder = async (orderData) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   const payload = {
     order_id: orderData.order_id,
@@ -155,7 +159,7 @@ const createShipment = async (orderData) => {
 };
 
 const cancelShipment = async (shipmentId) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/orders/cancel`, {
@@ -181,7 +185,7 @@ const cancelShipment = async (shipmentId) => {
 };
 
 const generateLabel = async (shipmentIds) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   // Ensure shipmentIds is an array
   const ids = Array.isArray(shipmentIds) ? shipmentIds : [shipmentIds];
@@ -211,7 +215,7 @@ const generateLabel = async (shipmentIds) => {
 };
 
 const assignAWB = async ({ shipment_id, courier_id, status }) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   const payload = {
     shipment_id: parseInt(shipment_id)
@@ -250,7 +254,7 @@ const assignAWB = async ({ shipment_id, courier_id, status }) => {
 };
 
 const generateInvoice = async (orderIds) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   // Ensure orderIds is an array
   const ids = Array.isArray(orderIds) ? orderIds : [orderIds];
@@ -280,7 +284,7 @@ const generateInvoice = async (orderIds) => {
 };
 
 const generateManifest = async (shipmentIds) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/manifests/generate`, {
@@ -307,7 +311,7 @@ const generateManifest = async (shipmentIds) => {
 };
 
 const printManifest = async (orderIds) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/manifests/print`, {
@@ -334,8 +338,8 @@ const printManifest = async (orderIds) => {
 };
 
 const getShipmentTracking = async (shipmentId) => {
-  const token = map.get('token') || await getShiprocketToken();
-   console.log("shipmentId", shipmentId)
+  const token = await getShiprocketToken();
+  console.log("shipmentId", shipmentId)
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/track/shipment/${shipmentId}`, {
       method: 'GET',
@@ -360,7 +364,7 @@ const getShipmentTracking = async (shipmentId) => {
 };
 
 const getShipmentDetails = async (shipmentId) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/shipments/${shipmentId}`, {
@@ -386,7 +390,7 @@ const getShipmentDetails = async (shipmentId) => {
 };
 
 const schedulePickup = async (shipmentIds) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   const ids = Array.isArray(shipmentIds) ? shipmentIds : [shipmentIds];
 
@@ -415,7 +419,7 @@ const schedulePickup = async (shipmentIds) => {
 };
 
 const generateRTOLabel = async (shipmentId) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/orders/rto/create`, {
@@ -462,7 +466,7 @@ const getPostcodeDetails = async (postcode) => {
 };
 
 const getLocalityDetails = async (postcode) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/open/postcode/details?postcode=${postcode}`, {
@@ -474,7 +478,7 @@ const getLocalityDetails = async (postcode) => {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       return {
         success: false,
@@ -485,7 +489,7 @@ const getLocalityDetails = async (postcode) => {
         }
       };
     }
-    
+
     return data;
   } catch (error) {
     console.error('Shiprocket locality details error:', error);
@@ -501,7 +505,7 @@ const getLocalityDetails = async (postcode) => {
 };
 
 const addPickupLocation = async (params) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   try {
     const response = await fetch('https://apiv2.shiprocket.in/v1/external/settings/company/addpickup', {
@@ -522,7 +526,7 @@ const addPickupLocation = async (params) => {
 };
 
 const getPickupLocations = async () => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
 
   try {
     const response = await fetch('https://apiv2.shiprocket.in/v1/external/settings/company/pickup', {
@@ -571,7 +575,7 @@ const userVerifyAddress = async (number) => {
   }
 }
 
-const verifyOtp = async (otp , number) => {
+const verifyOtp = async (otp, number) => {
   try {
     const response = await fetch('https://apiv2.shiprocket.co/v1/settings/confirm/otp', {
       method: 'POST',
@@ -592,7 +596,7 @@ const verifyOtp = async (otp , number) => {
       console.error('Shiprocket verify OTP error:', data);
       throw new Error(data.message || 'Failed to verify OTP');
     }
-    
+
     return data;
   } catch (error) {
     console.error('Shiprocket verify OTP error:', error);
@@ -608,19 +612,19 @@ const afterVerifyOtp = async (number) => {
         'Authorization': `Bearer ${userToken}`,
       },
       body: JSON.stringify({
-        phone : number,
+        phone: number,
         module: 1,
         is_web: 1
       }),
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       console.error('Shiprocket verify OTP error:', data);
       throw new Error(data.message || 'Failed to verify OTP');
     }
-    
+
     return data;
   } catch (error) {
     console.error('Shiprocket verify OTP error:', error);
@@ -628,7 +632,7 @@ const afterVerifyOtp = async (number) => {
   }
 }
 const isNumberVerified = async (number) => {
-  const token = map.get('token') || await getShiprocketToken();
+  const token = await getShiprocketToken();
   try {
     const response = await fetch(
       'https://apiv2.shiprocket.in/v1/external/settings/company/pickup',
