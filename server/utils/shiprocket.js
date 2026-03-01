@@ -59,11 +59,10 @@ const getServiceability = async (params) => {
         'Authorization': `Bearer ${token}`,
       },
     });
-    console.log(JSON.stringify(token) + " this is \n");
-    console.log(queryParams + "\n")
+
     const data = await response.json();
-    console.log(data)
-    if (process.env.NODE_ENV === 'development') {
+  
+    if (process.env.NODE_ENV !== 'production') {
       console.log('[Shiprocket] Serviceability API response:', JSON.stringify(data, null, 2));
       console.log('[Shiprocket] Couriers returned:', data?.data?.available_courier_companies?.length || 0);
     }

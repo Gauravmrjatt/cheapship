@@ -158,7 +158,17 @@ interface RateResponse {
   serviceable_couriers: CourierPartner[];
 }
 
-export default function CreateOrderContent() {
+interface PreSelectedCourier {
+  courier_company_id: number;
+  courier_name: string;
+  rate: number;
+}
+
+interface CreateOrderContentProps {
+  preSelectedCourier?: PreSelectedCourier | null;
+}
+
+export default function CreateOrderContent({ preSelectedCourier }: CreateOrderContentProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isShipped, setShipped] = useState(false);
   const [openAddPickupSheet, setOpenAddPickupSheet] = useState(false);
@@ -166,6 +176,9 @@ export default function CreateOrderContent() {
   const [otp, setOtp] = useState("");
   const [pendingOrderData, setPendingOrderData] = useState<any>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [showLoadDraftDialog, setShowLoadDraftDialog] = useState(false);
+  const [draftToLoad, setDraftToLoad] = useState<any>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const draftId = searchParams.get("id");
@@ -200,7 +213,7 @@ export default function CreateOrderContent() {
           setOpenAddPickupSheet(false);
           pickupForm.reset();
         } else {
-          let errorMsg = data.message || "Failed to create pickup location";
+          const errorMsg = data.message || "Failed to create pickup location";
           sileo.error({ title: "Error", description: errorMsg });
         }
       },
@@ -224,6 +237,11 @@ export default function CreateOrderContent() {
   const { mutate: createOrderMutation, isPending: isCreatingOrder } = useMutation(
     http.post("/orders", {
       onSuccess: (data: any) => {
+        if (isSavingDraft) {
+          setIsSavingDraft(false);
+          sileo.success({ title: "Draft Saved", description: "Your order has been saved as a draft" });
+          return;
+        }
         setCreatedOrderId(data.id?.toString() || null);
         setShipped(true);
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
@@ -249,7 +267,7 @@ export default function CreateOrderContent() {
   );
 
   const isSubmitting = isCheckingPhone || isCreatingOrder || isSendingOtp;
-  const submissionStatus = isCheckingPhone ? "Verifying Phone..." : isSendingOtp ? "Sending OTP..." : isCreatingOrder ? "Creating Order..." : "Processing...";
+  const submissionStatus = isCheckingPhone ? "Verifying Phone..." : isSendingOtp ? "Sending OTP..." : isSavingDraft ? "Saving Draft..." : isCreatingOrder ? "Creating Order..." : "Processing...";
 
   const form = useForm<z.infer<typeof createOrderSchema>>({
     resolver: zodResolver(createOrderSchema) as any,
@@ -291,11 +309,22 @@ export default function CreateOrderContent() {
         courier_name: rateCalculatorData.selectedCourier?.courier_name,
         shipping_charge: rateCalculatorData.selectedCourier?.rate,
       });
-      // Skip the Package step (Step 1) since package dimensions/weight are already filled
-      setCurrentStep(2);
+      // Skip the Package step (Step 1) only if no pre-selected courier from URL params
+      if (!preSelectedCourier) {
+        setCurrentStep(2);
+      }
       clearRateData();
     }
-  }, [rateCalculatorData, clearRateData, form, formValues]);
+  }, [rateCalculatorData, clearRateData, form, formValues, preSelectedCourier]);
+
+  useEffect(() => {
+    if (preSelectedCourier) {
+      form.setValue("courier_id", preSelectedCourier.courier_company_id);
+      form.setValue("courier_name", preSelectedCourier.courier_name);
+      form.setValue("shipping_charge", preSelectedCourier.rate);
+      form.setValue("total_amount", preSelectedCourier.rate);
+    }
+  }, [preSelectedCourier, form]);
 
   const { data: savedAddresses, isLoading: isLoadingSavedAddr } = useQuery<SavedAddress[]>(
     http.get(["saved-addresses"], "/addresses", true)
@@ -327,43 +356,51 @@ export default function CreateOrderContent() {
   );
 
   useEffect(() => {
-    if (draftData && draftData.is_draft) {
-      form.reset({
-        ...form.getValues(),
-        order_type: draftData.order_type,
-        shipment_type: draftData.shipment_type,
-        payment_mode: draftData.payment_mode,
-        total_amount: Number(draftData.total_amount),
-        cod_amount: Number(draftData.cod_amount || 0),
-        weight: Number(draftData.weight),
-        length: Number(draftData.length),
-        width: Number(draftData.width),
-        height: Number(draftData.height),
-        pickup_location: draftData.pickup_location || "",
-        pickup_address: {
-          name: draftData.order_pickup_address?.name || "",
-          phone: draftData.order_pickup_address?.phone || "",
-          email: draftData.order_pickup_address?.email || "",
-          address: draftData.order_pickup_address?.address || "",
-          city: draftData.order_pickup_address?.city || "",
-          state: draftData.order_pickup_address?.state || "",
-          pincode: draftData.order_pickup_address?.pincode || "",
-        },
-        receiver_address: {
-          name: draftData.order_receiver_address?.name || "",
-          phone: draftData.order_receiver_address?.phone || "",
-          email: draftData.order_receiver_address?.email || "",
-          address: draftData.order_receiver_address?.address || "",
-          city: draftData.order_receiver_address?.city || "",
-          state: draftData.order_receiver_address?.state || "",
-          pincode: draftData.order_receiver_address?.pincode || "",
-        },
-        products: draftData.products || [{ name: "", quantity: 1, price: 0 }],
-      });
-      // Move to confirm step if it's a drafted order being fulfilled
-      setCurrentStep(4);
+    if (draftData && draftData.is_draft && !showLoadDraftDialog && !draftToLoad) {
+      setDraftToLoad(draftData);
+      setShowLoadDraftDialog(true);
     }
-  }, [draftData, form]);
+  }, [draftData, showLoadDraftDialog, draftToLoad]);
+
+  const handleLoadDraft = (refreshRates: boolean) => {
+    const data = draftToLoad;
+    form.reset({
+      ...form.getValues(),
+      order_type: data.order_type,
+      shipment_type: data.shipment_type,
+      payment_mode: data.payment_mode,
+      total_amount: Number(data.total_amount),
+      cod_amount: Number(data.cod_amount || 0),
+      weight: Number(data.weight),
+      length: Number(data.length),
+      width: Number(data.width),
+      height: Number(data.height),
+      pickup_location: data.pickup_location || "",
+      pickup_address: {
+        name: data.order_pickup_address?.name || "",
+        phone: data.order_pickup_address?.phone || "",
+        email: data.order_pickup_address?.email || "",
+        address: data.order_pickup_address?.address || "",
+        city: data.order_pickup_address?.city || "",
+        state: data.order_pickup_address?.state || "",
+        pincode: data.order_pickup_address?.pincode || "",
+      },
+      receiver_address: {
+        name: data.order_receiver_address?.name || "",
+        phone: data.order_receiver_address?.phone || "",
+        email: data.order_receiver_address?.email || "",
+        address: data.order_receiver_address?.address || "",
+        city: data.order_receiver_address?.city || "",
+        state: data.order_receiver_address?.state || "",
+        pincode: data.order_receiver_address?.pincode || "",
+      },
+      products: data.products || [{ name: "", quantity: 1, price: 0 }],
+      courier_id: refreshRates ? undefined : data.courier_id,
+    });
+    setCurrentStep(refreshRates ? 2 : 4);
+    setShowLoadDraftDialog(false);
+    setDraftToLoad(null);
+  };
 
   const allProductSuggestions = [...new Set([...PRODUCT_SUGGESTIONS, ...(recentProductsData || [])])];
 
@@ -426,11 +463,17 @@ export default function CreateOrderContent() {
   const nextStep = async () => {
     const fieldsToValidate = getFieldsForStep(currentStep);
     const isValid = await form.trigger(fieldsToValidate as any);
-    console.log(errors, " hi")
     if (!isValid) {
       sileo.error({
         title: "Validation Error",
         description: "Please fill all mandatory fields correctly before continuing."
+      });
+      return;
+    }
+    if (currentStep === 2 && !formValues.courier_id) {
+      sileo.error({
+        title: "Courier Required",
+        description: "Please select a courier partner to continue."
       });
       return;
     }
@@ -559,20 +602,21 @@ export default function CreateOrderContent() {
                     </Button>
                   ) : (
                     <div className="flex gap-4">
-                      <Button
+                      {/* <Button
                         type="button"
                         variant="outline"
                         onClick={() => {
                           const values = form.getValues();
                           const { shipping_charge, base_shipping_charge, courier_name, ...orderData } = values;
+                          setIsSavingDraft(true);
                           createOrderMutation({ ...orderData, is_draft: true } as any);
                         }}
                         disabled={isCreatingOrder}
                         className="gap-2 px-6 font-bold h-10 border-primary text-primary hover:bg-primary/5"
                       >
                         <HugeiconsIcon icon={Add01Icon} size={18} />
-                        Save as Draft {isSubmitting ? "..." : ""}
-                      </Button>
+                        Save as Draft {isSavingDraft ? "..." : ""}
+                      </Button> */}
                       <Button
                         type="submit"
                         onClick={(e) => {
@@ -750,6 +794,25 @@ export default function CreateOrderContent() {
           <DialogFooter>
             <Button onClick={handleVerifyOtp} className="w-full" disabled={isVerifyingOtp}>Verify & Continue</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showLoadDraftDialog} onOpenChange={(open) => { if (!open) { setShowLoadDraftDialog(false); setDraftToLoad(null); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Load Draft</DialogTitle>
+            <DialogDescription>Would you like to refresh courier rates or use your saved courier selection?</DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <Button onClick={() => handleLoadDraft(true)} className="w-full gap-2">
+              <HugeiconsIcon icon={TruckIcon} size={18} />
+              Refresh Courier Rates
+            </Button>
+            <Button variant="outline" onClick={() => handleLoadDraft(false)} className="w-full gap-2">
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} />
+              Use Saved Courier
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

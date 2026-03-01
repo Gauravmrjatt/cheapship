@@ -70,9 +70,17 @@ export default function FranchisePage() {
     }).format(amount || 0);
   };
 
+  const getReferralLink = () => {
+    if (myReferral?.referral_link) return myReferral.referral_link;
+    if (myReferral?.referer_code) return `${window.location.origin}/register?ref=${myReferral.referer_code}`;
+    return "";
+  };
+
+  const referralLink = getReferralLink();
+
   const copyReferralLink = () => {
-    if (myReferral?.referral_link) {
-      navigator.clipboard.writeText(myReferral.referral_link);
+    if (referralLink) {
+      navigator.clipboard.writeText(referralLink);
       setState(prev => ({ ...prev, copied: true }));
       sileo.success({ title: "Copied!" , description : "Referral link copied to clipboard!" });
       setTimeout(() => setState(prev => ({ ...prev, copied: false })), 2000);
@@ -123,7 +131,7 @@ export default function FranchisePage() {
             </div>
             <div className="flex items-center gap-2 w-full md:w-auto">
               <code className="text-xs bg-background px-3 py-2 rounded-md border flex-1 md:flex-none font-mono truncate max-w-[300px]">
-                {myReferral.referral_link}
+                {referralLink}
               </code>
               <Button size="sm" variant="outline" onClick={copyReferralLink} className="gap-2">
                 <HugeiconsIcon icon={state.copied ? CheckmarkCircle01Icon : Copy01Icon} size={16} />

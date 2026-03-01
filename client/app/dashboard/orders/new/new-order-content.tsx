@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import CreateOrderContent from "./create-order-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
@@ -35,10 +36,25 @@ function CreateOrderSkeleton() {
   );
 }
 
+function CreateOrderPageContent() {
+  const searchParams = useSearchParams();
+  const courierId = searchParams.get("courier_id");
+  const courierName = searchParams.get("courier_name");
+  const rate = searchParams.get("rate");
+
+  const preSelectedCourier = courierId ? {
+    courier_company_id: parseInt(courierId),
+    courier_name: courierName,
+    rate: parseFloat(rate || "0"),
+  } : null;
+
+  return <CreateOrderContent preSelectedCourier={preSelectedCourier} />;
+}
+
 export default function CreateOrderPage() {
   return (
     <Suspense fallback={<CreateOrderSkeleton />}>
-      <CreateOrderContent />
+      <CreateOrderPageContent />
     </Suspense>
   );
 }

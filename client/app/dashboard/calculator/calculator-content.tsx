@@ -198,7 +198,12 @@ export default function RateCalculatorPage() {
         chargeable_weight: courier.chargeable_weight,
       },
     });
-    router.push("/dashboard/orders/new");
+    const params = new URLSearchParams({
+      courier_id: courier.courier_company_id.toString(),
+      courier_name: courier.courier_name,
+      rate: courier.rate.toString(),
+    });
+    router.push(`/dashboard/orders/new?${params.toString()}`);
   };
 
   const partners = data?.serviceable_couriers ?? [];
