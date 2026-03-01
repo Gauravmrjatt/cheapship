@@ -1,26 +1,29 @@
-# Use Node.js 22.12
+# Use Node.js 22
 FROM node:22.12-slim
 
-# Install necessary system deps
+# Install dependencies required by Prisma
 RUN apt-get update -y && apt-get install -y openssl
 
-# Create app dir
 WORKDIR /app
 
-# Copy dependency manifests
+# Copy dependency files
 COPY package.json pnpm-lock.yaml* ./
 
-# Install dependencies
+# Install deps
 RUN npm install
 
-# Copy app code
+# Copy app
 COPY . .
 
-# Expose port
-EXPOSE 3001
+# ✅ Wait for DB + apply migrations
+RUN npx prisma migrate deploy
 
-# Generate Prisma client at build time
+# ✅ Pull real DB schema (VERY IMPORTANT)
+RUN npx prisma db pull
+
+# ✅ Regenerate client from REAL DB
 RUN npx prisma generate
 
-# Run migrations & start app
-CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma generate && npm start"]
+EXPOSE 3001
+
+CMD ["npm", "start"]
