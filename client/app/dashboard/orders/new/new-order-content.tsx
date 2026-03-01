@@ -44,7 +44,7 @@ function CreateOrderPageContent() {
 
   const preSelectedCourier = courierId ? {
     courier_company_id: parseInt(courierId),
-    courier_name: courierName,
+    courier_name: courierName || "",
     rate: parseFloat(rate || "0"),
   } : null;
 
