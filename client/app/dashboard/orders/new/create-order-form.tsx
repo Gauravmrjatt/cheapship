@@ -462,6 +462,29 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
     http.get(["order-rates", courierParams], `/orders/calculate-rates?${courierParams}`, currentStep === 2 && formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6)
   );
 
+  // Check if selected courier is still available when rates change
+  const prevRateDataLength = React.useRef(rateData?.serviceable_couriers?.length || 0);
+  useEffect(() => {
+    if (rateData && formValues.courier_id && currentStep === 2) {
+      const availableCouriers = rateData.serviceable_couriers || [];
+      const isCourierAvailable = availableCouriers.some((c: any) => c.courier_company_id === formValues.courier_id);
+      
+      if (!isCourierAvailable && prevRateDataLength.current > 0) {
+        // Selected courier is no longer available
+        const previouslySelected = formValues.courier_name;
+        form.setValue("courier_id", undefined);
+        form.setValue("courier_name", "");
+        form.setValue("shipping_charge", 0);
+        form.setValue("total_amount", 0);
+        sileo.info({
+          title: "Courier Unavailable",
+          description: `${previouslySelected} is not available for this route. Please select a new courier.`
+        });
+      }
+      prevRateDataLength.current = availableCouriers.length;
+    }
+  }, [rateData, formValues.courier_id, currentStep, form]);
+
   // Refetch rates when receiver pincode changes in Step 2
   const prevReceiverPincode = React.useRef(formValues.receiver_address.pincode);
   const prevPickupPincode = React.useRef(formValues.pickup_address.pincode);
