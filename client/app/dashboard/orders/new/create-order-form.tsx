@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { Fragment } from "react";
 import confetti from "canvas-confetti";
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
@@ -1497,29 +1497,45 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http }: any) 
 function AddressFormCard({ prefix, title, icon: Icon, savedAddresses, onSelect, isLoading, isValid, locality, form, readOnlyPincode }: any) {
   const { errors } = form.formState;
   const fieldErrors = (prefix === "pickup_address" ? errors.pickup_address : errors.receiver_address) as any;
+  const [showAddressDialog, setShowAddressDialog] = useState(false);
+  const [matchingAddress, setMatchingAddress] = useState<any>(null);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 10);
     form.setValue(`${prefix}.phone`, value, { shouldValidate: true });
 
     if (value.length >= 10 && savedAddresses?.length) {
-      const matchingAddress = savedAddresses.find((addr: any) => addr.phone === value);
-      if (matchingAddress) {
-        onSelect(matchingAddress);
-        sileo.success({ title: "Address Found", description: `Autofilled details for ${value}` });
+      const foundAddress = savedAddresses.find((addr: any) => addr.phone === value);
+      if (foundAddress) {
+        setMatchingAddress(foundAddress);
+        setShowAddressDialog(true);
       }
     }
   };
 
+  const handleSelectMatchingAddress = () => {
+    if (matchingAddress) {
+      onSelect(matchingAddress);
+    }
+    setShowAddressDialog(false);
+    setMatchingAddress(null);
+  };
+
+  const handleCancelMatchingAddress = () => {
+    setShowAddressDialog(false);
+    setMatchingAddress(null);
+  };
+
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="pb-4 border-b">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-bold flex items-center gap-2">
-            <HugeiconsIcon icon={Icon} size={18} className="text-primary" />
-            {title}
-          </CardTitle>
-          <Popover>
+    <>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4 border-b">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <HugeiconsIcon icon={Icon} size={18} className="text-primary" />
+              {title}
+            </CardTitle>
+            <Popover>
             <PopoverTrigger render={<Button type="button" variant="ghost" size="sm" className="h-7 text-[10px] font-black uppercase px-2 hover:bg-muted border border-muted-foreground/10">+ Book</Button>} />
             <PopoverContent className="w-80 p-0" align="end">
               <div className="p-3 border-b bg-muted/30 font-bold text-xs uppercase tracking-tight">Saved Addresses</div>
@@ -1615,6 +1631,35 @@ function AddressFormCard({ prefix, title, icon: Icon, savedAddresses, onSelect, 
           <FieldError errors={[fieldErrors?.address]} className="text-[10px] font-bold uppercase ml-1" />
         </Field>
       </CardContent>
+
+      {/* Dialog for matching address */}
+      <Dialog open={showAddressDialog} onOpenChange={setShowAddressDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Address Found</DialogTitle>
+            <DialogDescription>We found an address saved with this phone number.</DialogDescription>
+          </DialogHeader>
+          {matchingAddress && (
+            <div className="py-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold">{matchingAddress.name}</span>
+                <Badge variant="outline" className="text-[8px]">{matchingAddress.address_label || "Other"}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">{matchingAddress.complete_address}</p>
+              <p className="text-xs text-muted-foreground">{matchingAddress.city}, {matchingAddress.state} - {matchingAddress.pincode}</p>
+            </div>
+          )}
+          <DialogFooter className="flex-row gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleCancelMatchingAddress} className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={handleSelectMatchingAddress} className="flex-1">
+              Select Address
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
+    </>
   );
 }
