@@ -462,6 +462,65 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
     http.get(["order-rates", courierParams], `/orders/calculate-rates?${courierParams}`, currentStep === 2 && formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6)
   );
 
+  // Store previous values to detect changes
+  const prevReceiverPincode = React.useRef(formValues.receiver_address.pincode);
+  const prevPickupName = React.useRef(formValues.pickup_address.name);
+  const prevPickupPincode = React.useRef(formValues.pickup_address.pincode);
+
+  // Handle receiver pincode or pickup address name changes - show popup and go to step 2
+  useEffect(() => {
+    // Skip on initial load
+    if (prevReceiverPincode.current === formValues.receiver_address.pincode && 
+        prevPickupName.current === formValues.pickup_address.name &&
+        prevPickupPincode.current === formValues.pickup_address.pincode) {
+      return;
+    }
+
+    // Check if user already on step 2 or 3
+    if (currentStep < 2) return;
+
+    const receiverPincodeChanged = prevReceiverPincode.current && 
+                                   formValues.receiver_address.pincode !== prevReceiverPincode.current &&
+                                   formValues.receiver_address.pincode?.length === 6;
+    
+    const pickupNameChanged = prevPickupName.current && 
+                              formValues.pickup_address.name !== prevPickupName.current &&
+                              formValues.pickup_address.name?.length > 0;
+
+    const pickupPincodeChanged = prevPickupPincode.current &&
+                                  formValues.pickup_address.pincode !== prevPickupPincode.current &&
+                                  formValues.pickup_address.pincode?.length === 6;
+
+    if (receiverPincodeChanged || pickupNameChanged || pickupPincodeChanged) {
+      // Clear selected courier
+      form.setValue("courier_id", undefined);
+      form.setValue("courier_name", "");
+      form.setValue("shipping_charge", 0);
+      form.setValue("total_amount", 0);
+      
+      // Show message
+      sileo.info({
+        title: "Address Changed",
+        description: receiverPincodeChanged 
+          ? "Receiver pincode changed. Please select a new courier partner."
+          : "Pickup address changed. Please select a new courier partner."
+      });
+
+      // Move to step 2 for courier selection
+      setCurrentStep(2);
+      
+      // Refetch rates if pincodes are valid
+      if (formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6) {
+        refetchRates();
+      }
+    }
+
+    // Update refs
+    if (formValues.receiver_address.pincode) prevReceiverPincode.current = formValues.receiver_address.pincode;
+    if (formValues.pickup_address.name) prevPickupName.current = formValues.pickup_address.name;
+    if (formValues.pickup_address.pincode) prevPickupPincode.current = formValues.pickup_address.pincode;
+  }, [formValues.receiver_address.pincode, formValues.pickup_address.name, formValues.pickup_address.pincode, currentStep, form, refetchRates, setCurrentStep]);
+
   // Store previously selected courier to check availability after rates change
   const prevSelectedCourierId = React.useRef<number | undefined>(formValues.courier_id);
   const prevSelectedCourierName = React.useRef<string>(formValues.courier_name);
@@ -488,40 +547,6 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
       prevSelectedCourierName.current = formValues.courier_name;
     }
   }, [rateData, formValues.courier_id, currentStep, form]);
-
-  // Refetch rates when receiver pincode changes in Step 2
-  const prevReceiverPincode = React.useRef(formValues.receiver_address.pincode);
-  const prevPickupPincode = React.useRef(formValues.pickup_address.pincode);
-  useEffect(() => {
-    if (currentStep === 2 && formValues.receiver_address.pincode && 
-        formValues.receiver_address.pincode !== prevReceiverPincode.current &&
-        formValues.pickup_address.pincode.length === 6 && 
-        formValues.receiver_address.pincode.length === 6) {
-      prevReceiverPincode.current = formValues.receiver_address.pincode;
-      // Clear selected courier when pincode changes
-      form.setValue("courier_id", undefined);
-      form.setValue("courier_name", "");
-      form.setValue("shipping_charge", 0);
-      form.setValue("total_amount", 0);
-      refetchRates();
-    }
-  }, [formValues.receiver_address.pincode, currentStep, refetchRates, formValues.pickup_address.pincode, form]);
-
-  // Refetch rates when pickup pincode changes
-  useEffect(() => {
-    if (currentStep === 2 && formValues.pickup_address.pincode && 
-        formValues.pickup_address.pincode !== prevPickupPincode.current &&
-        formValues.pickup_address.pincode.length === 6 && 
-        formValues.receiver_address.pincode.length === 6) {
-      prevPickupPincode.current = formValues.pickup_address.pincode;
-      // Clear selected courier when pickup pincode changes
-      form.setValue("courier_id", undefined);
-      form.setValue("courier_name", "");
-      form.setValue("shipping_charge", 0);
-      form.setValue("total_amount", 0);
-      refetchRates();
-    }
-  }, [formValues.pickup_address.pincode, currentStep, refetchRates, formValues.receiver_address.pincode, form]);
 
   const nextStep = async () => {
     const fieldsToValidate = getFieldsForStep(currentStep);
