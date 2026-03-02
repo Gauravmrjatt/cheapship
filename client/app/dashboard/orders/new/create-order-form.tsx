@@ -1025,6 +1025,25 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
 }
 
 function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, selectShiprocketPickup, formValues, isLoadingPickup, isPickupValid, pickupLocality, isLoadingDelivery, isDeliveryValid, deliveryLocality }: any) {
+  const { watch } = form;
+  const pickupLocationValue = watch("pickup_location");
+
+  React.useEffect(() => {
+    if (pickupLocationValue && !formValues.same_as_pickup) {
+      const sel = shiprocketPickups.find((l: any) => l.pickup_location === pickupLocationValue);
+      if (sel) {
+        form.setValue("same_as_pickup", true);
+        form.setValue("receiver_address.name", sel.name || "", { shouldValidate: true });
+        form.setValue("receiver_address.phone", sel.phone || "", { shouldValidate: true });
+        form.setValue("receiver_address.email", sel.email || "", { shouldValidate: true });
+        form.setValue("receiver_address.pincode", sel.pin_code?.toString() || "", { shouldValidate: true });
+        form.setValue("receiver_address.address", sel.address || "", { shouldValidate: true });
+        form.setValue("receiver_address.city", sel.city || "", { shouldValidate: true });
+        form.setValue("receiver_address.state", sel.state || "", { shouldValidate: true });
+      }
+    }
+  }, [pickupLocationValue, shiprocketPickups, form, formValues.same_as_pickup]);
+
   const handleSameAsPickupChange = (checked: boolean) => {
     form.setValue("same_as_pickup", !!checked);
     if (checked && formValues.pickup_location) {
@@ -1066,13 +1085,13 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
           <Checkbox id="make-pickup" checked={formValues.make_pickup_address} onCheckedChange={(c) => form.setValue("make_pickup_address", !!c)} />
           <Label htmlFor="make-pickup" className="text-sm font-medium cursor-pointer">Register this as new hub</Label>
         </div>
-        <div className="flex items-center space-x-2">
+        {/* <div className="flex items-center space-x-2">
           <Checkbox id="save-addresses" checked={formValues.save_receiver_address} onCheckedChange={(c) => {
             form.setValue("save_pickup_address", !!c);
             form.setValue("save_receiver_address", !!c);
           }} />
           <Label htmlFor="save-addresses" className="text-sm font-medium cursor-pointer">Save addresses</Label>
-        </div>
+        </div> */}
         {formValues.make_pickup_address && (
           <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
             <Input {...form.register("new_pickup_location_name")} placeholder="New Hub Name" className="h-10" />
@@ -1487,110 +1506,6 @@ function AddressFormCard({ prefix, title, icon: Icon, savedAddresses, onSelect, 
                 className={cn("pl-9 font-bold", readOnlyPincode && "bg-muted/50 cursor-not-allowed")} 
               />
               {!readOnlyPincode && isLoading && <HugeiconsIcon icon={Loading03Icon} className="animate-spin absolute right-3 top-2.5 size-4 text-primary" />}
-            </div>
-            <FieldError errors={[fieldErrors?.pincode]} className="text-[10px] font-bold uppercase ml-1" />
-          </Field>
-          <Field data-invalid={!!fieldErrors?.city}>
-            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">City</FieldLabel>
-            <Input disabled placeholder="Detecting..." {...form.register(`${prefix}.city`)} aria-invalid={!!fieldErrors?.city} className="bg-muted opacity-80" />
-            <FieldError errors={[fieldErrors?.city]} className="text-[10px] font-bold uppercase ml-1" />
-          </Field>
-        </div>
-        {isValid && <p className="text-[10px] font-black text-green-600 uppercase px-1">Serviceable: {locality?.postcode_details?.city}, {locality?.postcode_details?.state}</p>}
-        <Field data-invalid={!!fieldErrors?.address}>
-          <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Address</FieldLabel>
-          <div className="relative">
-            <HugeiconsIcon icon={Navigation01Icon} className="absolute left-3 top-3 text-muted-foreground/50" size={14} />
-            <Input placeholder="Full street address..." {...form.register(`${prefix}.address`)} aria-invalid={!!fieldErrors?.address} className="pl-9" />
-          </div>
-          <FieldError errors={[fieldErrors?.address]} className="text-[10px] font-bold uppercase ml-1" />
-        </Field>
-      </CardContent>
-    </Card>
-  );
-}
-    }
-  };
-
-  return (
-    <Card className="shadow-sm">
-      <CardHeader className="pb-4 border-b">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-bold flex items-center gap-2">
-            <HugeiconsIcon icon={Icon} size={18} className="text-primary" />
-            {title}
-          </CardTitle>
-          <Popover>
-            <PopoverTrigger render={<Button type="button" variant="ghost" size="sm" className="h-7 text-[10px] font-black uppercase px-2 hover:bg-muted border border-muted-foreground/10">+ Book</Button>} />
-            <PopoverContent className="w-80 p-0" align="end">
-              <div className="p-3 border-b bg-muted/30 font-bold text-xs uppercase tracking-tight">Saved Addresses</div>
-              <div className="max-h-60 overflow-y-auto">
-                {savedAddresses?.length ? savedAddresses.map((a: any) => (
-                  <div
-                    key={a.id}
-                    role="button"
-                    tabIndex={0}
-                    className="p-3 hover:bg-muted cursor-pointer border-b last:border-0 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    onClick={() => onSelect(a)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onSelect(a);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold">{a.name}</span>
-                      <Badge variant="outline" className="text-[8px] h-4 uppercase">{a.address_label || "Other"}</Badge>
-                    </div>
-                    <p className="text-muted-foreground truncate">{a.complete_address}</p>
-                  </div>
-                )) : <div className="p-6 text-center text-xs text-muted-foreground opacity-50 italic">No addresses saved.</div>}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <Field data-invalid={!!fieldErrors?.name}>
-            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Name</FieldLabel>
-            <div className="relative">
-              <HugeiconsIcon icon={UserCircle02Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-              <Input placeholder="John Doe" {...form.register(`${prefix}.name`)} aria-invalid={!!fieldErrors?.name} className="pl-9" />
-            </div>
-            <FieldError errors={[fieldErrors?.name]} className="text-[10px] font-bold uppercase ml-1" />
-          </Field>
-          <Field data-invalid={!!fieldErrors?.phone}>
-            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Phone</FieldLabel>
-            <div className="relative">
-              <HugeiconsIcon icon={SmartPhone01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-              <Input
-                placeholder="10-digit mobile"
-                {...form.register(`${prefix}.phone`)}
-                onChange={handlePhoneChange}
-                aria-invalid={!!fieldErrors?.phone}
-                className="pl-9"
-              />
-            </div>
-            <FieldError errors={[fieldErrors?.phone]} className="text-[10px] font-bold uppercase ml-1" />
-          </Field>
-        </div>
-        <Field data-invalid={!!fieldErrors?.email}>
-          <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Email (Optional)</FieldLabel>
-          <div className="relative">
-            <HugeiconsIcon icon={Mail01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-            <Input placeholder="m@example.com" {...form.register(`${prefix}.email`)} aria-invalid={!!fieldErrors?.email} className="pl-9" />
-          </div>
-          <FieldError errors={[fieldErrors?.email]} className="text-[10px] font-bold uppercase ml-1" />
-        </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field data-invalid={!!fieldErrors?.pincode}>
-            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Pincode</FieldLabel>
-            <div className="relative">
-              <HugeiconsIcon icon={Location01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-              <Input readOnly placeholder="000000" {...form.register(`${prefix}.pincode`)} aria-invalid={!!fieldErrors?.pincode} className="font-bold pl-9 bg-muted/50 cursor-not-allowed" />
-              {isLoading && <HugeiconsIcon icon={Loading03Icon} className="animate-spin absolute right-3 top-2.5 size-4 text-primary" />}
             </div>
             <FieldError errors={[fieldErrors?.pincode]} className="text-[10px] font-bold uppercase ml-1" />
           </Field>

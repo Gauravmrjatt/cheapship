@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const { generateOrderId } = require('../utils/generateOrderId');
-const { getServiceability, getLocalityDetails, createShipment, cancelShipment, assignAWB: shiprocketAssignAWB, generateLabel, generateManifest, printManifest, getShipmentTracking, getShipmentDetails, schedulePickup, generateRTOLabel } = require('../utils/shiprocket');
+const { getServiceability, getLocalityDetails, createShipment, cancelShipment, assignAWB: shiprocketAssignAWB, generateLabel, generateManifest, printManifest, getShipmentTracking, getShipmentDetails, schedulePickup, generateRTOLabel, addPickupLocation, getPickupLocations, isNumberVerified } = require('../utils/shiprocket');
 const { createReferralCommissions } = require('../utils/referral.commissions');
 const labelCustomizer = require('../utils/label-customizer');
 const vyom = require('../utils/vyom');
@@ -316,6 +316,60 @@ const createOrder = async (req, res) => {
           required: (totalInTransitShippingCharge * 2),
           available: totalAvailable
         });
+      }
+    }
+
+    // Verify phone number with Shiprocket if user wants to save pickup address
+    if (save_pickup_address && !is_draft) {
+      try {
+        // First check if the phone is already verified with Shiprocket
+        const isVerified = await isNumberVerified(pickup_address.phone);
+        
+        if (!isVerified) {
+          // Check if pickup location already exists (but not verified)
+          const pickupLocations = await getPickupLocations();
+          const existingPickup = pickupLocations?.data?.shipping_address?.find(
+            p => p.phone.toString() === pickup_address.phone.toString()
+          );
+
+          if (!existingPickup) {
+            // Try to add as pickup location - Shiprocket will verify the phone
+            const pickupResult = await addPickupLocation({
+              pickup_location: pickup_location || `Pickup_${Date.now()}`,
+              name: pickup_address.name,
+              phone: parseInt(pickup_address.phone, 10),
+              email: pickup_address.email || '',
+              address: pickup_address.address,
+              city: pickup_address.city,
+              state: pickup_address.state,
+              pin_code: parseInt(pickup_address.pincode, 10),
+              country: 'India'
+            });
+
+            if (!pickupResult.success) {
+              // Check if it's a phone verification error
+              const errorMsg = pickupResult.message || '';
+              if (errorMsg.toLowerCase().includes('phone') || errorMsg.toLowerCase().includes('verify') || errorMsg.toLowerCase().includes('otp')) {
+                return res.status(400).json({
+                  message: 'Phone number verification required. Please verify your phone number with Shiprocket first before saving this address.',
+                  code: 'PHONE_VERIFICATION_REQUIRED',
+                  details: pickupResult
+                });
+              }
+              // Other error - return but continue with order creation (pickup may already exist)
+              console.warn('Pickup location creation warning:', pickupResult);
+            }
+          } else if (!existingPickup.phone_verified) {
+            // Pickup exists but phone is not verified
+            return res.status(400).json({
+              message: 'Phone number is not verified with Shiprocket. Please verify your phone number first before saving this address.',
+              code: 'PHONE_VERIFICATION_REQUIRED'
+            });
+          }
+        }
+      } catch (pickupError) {
+        console.error('Pickup location verification error:', pickupError);
+        // Don't block order creation - just log the error
       }
     }
 
