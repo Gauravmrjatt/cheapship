@@ -464,15 +464,37 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
 
   // Refetch rates when receiver pincode changes in Step 2
   const prevReceiverPincode = React.useRef(formValues.receiver_address.pincode);
+  const prevPickupPincode = React.useRef(formValues.pickup_address.pincode);
   useEffect(() => {
     if (currentStep === 2 && formValues.receiver_address.pincode && 
         formValues.receiver_address.pincode !== prevReceiverPincode.current &&
         formValues.pickup_address.pincode.length === 6 && 
         formValues.receiver_address.pincode.length === 6) {
       prevReceiverPincode.current = formValues.receiver_address.pincode;
+      // Clear selected courier when pincode changes
+      form.setValue("courier_id", undefined);
+      form.setValue("courier_name", "");
+      form.setValue("shipping_charge", 0);
+      form.setValue("total_amount", 0);
       refetchRates();
     }
-  }, [formValues.receiver_address.pincode, currentStep, refetchRates, formValues.pickup_address.pincode]);
+  }, [formValues.receiver_address.pincode, currentStep, refetchRates, formValues.pickup_address.pincode, form]);
+
+  // Refetch rates when pickup pincode changes
+  useEffect(() => {
+    if (currentStep === 2 && formValues.pickup_address.pincode && 
+        formValues.pickup_address.pincode !== prevPickupPincode.current &&
+        formValues.pickup_address.pincode.length === 6 && 
+        formValues.receiver_address.pincode.length === 6) {
+      prevPickupPincode.current = formValues.pickup_address.pincode;
+      // Clear selected courier when pickup pincode changes
+      form.setValue("courier_id", undefined);
+      form.setValue("courier_name", "");
+      form.setValue("shipping_charge", 0);
+      form.setValue("total_amount", 0);
+      refetchRates();
+    }
+  }, [formValues.pickup_address.pincode, currentStep, refetchRates, formValues.receiver_address.pincode, form]);
 
   const nextStep = async () => {
     const fieldsToValidate = getFieldsForStep(currentStep);
