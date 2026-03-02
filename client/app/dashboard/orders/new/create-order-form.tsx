@@ -458,7 +458,7 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
     mode: formValues.order_type === "CARGO" ? "Cargo" : formValues.order_type === "SURFACE" ? "Surface" : "Air"
   }).toString(), [formValues]);
 
-  const { data: rateData, isLoading: isLoadingRates, refetch: refetchRates , isRefetching } = useQuery<RateResponse>(
+  const { data: rateData, isLoading: isLoadingRates, refetch: refetchRates, isRefetching } = useQuery<RateResponse>(
     http.get(["order-rates", courierParams], `/orders/calculate-rates?${courierParams}`, currentStep === 2 && formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6)
   );
 
@@ -477,9 +477,9 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
     // Check if user already on step 2 or 3
     if (currentStep < 2) return;
 
-    const receiverPincodeChanged = prevReceiverPincode.current && 
-                                   formValues.receiver_address.pincode !== prevReceiverPincode.current &&
-                                   formValues.receiver_address.pincode?.length === 6;
+    const receiverPincodeChanged = prevReceiverPincode.current &&
+      formValues.receiver_address.pincode !== prevReceiverPincode.current &&
+      formValues.receiver_address.pincode?.length === 6;
 
     if (receiverPincodeChanged) {
       // Clear selected courier
@@ -487,7 +487,7 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
       form.setValue("courier_name", "");
       form.setValue("shipping_charge", 0);
       form.setValue("total_amount", 0);
-      
+
       // Show message for receiver pincode change
       sileo.info({
         title: "Receiver Pincode Changed",
@@ -505,13 +505,13 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
   // Store previously selected courier to check availability after rates change
   const prevSelectedCourierId = React.useRef<number | undefined>(formValues.courier_id);
   const prevSelectedCourierName = React.useRef<string>(formValues.courier_name);
-  
+
   // Check if selected courier is still available when rates change
   useEffect(() => {
     if (rateData && formValues.courier_id && currentStep >= 2) {
       const availableCouriers = rateData.serviceable_couriers || [];
       const isCourierAvailable = availableCouriers.some((c: any) => c.courier_company_id === formValues.courier_id);
-      
+
       // If previously had a courier selected but it's no longer available
       if (prevSelectedCourierId.current && !isCourierAvailable) {
         form.setValue("courier_id", undefined);
@@ -597,7 +597,7 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
   const selectShiprocketPickup = (addr: ShiprocketPickupLocation) => {
     // Always set the pickup pincode when pickup hub is selected
     form.setValue("pickup_address.pincode", addr.pin_code.toString(), { shouldValidate: true });
-    
+
     // Fill sender address if "Same as pickup" is checked
     if (formValues.same_as_pickup) {
       form.setValue("pickup_address.name", addr.name, { shouldValidate: true });
@@ -648,12 +648,12 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
             exit={{ opacity: 0, x: -10 }}
             transition={{ duration: 0.2 }}
           >
-            <form  onSubmit={form.handleSubmit(
-    onSubmit as any,
-    (errors) => {
-      console.log("Validation Errors:", errors);
-    }
-  )}className="space-y-8">
+            <form onSubmit={form.handleSubmit(
+              onSubmit as any,
+              (errors) => {
+                console.log("Validation Errors:", errors);
+              }
+            )} className="space-y-8">
               {currentStep === 1 && <StepOne form={form} fields={fields} append={append} remove={remove} allSuggestions={allProductSuggestions} formValues={formValues} isLoadingPickup={isLoadingPickup} isPickupValid={isPickupPincodeValid} pickupLocality={pickupLocality} isLoadingDelivery={isLoadingDelivery} isDeliveryValid={isDeliveryPincodeValid} deliveryLocality={deliveryLocality} shiprocketPickups={shiprocketPickupLocations} setOpenAddPickupSheet={setOpenAddPickupSheet} selectShiprocketPickup={selectShiprocketPickup} />}
               {currentStep === 2 && <StepThree form={form} rateData={rateData} isLoadingRates={isLoadingRates} formValues={formValues} refetchRates={refetchRates} />}
               {currentStep === 3 && <StepTwo form={form} shiprocketPickups={shiprocketPickupLocations} savedAddresses={savedAddresses} selectSavedAddress={selectSavedAddress} selectShiprocketPickup={selectShiprocketPickup} formValues={formValues} isLoadingPickup={isLoadingPickup} isPickupValid={isPickupPincodeValid} pickupLocality={pickupLocality} isLoadingDelivery={isLoadingDelivery} isDeliveryValid={isDeliveryPincodeValid} deliveryLocality={deliveryLocality} setOpenAddPickupSheet={setOpenAddPickupSheet} />}
@@ -917,7 +917,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
           <CardContent className="space-y-6 foex">
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                <Select value={formValues.pickup_location} onValueChange={(val) => { const sel = shiprocketPickups.find((l: any) => l.pickup_location === val); if (sel) { selectShiprocketPickup(sel); form.setValue("pickup_location", val); } }}>
+                <Select value={formValues.pickup_location} onValueChange={(val) => { const sel = shiprocketPickups?.find((l: any) => l.pickup_location === val); if (sel) { selectShiprocketPickup(sel); form.setValue("pickup_location", val); } }}>
                   <SelectTrigger className="h-10 text-xs w-full"><SelectValue placeholder="Saved Hubs..." /></SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -1136,7 +1136,7 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
   const handleSameAsPickupChange = (checked: boolean) => {
     form.setValue("same_as_pickup", !!checked);
     if (checked && formValues.pickup_location) {
-      const sel = shiprocketPickups.find((l: any) => l.pickup_location === formValues.pickup_location);
+      const sel = shiprocketPickups?.find((l: any) => l.pickup_location === formValues.pickup_location);
       if (sel) {
         // Fill sender (pickup) address with hub details when checkbox is checked
         form.setValue("pickup_address.name", sel.name || "", { shouldValidate: true });
@@ -1193,12 +1193,12 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
   );
 }
 
-function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates  }: any) {
+function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates }: any) {
   const { errors } = form.formState;
-  const [isRefetching , setRefetching] = useState(false);
-  useEffect( () => {
+  const [isRefetching, setRefetching] = useState(false);
+  useEffect(() => {
     let timer: NodeJS.Timeout;
-    if(isRefetching === true) {
+    if (isRefetching === true) {
       timer = setTimeout(() => {
         setRefetching(false);
       }, 700);
@@ -1244,7 +1244,7 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates  }
                 form.setValue("courier_id", courier.courier_company_id);
                 form.setValue("courier_name", courier.courier_name);
                 form.setValue("shipping_charge", Math.round(courier.rate * 100) / 100);
-                 form.setValue("total_amount", Math.round(courier.rate * 100) / 100);
+                form.setValue("total_amount", Math.round(courier.rate * 100) / 100);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -1388,11 +1388,11 @@ function VerificationCard({
   )
 }
 
-function StepFour({ formValues, isShipped, createdOrderId, router, http }: any) {
+function StepFour({ formValues, isShipped, createdOrderId, router, http , shiprocketPickups }: any) {
   const { data: user } = useQuery<any>(
     http.get(["me"], "/auth/me", true)
   );
-
+  const sel = shiprocketPickups?.find((l: any) => l.pickup_location === formValues.pickup_location);
   const { data: orderCountData } = useQuery<any>(
     http.get(["order-count"], "/orders/count", true)
   );
@@ -1452,6 +1452,17 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http }: any) 
           <CardHeader className="py-3 px-4 bg-muted/30">
             <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
               <HugeiconsIcon icon={Location01Icon} size={14} /> Pickup
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 text-sm space-y-1 truncate">
+            <p className="font-bold">{formValues.pickup_location}</p>
+            <p className="text-muted-foreground text-xs">{sel?.name}</p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-none border-dashed">
+          <CardHeader className="py-3 px-4 bg-muted/30">
+            <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
+              <HugeiconsIcon icon={Location01Icon} size={14} /> Receiver
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 text-sm space-y-1 truncate">
@@ -1536,130 +1547,130 @@ function AddressFormCard({ prefix, title, icon: Icon, savedAddresses, onSelect, 
               {title}
             </CardTitle>
             <Popover>
-            <PopoverTrigger render={<Button type="button" variant="ghost" size="sm" className="h-7 text-[10px] font-black uppercase px-2 hover:bg-muted border border-muted-foreground/10">+ Book</Button>} />
-            <PopoverContent className="w-80 p-0" align="end">
-              <div className="p-3 border-b bg-muted/30 font-bold text-xs uppercase tracking-tight">Saved Addresses</div>
-              <div className="max-h-60 overflow-y-auto">
-                {savedAddresses?.length ? savedAddresses.map((a: any) => (
-                  <div
-                    key={a.id}
-                    role="button"
-                    tabIndex={0}
-                    className="p-3 hover:bg-muted cursor-pointer border-b last:border-0 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    onClick={() => onSelect(a)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onSelect(a);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold">{a.name}</span>
-                      <Badge variant="outline" className="text-[8px] h-4 uppercase">{a.address_label || "Other"}</Badge>
+              <PopoverTrigger render={<Button type="button" variant="ghost" size="sm" className="h-7 text-[10px] font-black uppercase px-2 hover:bg-muted border border-muted-foreground/10">+ Book</Button>} />
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-3 border-b bg-muted/30 font-bold text-xs uppercase tracking-tight">Saved Addresses</div>
+                <div className="max-h-60 overflow-y-auto">
+                  {savedAddresses?.length ? savedAddresses.map((a: any) => (
+                    <div
+                      key={a.id}
+                      role="button"
+                      tabIndex={0}
+                      className="p-3 hover:bg-muted cursor-pointer border-b last:border-0 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      onClick={() => onSelect(a)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onSelect(a);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold">{a.name}</span>
+                        <Badge variant="outline" className="text-[8px] h-4 uppercase">{a.address_label || "Other"}</Badge>
+                      </div>
+                      <p className="text-muted-foreground truncate">{a.complete_address}</p>
                     </div>
-                    <p className="text-muted-foreground truncate">{a.complete_address}</p>
-                  </div>
-                )) : <div className="p-6 text-center text-xs text-muted-foreground opacity-50 italic">No addresses saved.</div>}
+                  )) : <div className="p-6 text-center text-xs text-muted-foreground opacity-50 italic">No addresses saved.</div>}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Field data-invalid={!!fieldErrors?.name}>
+              <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Name</FieldLabel>
+              <div className="relative">
+                <HugeiconsIcon icon={UserCircle02Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
+                <Input placeholder="John Doe" {...form.register(`${prefix}.name`)} aria-invalid={!!fieldErrors?.name} className="pl-9" />
               </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <Field data-invalid={!!fieldErrors?.name}>
-            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Name</FieldLabel>
-            <div className="relative">
-              <HugeiconsIcon icon={UserCircle02Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-              <Input placeholder="John Doe" {...form.register(`${prefix}.name`)} aria-invalid={!!fieldErrors?.name} className="pl-9" />
-            </div>
-            <FieldError errors={[fieldErrors?.name]} className="text-[10px] font-bold uppercase ml-1" />
-          </Field>
-          <Field data-invalid={!!fieldErrors?.phone}>
-            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Phone</FieldLabel>
-            <div className="relative">
-              <HugeiconsIcon icon={SmartPhone01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-              <Input
-                placeholder="10-digit mobile"
-                {...form.register(`${prefix}.phone`)}
-                onChange={handlePhoneChange}
-                aria-invalid={!!fieldErrors?.phone}
-                className="pl-9"
-              />
-            </div>
-            <FieldError errors={[fieldErrors?.phone]} className="text-[10px] font-bold uppercase ml-1" />
-          </Field>
-        </div>
-        <Field data-invalid={!!fieldErrors?.email}>
-          <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Email (Optional)</FieldLabel>
-          <div className="relative">
-            <HugeiconsIcon icon={Mail01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-            <Input placeholder="m@example.com" {...form.register(`${prefix}.email`)} aria-invalid={!!fieldErrors?.email} className="pl-9" />
+              <FieldError errors={[fieldErrors?.name]} className="text-[10px] font-bold uppercase ml-1" />
+            </Field>
+            <Field data-invalid={!!fieldErrors?.phone}>
+              <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Phone</FieldLabel>
+              <div className="relative">
+                <HugeiconsIcon icon={SmartPhone01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
+                <Input
+                  placeholder="10-digit mobile"
+                  {...form.register(`${prefix}.phone`)}
+                  onChange={handlePhoneChange}
+                  aria-invalid={!!fieldErrors?.phone}
+                  className="pl-9"
+                />
+              </div>
+              <FieldError errors={[fieldErrors?.phone]} className="text-[10px] font-bold uppercase ml-1" />
+            </Field>
           </div>
-          <FieldError errors={[fieldErrors?.email]} className="text-[10px] font-bold uppercase ml-1" />
-        </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field data-invalid={!!fieldErrors?.pincode}>
-            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Pincode</FieldLabel>
+          <Field data-invalid={!!fieldErrors?.email}>
+            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Email (Optional)</FieldLabel>
             <div className="relative">
-              <HugeiconsIcon icon={Location01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-              <Input 
-                readOnly={readOnlyPincode} 
-                placeholder="000000" 
-                {...form.register(`${prefix}.pincode`)} 
-                aria-invalid={!!fieldErrors?.pincode} 
-                className={cn("pl-9 font-bold", readOnlyPincode && "bg-muted/50 cursor-not-allowed")} 
-              />
-              {!readOnlyPincode && isLoading && <HugeiconsIcon icon={Loading03Icon} className="animate-spin absolute right-3 top-2.5 size-4 text-primary" />}
+              <HugeiconsIcon icon={Mail01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
+              <Input placeholder="m@example.com" {...form.register(`${prefix}.email`)} aria-invalid={!!fieldErrors?.email} className="pl-9" />
             </div>
-            <FieldError errors={[fieldErrors?.pincode]} className="text-[10px] font-bold uppercase ml-1" />
+            <FieldError errors={[fieldErrors?.email]} className="text-[10px] font-bold uppercase ml-1" />
           </Field>
-          <Field data-invalid={!!fieldErrors?.city}>
-            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">City</FieldLabel>
-            <Input disabled placeholder="Detecting..." {...form.register(`${prefix}.city`)} aria-invalid={!!fieldErrors?.city} className="bg-muted opacity-80" />
-            <FieldError errors={[fieldErrors?.city]} className="text-[10px] font-bold uppercase ml-1" />
-          </Field>
-        </div>
-        {isValid && <p className="text-[10px] font-black text-green-600 uppercase px-1">Serviceable: {locality?.postcode_details?.city}, {locality?.postcode_details?.state}</p>}
-        <Field data-invalid={!!fieldErrors?.address}>
-          <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Address</FieldLabel>
-          <div className="relative">
-            <HugeiconsIcon icon={Navigation01Icon} className="absolute left-3 top-3 text-muted-foreground/50" size={14} />
-            <Input placeholder="Full street address..." {...form.register(`${prefix}.address`)} aria-invalid={!!fieldErrors?.address} className="pl-9" />
+          <div className="grid grid-cols-2 gap-4">
+            <Field data-invalid={!!fieldErrors?.pincode}>
+              <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Pincode</FieldLabel>
+              <div className="relative">
+                <HugeiconsIcon icon={Location01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
+                <Input
+                  readOnly={readOnlyPincode}
+                  placeholder="000000"
+                  {...form.register(`${prefix}.pincode`)}
+                  aria-invalid={!!fieldErrors?.pincode}
+                  className={cn("pl-9 font-bold", readOnlyPincode && "bg-muted/50 cursor-not-allowed")}
+                />
+                {!readOnlyPincode && isLoading && <HugeiconsIcon icon={Loading03Icon} className="animate-spin absolute right-3 top-2.5 size-4 text-primary" />}
+              </div>
+              <FieldError errors={[fieldErrors?.pincode]} className="text-[10px] font-bold uppercase ml-1" />
+            </Field>
+            <Field data-invalid={!!fieldErrors?.city}>
+              <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">City</FieldLabel>
+              <Input disabled placeholder="Detecting..." {...form.register(`${prefix}.city`)} aria-invalid={!!fieldErrors?.city} className="bg-muted opacity-80" />
+              <FieldError errors={[fieldErrors?.city]} className="text-[10px] font-bold uppercase ml-1" />
+            </Field>
           </div>
-          <FieldError errors={[fieldErrors?.address]} className="text-[10px] font-bold uppercase ml-1" />
-        </Field>
-      </CardContent>
+          {isValid && <p className="text-[10px] font-black text-green-600 uppercase px-1">Serviceable: {locality?.postcode_details?.city}, {locality?.postcode_details?.state}</p>}
+          <Field data-invalid={!!fieldErrors?.address}>
+            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Address</FieldLabel>
+            <div className="relative">
+              <HugeiconsIcon icon={Navigation01Icon} className="absolute left-3 top-3 text-muted-foreground/50" size={14} />
+              <Input placeholder="Full street address..." {...form.register(`${prefix}.address`)} aria-invalid={!!fieldErrors?.address} className="pl-9" />
+            </div>
+            <FieldError errors={[fieldErrors?.address]} className="text-[10px] font-bold uppercase ml-1" />
+          </Field>
+        </CardContent>
 
-      {/* Dialog for matching address */}
-      <Dialog open={showAddressDialog} onOpenChange={setShowAddressDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Address Found</DialogTitle>
-            <DialogDescription>We found an address saved with this phone number.</DialogDescription>
-          </DialogHeader>
-          {matchingAddress && (
-            <div className="py-2 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold">{matchingAddress.name}</span>
-                <Badge variant="outline" className="text-[8px]">{matchingAddress.address_label || "Other"}</Badge>
+        {/* Dialog for matching address */}
+        <Dialog open={showAddressDialog} onOpenChange={setShowAddressDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Address Found</DialogTitle>
+              <DialogDescription>We found an address saved with this phone number.</DialogDescription>
+            </DialogHeader>
+            {matchingAddress && (
+              <div className="py-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold">{matchingAddress.name}</span>
+                  <Badge variant="outline" className="text-[8px]">{matchingAddress.address_label || "Other"}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{matchingAddress.complete_address}</p>
+                <p className="text-xs text-muted-foreground">{matchingAddress.city}, {matchingAddress.state} - {matchingAddress.pincode}</p>
               </div>
-              <p className="text-sm text-muted-foreground">{matchingAddress.complete_address}</p>
-              <p className="text-xs text-muted-foreground">{matchingAddress.city}, {matchingAddress.state} - {matchingAddress.pincode}</p>
-            </div>
-          )}
-          <DialogFooter className="flex-row gap-2 sm:gap-0">
-            <Button variant="outline" onClick={handleCancelMatchingAddress} className="flex-1">
-              Cancel
-            </Button>
-            <Button onClick={handleSelectMatchingAddress} className="flex-1">
-              Select Address
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+            )}
+            <DialogFooter className="flex-row gap-2 sm:gap-0">
+              <Button variant="outline" onClick={handleCancelMatchingAddress} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleSelectMatchingAddress} className="flex-1">
+                Select Address
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </Card>
     </>
   );
 }
