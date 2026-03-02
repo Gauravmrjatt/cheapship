@@ -528,23 +528,17 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
   };
 
   const selectShiprocketPickup = (addr: ShiprocketPickupLocation) => {
-    // Fill sender (pickup) address with hub details
-    form.setValue("pickup_address.name", addr.name, { shouldValidate: true });
-    form.setValue("pickup_address.phone", addr.phone, { shouldValidate: true });
-    form.setValue("pickup_address.email", addr.email || "", { shouldValidate: true });
-    form.setValue("pickup_address.pincode", addr.pin_code.toString(), { shouldValidate: true });
-    form.setValue("pickup_address.address", addr.address, { shouldValidate: true });
-    form.setValue("pickup_address.city", addr.city, { shouldValidate: true });
-    form.setValue("pickup_address.state", addr.state, { shouldValidate: true });
-    // Clear receiver address - user can use "Same as pickup" option if needed
-    form.setValue("receiver_address.name", "");
-    form.setValue("receiver_address.phone", "");
-    form.setValue("receiver_address.email", "");
-    form.setValue("receiver_address.pincode", "");
-    form.setValue("receiver_address.address", "");
-    form.setValue("receiver_address.city", "");
-    form.setValue("receiver_address.state", "");
-    form.setValue("same_as_pickup", false);
+    // Only fill sender if "Same as pickup" is checked
+    if (formValues.same_as_pickup) {
+      form.setValue("pickup_address.name", addr.name, { shouldValidate: true });
+      form.setValue("pickup_address.phone", addr.phone, { shouldValidate: true });
+      form.setValue("pickup_address.email", addr.email || "", { shouldValidate: true });
+      form.setValue("pickup_address.pincode", addr.pin_code.toString(), { shouldValidate: true });
+      form.setValue("pickup_address.address", addr.address, { shouldValidate: true });
+      form.setValue("pickup_address.city", addr.city, { shouldValidate: true });
+      form.setValue("pickup_address.state", addr.state, { shouldValidate: true });
+    }
+    // Keep receiver as-is - it comes from Step 1 delivery pincode
   };
 
   return (
@@ -1039,13 +1033,43 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
 function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, selectShiprocketPickup, formValues, isLoadingPickup, isPickupValid, pickupLocality, isLoadingDelivery, isDeliveryValid, deliveryLocality }: any) {
   const { watch } = form;
   const pickupLocationValue = watch("pickup_location");
+  const receiverPincodeValue = watch("receiver_address.pincode");
 
-  // When pickup hub is selected, fill sender address with hub details but keep receiver empty
+  // Auto-fill receiver address from Step 1 delivery pincode when entering Step 2
   React.useEffect(() => {
-    if (pickupLocationValue) {
-      const sel = shiprocketPickups.find((l: any) => l.pickup_location === pickupLocationValue);
+    if (formValues.receiver_address.pincode && deliveryLocality) {
+      // Receiver pincode is already filled from Step 1, just ensure city/state are set
+      if (deliveryLocality?.data?.postcode_details || deliveryLocality?.postcode_details) {
+        const postcodeData = deliveryLocality?.data?.postcode_details || deliveryLocality?.postcode_details;
+        if (!formValues.receiver_address.city) {
+          form.setValue("receiver_address.city", postcodeData.city || "", { shouldValidate: false });
+        }
+        if (!formValues.receiver_address.state) {
+          form.setValue("receiver_address.state", postcodeData.state || "", { shouldValidate: false });
+        }
+      }
+    }
+  }, [deliveryLocality, formValues.receiver_address.pincode]);
+
+  // Keep sender empty by default - only fill when "Same as pickup" is checked
+  React.useEffect(() => {
+    if (!formValues.same_as_pickup) {
+      // Clear sender when checkbox is unchecked
+      form.setValue("pickup_address.name", "");
+      form.setValue("pickup_address.phone", "");
+      form.setValue("pickup_address.email", "");
+      form.setValue("pickup_address.address", "");
+      form.setValue("pickup_address.city", "");
+      form.setValue("pickup_address.state", "");
+    }
+  }, [formValues.same_as_pickup]);
+
+  const handleSameAsPickupChange = (checked: boolean) => {
+    form.setValue("same_as_pickup", !!checked);
+    if (checked && formValues.pickup_location) {
+      const sel = shiprocketPickups.find((l: any) => l.pickup_location === formValues.pickup_location);
       if (sel) {
-        // Fill sender (pickup) address with hub details
+        // Fill sender (pickup) address with hub details when checkbox is checked
         form.setValue("pickup_address.name", sel.name || "", { shouldValidate: true });
         form.setValue("pickup_address.phone", sel.phone || "", { shouldValidate: true });
         form.setValue("pickup_address.email", sel.email || "", { shouldValidate: true });
@@ -1053,35 +1077,18 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
         form.setValue("pickup_address.address", sel.address || "", { shouldValidate: true });
         form.setValue("pickup_address.city", sel.city || "", { shouldValidate: true });
         form.setValue("pickup_address.state", sel.state || "", { shouldValidate: true });
-        // Reset receiver address to null/empty - user can use "Same as pickup" option if needed
-        form.setValue("receiver_address.name", "");
-        form.setValue("receiver_address.phone", "");
-        form.setValue("receiver_address.email", "");
-        form.setValue("receiver_address.pincode", "");
-        form.setValue("receiver_address.address", "");
-        form.setValue("receiver_address.city", "");
-        form.setValue("receiver_address.state", "");
-        // Uncheck same_as_pickup so receiver stays empty
-        form.setValue("same_as_pickup", false);
-      }
-    }
-  }, [pickupLocationValue, shiprocketPickups, form]);
-
-  const handleSameAsPickupChange = (checked: boolean) => {
-    form.setValue("same_as_pickup", !!checked);
-    if (checked && formValues.pickup_location) {
-      const sel = shiprocketPickups.find((l: any) => l.pickup_location === formValues.pickup_location);
-      if (sel) {
-        // Copy sender details to receiver
-        form.setValue("receiver_address.name", sel.name || "", { shouldValidate: true });
-        form.setValue("receiver_address.phone", sel.phone || "", { shouldValidate: true });
-        form.setValue("receiver_address.email", sel.email || "", { shouldValidate: true });
-        form.setValue("receiver_address.pincode", sel.pin_code?.toString() || "", { shouldValidate: true });
-        form.setValue("receiver_address.address", sel.address || "", { shouldValidate: true });
-        form.setValue("receiver_address.city", sel.city || "", { shouldValidate: true });
-        form.setValue("receiver_address.state", sel.state || "", { shouldValidate: true });
       }
     } else {
+      // Clear sender when unchecked
+      form.setValue("pickup_address.name", "");
+      form.setValue("pickup_address.phone", "");
+      form.setValue("pickup_address.email", "");
+      form.setValue("pickup_address.pincode", "");
+      form.setValue("pickup_address.address", "");
+      form.setValue("pickup_address.city", "");
+      form.setValue("pickup_address.state", "");
+    }
+  };
       // Clear receiver when unchecked
       form.setValue("receiver_address.name", "");
       form.setValue("receiver_address.phone", "");
