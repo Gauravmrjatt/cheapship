@@ -657,7 +657,7 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
               {currentStep === 1 && <StepOne form={form} fields={fields} append={append} remove={remove} allSuggestions={allProductSuggestions} formValues={formValues} isLoadingPickup={isLoadingPickup} isPickupValid={isPickupPincodeValid} pickupLocality={pickupLocality} isLoadingDelivery={isLoadingDelivery} isDeliveryValid={isDeliveryPincodeValid} deliveryLocality={deliveryLocality} shiprocketPickups={shiprocketPickupLocations} setOpenAddPickupSheet={setOpenAddPickupSheet} selectShiprocketPickup={selectShiprocketPickup} />}
               {currentStep === 2 && <StepThree form={form} rateData={rateData} isLoadingRates={isLoadingRates} formValues={formValues} refetchRates={refetchRates} />}
               {currentStep === 3 && <StepTwo form={form} shiprocketPickups={shiprocketPickupLocations} savedAddresses={savedAddresses} selectSavedAddress={selectSavedAddress} selectShiprocketPickup={selectShiprocketPickup} formValues={formValues} isLoadingPickup={isLoadingPickup} isPickupValid={isPickupPincodeValid} pickupLocality={pickupLocality} isLoadingDelivery={isLoadingDelivery} isDeliveryValid={isDeliveryPincodeValid} deliveryLocality={deliveryLocality} setOpenAddPickupSheet={setOpenAddPickupSheet} />}
-              {currentStep === 4 && <StepFour formValues={formValues} isShipped={isShipped} createdOrderId={createdOrderId} isCreatingOrder={isCreatingOrder} router={router} http={http} />}
+              {currentStep === 4 && <StepFour formValues={formValues} shiprocketPickups={shiprocketPickupLocations} isShipped={isShipped} createdOrderId={createdOrderId} isCreatingOrder={isCreatingOrder} router={router} http={http} />}
 
               {/* Navigation Buttons */}
               {!isShipped && (
@@ -1436,69 +1436,176 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
           router={router}
         />
       )}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="shadow-none border-dashed">
-          <CardHeader className="py-3 px-4 bg-muted/30">
+      
+      {/* Shipment Details */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="shadow-sm border-l-4 border-l-primary">
+          <CardHeader className="pb-3">
             <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
               <HugeiconsIcon icon={Package01Icon} size={14} /> Shipment
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 text-sm space-y-1">
-            <p className="font-bold text-primary">{formValues.courier_name}</p>
-            <p className="text-muted-foreground uppercase text-[10px] font-black">{formValues.order_type} • {formValues.weight}kg</p>
+          <CardContent className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Courier</span>
+              <span className="font-bold text-sm text-primary">{formValues.courier_name || "Not selected"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Type</span>
+              <Badge variant="outline" className="text-[10px]">{formValues.order_type}</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Weight</span>
+              <span className="font-bold">{formValues.weight} kg</span>
+            </div>
+            {formValues.products?.[0]?.name && (
+              <div className="pt-2 border-t">
+                <span className="text-xs text-muted-foreground">Product</span>
+                <p className="font-medium text-sm truncate">{formValues.products[0].name}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
-        <Card className="shadow-none border-dashed">
-          <CardHeader className="py-3 px-4 bg-muted/30">
-            <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
-              <HugeiconsIcon icon={Location01Icon} size={14} /> Pickup
+
+        {/* Pickup Hub Details */}
+        <Card className="shadow-sm border-l-4 border-l-green-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center justify-between">
+              <span className="flex items-center gap-2"><HugeiconsIcon icon={Location01Icon} size={14} /> Pickup Hub</span>
+              <Badge variant="secondary" className="text-[10px]">{sel?.pickup_location || formValues.pickup_location}</Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 text-sm space-y-1 truncate">
-            <p className="font-bold">{formValues.pickup_location}</p>
-            <p className="text-muted-foreground text-xs">{sel?.name}</p>
+          <CardContent className="space-y-2 text-sm">
+            {sel ? (
+              <>
+                <div className="flex items-start justify-between">
+                  <span className="text-xs text-muted-foreground">Name</span>
+                  <span className="font-medium text-right max-w-[60%]">{sel.name}</span>
+                </div>
+                <div className="flex items-start justify-between">
+                  <span className="text-xs text-muted-foreground">Phone</span>
+                  <span className="font-medium">{sel.phone}</span>
+                </div>
+                <div className="flex items-start justify-between">
+                  <span className="text-xs text-muted-foreground">Pincode</span>
+                  <span className="font-medium">{sel.pin_code}</span>
+                </div>
+                <div className="flex items-start justify-between">
+                  <span className="text-xs text-muted-foreground">City</span>
+                  <span className="font-medium">{sel.city}</span>
+                </div>
+                <div className="flex items-start justify-between">
+                  <span className="text-xs text-muted-foreground">State</span>
+                  <span className="font-medium">{sel.state}</span>
+                </div>
+                <div className="pt-2 border-t">
+                  <span className="text-xs text-muted-foreground">Address</span>
+                  <p className="font-medium text-xs leading-tight">{sel.address}</p>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-xs">No pickup hub selected</p>
+            )}
           </CardContent>
         </Card>
-        <Card className="shadow-none border-dashed">
-          <CardHeader className="py-3 px-4 bg-muted/30">
+
+        {/* Receiver Details */}
+        <Card className="shadow-sm border-l-4 border-l-orange-500">
+          <CardHeader className="pb-3">
             <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
-              <HugeiconsIcon icon={Location01Icon} size={14} /> Receiver
+              <HugeiconsIcon icon={Navigation01Icon} size={14} /> Delivery
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 text-sm space-y-1 truncate">
-            <p className="font-bold">{formValues.pickup_address.name}</p>
-            <p className="text-muted-foreground text-xs">{formValues.pickup_address.city}</p>
-          </CardContent>
-        </Card>
-        <Card className="shadow-none border-dashed">
-          <CardHeader className="py-3 px-4 bg-muted/30">
-            <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
-              <HugeiconsIcon icon={Navigation01Icon} size={14} /> Drop
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 text-sm space-y-1 truncate">
-            <p className="font-bold">{formValues.receiver_address.name}</p>
-            <p className="text-muted-foreground text-xs">{formValues.receiver_address.city} - {formValues.receiver_address.pincode}</p>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-start justify-between">
+              <span className="text-xs text-muted-foreground">Name</span>
+              <span className="font-medium text-right max-w-[60%]">{formValues.receiver_address.name || "-"}</span>
+            </div>
+            <div className="flex items-start justify-between">
+              <span className="text-xs text-muted-foreground">Phone</span>
+              <span className="font-medium">{formValues.receiver_address.phone || "-"}</span>
+            </div>
+            <div className="flex items-start justify-between">
+              <span className="text-xs text-muted-foreground">Pincode</span>
+              <span className="font-medium">{formValues.receiver_address.pincode || "-"}</span>
+            </div>
+            <div className="flex items-start justify-between">
+              <span className="text-xs text-muted-foreground">City</span>
+              <span className="font-medium">{formValues.receiver_address.city || "-"}</span>
+            </div>
+            <div className="flex items-start justify-between">
+              <span className="text-xs text-muted-foreground">State</span>
+              <span className="font-medium">{formValues.receiver_address.state || "-"}</span>
+            </div>
+            {formValues.receiver_address.address && (
+              <div className="pt-2 border-t">
+                <span className="text-xs text-muted-foreground">Address</span>
+                <p className="font-medium text-xs leading-tight">{formValues.receiver_address.address}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      <div className="px-6 py-4 bg-card border rounded-xl shadow-sm text-sm flex justify-between items-center max-w-lg mx-auto">
-        <div className="space-y-0.5 text-center">
-          <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Billed Weight</p>
-          <p className="font-black text-lg">{formValues.weight} KG</p>
+      {/* Sender Details (from form) */}
+      {(formValues.pickup_address.name || formValues.pickup_address.phone) && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
+              <HugeiconsIcon icon={UserCircle02Icon} size={14} /> Sender Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+            <div>
+              <span className="text-xs text-muted-foreground">Name</span>
+              <p className="font-medium">{formValues.pickup_address.name || "-"}</p>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">Phone</span>
+              <p className="font-medium">{formValues.pickup_address.phone || "-"}</p>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">Email</span>
+              <p className="font-medium truncate">{formValues.pickup_address.email || "-"}</p>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">City</span>
+              <p className="font-medium">{formValues.pickup_address.city || "-"}</p>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">Pincode</span>
+              <p className="font-medium">{formValues.pickup_address.pincode || "-"}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Shipping Charge Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-card border rounded-xl">
+        <div className="text-center">
+          <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Base Charge</p>
+          <p className="font-black text-lg">₹{formatPrice(formValues.total_amount || 0)}</p>
         </div>
-        <div className="h-8 w-px bg-border" />
-        <div className="space-y-0.5 text-center">
-          <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Courier</p>
-          <p className="font-bold text-sm truncate max-w-[120px]">{formValues.courier_name}</p>
+        <div className="text-center">
+          <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Delivery</p>
+          <p className="font-bold text-green-600">{formValues.payment_mode === 'COD' ? 'COD' : 'Prepaid'}</p>
+        </div>
+        {formValues.payment_mode === 'COD' && (
+          <div className="text-center">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">COD Fee</p>
+            <p className="font-bold">₹0</p>
+          </div>
+        )}
+        <div className="text-center bg-primary/5 rounded-lg py-2">
+          <p className="text-[10px] font-bold uppercase text-primary tracking-widest">Total</p>
+          <p className="font-black text-xl text-primary">₹{formatPrice(formValues.shipping_charge || 0)}</p>
         </div>
       </div>
 
-      <div className="p-8 border rounded-xl bg-primary/5 text-center space-y-2">
+      <div className="p-6 border-2 border-dashed rounded-xl bg-primary/5 text-center space-y-3">
         <p className="text-xs font-bold text-muted-foreground uppercase">Total Shipping Charge</p>
-        <div className="text-5xl font-black tabular-nums tracking-tighter">₹{formatPrice(formValues.shipping_charge || 0)}</div>
-        <p className="text-[10px] text-muted-foreground max-w-[240px] mx-auto mt-4">By confirming, the amount will be automatically deducted from your wallet balance.</p>
+        <div className="text-5xl font-black tabular-nums tracking-tighter text-primary">₹{formatPrice(formValues.shipping_charge || 0)}</div>
+        <p className="text-xs text-muted-foreground max-w-[300px] mx-auto">By confirming, the amount will be automatically deducted from your wallet balance.</p>
       </div>
 
     </div>
