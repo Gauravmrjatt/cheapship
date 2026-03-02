@@ -76,6 +76,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sheet,
   SheetContent,
@@ -1437,151 +1438,184 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
         />
       )}
       
-      {/* Shipment Details */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="shadow-sm border-l-4 border-l-primary">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
-              <HugeiconsIcon icon={Package01Icon} size={14} /> Shipment
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Courier</span>
-              <span className="font-bold text-sm text-primary">{formValues.courier_name || "Not selected"}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Type</span>
-              <Badge variant="outline" className="text-[10px]">{formValues.order_type}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Weight</span>
-              <span className="font-bold">{formValues.weight} kg</span>
-            </div>
-            {formValues.products?.[0]?.name && (
-              <div className="pt-2 border-t">
-                <span className="text-xs text-muted-foreground">Product</span>
-                <p className="font-medium text-sm truncate">{formValues.products[0].name}</p>
+      {/* Tabs for Shipment, Pickup Hub, Sender, Receiver */}
+      <Tabs defaultValue="shipment" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-5 p-1 bg-transparent h-30">
+          <TabsTrigger value="shipment" className="flex flex-col items-center gap-1 py-3 data-[state=active]:bg-primary data-[state=active]:text-white">
+            <HugeiconsIcon icon={Package01Icon} size={16} />
+            <span className="text-xs font-bold">Shipment</span>
+          </TabsTrigger>
+          <TabsTrigger value="pickup" className="flex flex-col items-center gap-1 py-3 data-[state=active]:bg-green-500 data-[state=active]:text-white">
+            <HugeiconsIcon icon={Location01Icon} size={16} />
+            <span className="text-xs font-bold">Pickup Hub</span>
+          </TabsTrigger>
+          <TabsTrigger value="sender" className="flex flex-col items-center gap-1 py-3 data-[state=active]:bg-blue-500 data-[state=active]:text-white">
+            <HugeiconsIcon icon={UserCircle02Icon} size={16} />
+            <span className="text-xs font-bold">Sender</span>
+          </TabsTrigger>
+          <TabsTrigger value="receiver" className="flex flex-col items-center gap-1 py-3 data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+            <HugeiconsIcon icon={Navigation01Icon} size={16} />
+            <span className="text-xs font-bold">Receiver</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Shipment Tab */}
+        <TabsContent value="shipment" className="mt-4">
+          <Card className="shadow-sm border-primary/20">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Courier</p>
+                  <p className="font-bold text-primary">{formValues.courier_name || "Not selected"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Type</p>
+                  <Badge variant="outline">{formValues.order_type}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Weight</p>
+                  <p className="font-bold">{formValues.weight} kg</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Mode</p>
+                  <p className="font-bold">{formValues.payment_mode === 'COD' ? 'COD' : 'Prepaid'}</p>
+                </div>
+                {formValues.products?.[0]?.name && (
+                  <div className="col-span-2 md:col-span-4 pt-4 border-t">
+                    <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Product</p>
+                    <p className="font-medium">{formValues.products[0].name} × {formValues.products[0].quantity}</p>
+                  </div>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Pickup Hub Details */}
-        <Card className="shadow-sm border-l-4 border-l-green-500">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center justify-between">
-              <span className="flex items-center gap-2"><HugeiconsIcon icon={Location01Icon} size={14} /> Pickup Hub</span>
-              <Badge variant="secondary" className="text-[10px]">{sel?.pickup_location || formValues.pickup_location}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {sel ? (
-              <>
-                <div className="flex items-start justify-between">
-                  <span className="text-xs text-muted-foreground">Name</span>
-                  <span className="font-medium text-right max-w-[60%]">{sel.name}</span>
+        {/* Pickup Hub Tab */}
+        <TabsContent value="pickup" className="mt-4">
+          <Card className="shadow-sm border-green-500/20">
+            <CardContent className="pt-6">
+              {sel ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase font-bold">Hub Name</p>
+                    <p className="font-bold">{sel.name}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase font-bold">Phone</p>
+                    <p className="font-bold">{sel.phone}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase font-bold">Pincode</p>
+                    <p className="font-bold">{sel.pin_code}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase font-bold">City</p>
+                    <p className="font-bold">{sel.city}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase font-bold">State</p>
+                    <p className="font-bold">{sel.state}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase font-bold">Hub Location</p>
+                    <Badge variant="secondary">{sel.pickup_location}</Badge>
+                  </div>
+                  <div className="col-span-2 md:col-span-3 pt-4 border-t">
+                    <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Address</p>
+                    <p className="font-medium">{sel.address}</p>
+                  </div>
                 </div>
-                <div className="flex items-start justify-between">
-                  <span className="text-xs text-muted-foreground">Phone</span>
-                  <span className="font-medium">{sel.phone}</span>
-                </div>
-                <div className="flex items-start justify-between">
-                  <span className="text-xs text-muted-foreground">Pincode</span>
-                  <span className="font-medium">{sel.pin_code}</span>
-                </div>
-                <div className="flex items-start justify-between">
-                  <span className="text-xs text-muted-foreground">City</span>
-                  <span className="font-medium">{sel.city}</span>
-                </div>
-                <div className="flex items-start justify-between">
-                  <span className="text-xs text-muted-foreground">State</span>
-                  <span className="font-medium">{sel.state}</span>
-                </div>
-                <div className="pt-2 border-t">
-                  <span className="text-xs text-muted-foreground">Address</span>
-                  <p className="font-medium text-xs leading-tight">{sel.address}</p>
-                </div>
-              </>
-            ) : (
-              <p className="text-muted-foreground text-xs">No pickup hub selected</p>
-            )}
-          </CardContent>
-        </Card>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No pickup hub selected</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Receiver Details */}
-        <Card className="shadow-sm border-l-4 border-l-orange-500">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
-              <HugeiconsIcon icon={Navigation01Icon} size={14} /> Delivery
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">Name</span>
-              <span className="font-medium text-right max-w-[60%]">{formValues.receiver_address.name || "-"}</span>
-            </div>
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">Phone</span>
-              <span className="font-medium">{formValues.receiver_address.phone || "-"}</span>
-            </div>
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">Pincode</span>
-              <span className="font-medium">{formValues.receiver_address.pincode || "-"}</span>
-            </div>
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">City</span>
-              <span className="font-medium">{formValues.receiver_address.city || "-"}</span>
-            </div>
-            <div className="flex items-start justify-between">
-              <span className="text-xs text-muted-foreground">State</span>
-              <span className="font-medium">{formValues.receiver_address.state || "-"}</span>
-            </div>
-            {formValues.receiver_address.address && (
-              <div className="pt-2 border-t">
-                <span className="text-xs text-muted-foreground">Address</span>
-                <p className="font-medium text-xs leading-tight">{formValues.receiver_address.address}</p>
+        {/* Sender Tab */}
+        <TabsContent value="sender" className="mt-4">
+          <Card className="shadow-sm border-blue-500/20">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Name</p>
+                  <p className="font-bold">{formValues.pickup_address.name || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Phone</p>
+                  <p className="font-bold">{formValues.pickup_address.phone || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Email</p>
+                  <p className="font-medium truncate">{formValues.pickup_address.email || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Pincode</p>
+                  <p className="font-bold">{formValues.pickup_address.pincode || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">City</p>
+                  <p className="font-bold">{formValues.pickup_address.city || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">State</p>
+                  <p className="font-bold">{formValues.pickup_address.state || "-"}</p>
+                </div>
+                {formValues.pickup_address.address && (
+                  <div className="col-span-2 md:col-span-3 pt-4 border-t">
+                    <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Address</p>
+                    <p className="font-medium">{formValues.pickup_address.address}</p>
+                  </div>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Sender Details (from form) */}
-      {(formValues.pickup_address.name || formValues.pickup_address.phone) && (
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xs uppercase text-muted-foreground font-bold flex items-center gap-2">
-              <HugeiconsIcon icon={UserCircle02Icon} size={14} /> Sender Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-            <div>
-              <span className="text-xs text-muted-foreground">Name</span>
-              <p className="font-medium">{formValues.pickup_address.name || "-"}</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Phone</span>
-              <p className="font-medium">{formValues.pickup_address.phone || "-"}</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Email</span>
-              <p className="font-medium truncate">{formValues.pickup_address.email || "-"}</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">City</span>
-              <p className="font-medium">{formValues.pickup_address.city || "-"}</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Pincode</span>
-              <p className="font-medium">{formValues.pickup_address.pincode || "-"}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* Receiver Tab */}
+        <TabsContent value="receiver" className="mt-4">
+          <Card className="shadow-sm border-orange-500/20">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Name</p>
+                  <p className="font-bold">{formValues.receiver_address.name || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Phone</p>
+                  <p className="font-bold">{formValues.receiver_address.phone || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Email</p>
+                  <p className="font-medium truncate">{formValues.receiver_address.email || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Pincode</p>
+                  <p className="font-bold">{formValues.receiver_address.pincode || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">City</p>
+                  <p className="font-bold">{formValues.receiver_address.city || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">State</p>
+                  <p className="font-bold">{formValues.receiver_address.state || "-"}</p>
+                </div>
+                {formValues.receiver_address.address && (
+                  <div className="col-span-2 md:col-span-3 pt-4 border-t">
+                    <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Address</p>
+                    <p className="font-medium">{formValues.receiver_address.address}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Shipping Charge Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-card border rounded-xl">
+      {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-card border rounded-xl">
         <div className="text-center">
           <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Base Charge</p>
           <p className="font-black text-lg">₹{formatPrice(formValues.total_amount || 0)}</p>
@@ -1600,7 +1634,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
           <p className="text-[10px] font-bold uppercase text-primary tracking-widest">Total</p>
           <p className="font-black text-xl text-primary">₹{formatPrice(formValues.shipping_charge || 0)}</p>
         </div>
-      </div>
+      </div> */}
 
       <div className="p-6 border-2 border-dashed rounded-xl bg-primary/5 text-center space-y-3">
         <p className="text-xs font-bold text-muted-foreground uppercase">Total Shipping Charge</p>
