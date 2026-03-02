@@ -462,12 +462,11 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
     http.get(["order-rates", courierParams], `/orders/calculate-rates?${courierParams}`, currentStep === 2 && formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6)
   );
 
-  // Store previous values to detect changes
+  // Store previous value to detect receiver pincode change
   const prevReceiverPincode = React.useRef(formValues.receiver_address.pincode);
-  const prevPickupPincode = React.useRef(formValues.pickup_address.pincode);
   const isInitialMount = React.useRef(true);
 
-  // Handle receiver pincode or pickup pincode changes
+  // Handle receiver pincode changes only
   useEffect(() => {
     // Skip on initial mount
     if (isInitialMount.current) {
@@ -481,10 +480,6 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
     const receiverPincodeChanged = prevReceiverPincode.current && 
                                    formValues.receiver_address.pincode !== prevReceiverPincode.current &&
                                    formValues.receiver_address.pincode?.length === 6;
-    
-    const pickupPincodeChanged = prevPickupPincode.current &&
-                                  formValues.pickup_address.pincode !== prevPickupPincode.current &&
-                                  formValues.pickup_address.pincode?.length === 6;
 
     if (receiverPincodeChanged) {
       // Clear selected courier
@@ -496,37 +491,16 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
       // Show message for receiver pincode change
       sileo.info({
         title: "Receiver Pincode Changed",
-        description: "Receiver pincode changed. Please select a new courier partner."
+        description: "Receiver pincode changed. Please enter the pickup pincode in Step 1."
       });
 
-      // Move to step 2 for courier selection
-      setCurrentStep(2);
-      
-      // Refetch rates if pincodes are valid
-      if (formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6) {
-        refetchRates();
-      }
-    } else if (pickupPincodeChanged) {
-      // Clear selected courier
-      form.setValue("courier_id", undefined);
-      form.setValue("courier_name", "");
-      form.setValue("shipping_charge", 0);
-      form.setValue("total_amount", 0);
-      
-      // Show message for pickup pincode change
-      sileo.info({
-        title: "Pickup Pincode Changed",
-        description: "Pickup pincode changed. Please enter the pickup pincode in Step 1."
-      });
-
-      // Move to step 1 for pickup pincode entry
+      // Move to step 1 for pincode entry
       setCurrentStep(1);
     }
 
-    // Update refs
+    // Update ref
     if (formValues.receiver_address.pincode) prevReceiverPincode.current = formValues.receiver_address.pincode;
-    if (formValues.pickup_address.pincode) prevPickupPincode.current = formValues.pickup_address.pincode;
-  }, [formValues.receiver_address.pincode, formValues.pickup_address.pincode, currentStep, form, refetchRates, setCurrentStep]);
+  }, [formValues.receiver_address.pincode, currentStep, form, setCurrentStep]);
 
   // Store previously selected courier to check availability after rates change
   const prevSelectedCourierId = React.useRef<number | undefined>(formValues.courier_id);
