@@ -1089,16 +1089,6 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
       form.setValue("pickup_address.state", "");
     }
   };
-      // Clear receiver when unchecked
-      form.setValue("receiver_address.name", "");
-      form.setValue("receiver_address.phone", "");
-      form.setValue("receiver_address.email", "");
-      form.setValue("receiver_address.pincode", "");
-      form.setValue("receiver_address.address", "");
-      form.setValue("receiver_address.city", "");
-      form.setValue("receiver_address.state", "");
-    }
-  };
 
   return (
     <div className="space-y-8">
