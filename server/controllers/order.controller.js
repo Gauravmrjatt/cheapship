@@ -637,6 +637,43 @@ const createOrder = async (req, res) => {
               track_url: trackUrl
             }
           });
+
+          try {
+            const awbResult = await shiprocketAssignAWB({
+              shipment_id: shiprocketShipmentId,
+              courier_id: chosenCourier.courier_company_id
+            });
+
+            if (awbResult && awbResult.awb_assign_status === 1 && awbResult.response && awbResult.response.data) {
+              const awbData = awbResult.response.data;
+              
+              await tx.order.update({
+                where: { id: order.id },
+                data: {
+                  tracking_number: awbData.awb_code,
+                  shipment_status: 'MANIFESTED',
+                  courier_name: awbData.courier_name || chosenCourier.courier_name,
+                  courier_id: awbData.courier_company_id ? parseInt(awbData.courier_company_id) : chosenCourier.courier_company_id
+                }
+              });
+
+              if (awbData.pickup_scheduled_date) {
+                await tx.order.update({
+                  where: { id: order.id },
+                  data: {
+                    pickup_scheduled_date: new Date(awbData.pickup_scheduled_date)
+                  }
+                });
+              }
+
+              console.log(`AWB ${awbData.awb_code} assigned automatically for order ${order.id}`);
+            } else {
+              const awbError = awbResult?.message || awbResult?.response?.data?.awb_assign_error || 'Failed to assign AWB';
+              console.warn(`Auto AWB assignment failed for order ${order.id}: ${awbError}`);
+            }
+          } catch (awbError) {
+            console.error(`Auto AWB assignment error for order ${order.id}:`, awbError.message);
+          }
         }
       } catch (shipmentError) {
         console.error('Error creating shipment:', shipmentError);

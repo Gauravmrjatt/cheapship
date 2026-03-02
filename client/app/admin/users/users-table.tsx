@@ -227,8 +227,8 @@ export function UsersTable({
                 onClick={() => onOpenBoundsSheet(
                   row.original.id,
                   row.original.name,
-                  row.original.min_commission_rate ? parseFloat(row.original.min_commission_rate as any) : undefined,
-                  row.original.max_commission_rate ? parseFloat(row.original.max_commission_rate as any) : undefined
+                  row.original.min_commission_rate != null ? parseFloat(row.original.min_commission_rate as any) : undefined,
+                  row.original.max_commission_rate != null ? parseFloat(row.original.max_commission_rate as any) : undefined
                 )}
               >
                 <HugeiconsIcon icon={PercentIcon} size={14} className="mr-2" />

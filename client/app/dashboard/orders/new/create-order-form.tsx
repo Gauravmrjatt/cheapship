@@ -456,7 +456,7 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
     mode: formValues.order_type === "CARGO" ? "Cargo" : formValues.order_type === "SURFACE" ? "Surface" : "Air"
   }).toString(), [formValues]);
 
-  const { data: rateData, isLoading: isLoadingRates, refetch: refetchRates } = useQuery<RateResponse>(
+  const { data: rateData, isLoading: isLoadingRates, refetch: refetchRates , isRefetching } = useQuery<RateResponse>(
     http.get(["order-rates", courierParams], `/orders/calculate-rates?${courierParams}`, currentStep === 2 && formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6)
   );
 
@@ -474,6 +474,13 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
       sileo.error({
         title: "Courier Required",
         description: "Please select a courier partner to continue."
+      });
+      return;
+    }
+    if (currentStep === 3 && !formValues.pickup_location) {
+      sileo.error({
+        title: "Pickup Address Required",
+        description: "Please select a pickup location to continue."
       });
       return;
     }
@@ -1058,9 +1065,20 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
   );
 }
 
-function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates }: any) {
+function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates  }: any) {
   const { errors } = form.formState;
-
+  const [isRefetching , setRefetching] = useState(false);
+  useEffect( () => {
+    let timer: NodeJS.Timeout;
+    if(isRefetching === true) {
+      timer = setTimeout(() => {
+        setRefetching(false);
+      }, 700);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isRefetching])
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between border-b pb-4">
@@ -1068,8 +1086,8 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates }:
           <h2 className="text-lg font-bold">Select Courier</h2>
           {errors.courier_id && <p className="text-xs text-destructive font-bold uppercase mt-1">Please select a courier partner to continue</p>}
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => refetchRates()} disabled={isLoadingRates} className="h-9 gap-2">
-          <HugeiconsIcon icon={Loading03Icon} className={cn("size-4", isLoadingRates && "animate-spin")} />
+        <Button type="button" variant="outline" size="sm" onClick={() => { refetchRates(); setRefetching(true); }} disabled={isLoadingRates} className="h-9 gap-2">
+          <HugeiconsIcon icon={Loading03Icon} className={cn("size-4", isLoadingRates || isRefetching && "animate-spin")} />
           Refresh Rates
         </Button>
       </div>

@@ -223,9 +223,6 @@ export default function RateCalculatorPage() {
         <h1 className="text-3xl font-extrabold tracking-tight lg:text-4xl text-foreground">
           Rate Calculator
         </h1>
-        <p className="text-muted-foreground text-lg max-w-2xl">
-          Instantly compare shipping rates from India&apos;s leading courier partners and optimize your delivery costs.
-        </p>
       </div>
 
       <div className={cn(
@@ -351,7 +348,7 @@ export default function RateCalculatorPage() {
                     />
                   </Field>
 
-                  <Field>
+                  {/* <Field>
                     <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Delivery Mode</FieldLabel>
                     <Controller
                       control={form.control}
@@ -371,7 +368,7 @@ export default function RateCalculatorPage() {
                         </Tabs>
                       )}
                     />
-                  </Field>
+                  </Field> */}
 
                   <div className="flex items-center space-x-2 rounded-lg border p-4 bg-muted/30">
                     <Controller

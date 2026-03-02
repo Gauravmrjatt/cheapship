@@ -127,7 +127,14 @@ const verifyRazorpayPayment = async (req, res) => {
   const userId = req.user.id;
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, category = 'WALLET_TOPUP' } = req.body;
 
+  // Validate required fields
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !amount) {
+    console.error('Missing required payment fields:', { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount });
+    return res.status(400).json({ message: 'Missing required payment information.' });
+  }
+
   if (!process.env.RAZORPAY_KEY_SECRET) {
+    console.error('RAZORPAY_KEY_SECRET not configured');
     return res.status(500).json({ message: 'Payment configuration error. Please contact support.' });
   }
 
@@ -136,6 +143,16 @@ const verifyRazorpayPayment = async (req, res) => {
     .createHmac('sha256', key_secret)
     .update(razorpay_order_id + '|' + razorpay_payment_id)
     .digest('hex');
+
+  console.log('Payment verification attempt:', {
+    received_order_id: razorpay_order_id,
+    received_payment_id: razorpay_payment_id,
+    received_signature: razorpay_signature,
+    generated_signature,
+    signature_match: generated_signature === razorpay_signature,
+    amount,
+    userId
+  });
 
   if (generated_signature === razorpay_signature) {
     try {

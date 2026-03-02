@@ -97,8 +97,19 @@ export const useVerifyRazorpayPayment = () => {
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
         queryClient.invalidateQueries({ queryKey: ["me"] });
       },
-      onError: () => {
-        sileo.error({ title: "Payment verification failed", description: "Please contact support if amount was deducted." });
+      onError: (error: any) => {
+        const errorMessage = error?.response?.data?.message || "Unknown error";
+        console.error("Payment verification failed:", errorMessage);
+        
+        if (errorMessage.includes("configuration")) {
+          sileo.error({ title: "Payment configuration error", description: "Please contact support." });
+        } else if (errorMessage.includes("Invalid signature")) {
+          sileo.error({ title: "Payment verification failed", description: "Signature mismatch. Please try again or contact support." });
+        } else if (errorMessage.includes("Missing required")) {
+          sileo.error({ title: "Payment verification failed", description: "Missing payment information. Please try again." });
+        } else {
+          sileo.error({ title: "Payment verification failed", description: "Please contact support if amount was deducted." });
+        }
       }
     })
   });
