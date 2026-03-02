@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const { generateOrderId } = require('../utils/generateOrderId');
 const { getServiceability, getLocalityDetails, createShipment, cancelShipment, assignAWB: shiprocketAssignAWB, generateLabel, generateManifest, printManifest, getShipmentTracking, getShipmentDetails, schedulePickup, generateRTOLabel } = require('../utils/shiprocket');
 const { createReferralCommissions } = require('../utils/referral.commissions');
 const labelCustomizer = require('../utils/label-customizer');
@@ -465,41 +466,68 @@ const createOrder = async (req, res) => {
         }
       });
 
-      // Save addresses if requested
+      // Save addresses if requested - check if address already exists first
       if (save_pickup_address) {
-        await tx.address.create({
-          data: {
+        // Check if similar address already exists (match on phone, pincode, and address)
+        const existingPickupAddress = await tx.address.findFirst({
+          where: {
             user_id: userId,
-            name: pickup_address.name,
             phone: pickup_address.phone,
-            email: pickup_address.email,
-            complete_address: pickup_address.address,
-            city: pickup_address.city,
-            state: pickup_address.state,
             pincode: pickup_address.pincode,
-            address_label: 'Pickup',
+            complete_address: pickup_address.address,
           }
         });
+
+        // Only create if no matching address exists
+        if (!existingPickupAddress) {
+          await tx.address.create({
+            data: {
+              user_id: userId,
+              name: pickup_address.name,
+              phone: pickup_address.phone,
+              email: pickup_address.email,
+              complete_address: pickup_address.address,
+              city: pickup_address.city,
+              state: pickup_address.state,
+              pincode: pickup_address.pincode,
+              address_label: 'Pickup',
+            }
+          });
+        }
       }
 
       if (save_receiver_address) {
-        await tx.address.create({
-          data: {
+        // Check if similar address already exists (match on phone, pincode, and address)
+        const existingReceiverAddress = await tx.address.findFirst({
+          where: {
             user_id: userId,
-            name: receiver_address.name,
             phone: receiver_address.phone,
-            email: receiver_address.email,
-            complete_address: receiver_address.address,
-            city: receiver_address.city,
-            state: receiver_address.state,
             pincode: receiver_address.pincode,
-            address_label: 'Receiver',
+            complete_address: receiver_address.address,
           }
         });
+
+        // Only create if no matching address exists
+        if (!existingReceiverAddress) {
+          await tx.address.create({
+            data: {
+              user_id: userId,
+              name: receiver_address.name,
+              phone: receiver_address.phone,
+              email: receiver_address.email,
+              complete_address: receiver_address.address,
+              city: receiver_address.city,
+              state: receiver_address.state,
+              pincode: receiver_address.pincode,
+              address_label: 'Receiver',
+            }
+          });
+        }
       }
 
       const order = await tx.order.create({
         data: {
+          id : generateOrderId(),
           user_id: userId,
           order_type,
           shipment_status: 'PENDING',
