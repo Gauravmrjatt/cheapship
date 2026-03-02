@@ -464,15 +464,14 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
 
   // Store previous values to detect changes
   const prevReceiverPincode = React.useRef(formValues.receiver_address.pincode);
-  const prevPickupName = React.useRef(formValues.pickup_address.name);
   const prevPickupPincode = React.useRef(formValues.pickup_address.pincode);
+  const isInitialMount = React.useRef(true);
 
-  // Handle receiver pincode or pickup address name changes - show popup and go to step 2
+  // Handle receiver pincode or pickup pincode changes
   useEffect(() => {
-    // Skip on initial load
-    if (prevReceiverPincode.current === formValues.receiver_address.pincode && 
-        prevPickupName.current === formValues.pickup_address.name &&
-        prevPickupPincode.current === formValues.pickup_address.pincode) {
+    // Skip on initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
       return;
     }
 
@@ -483,27 +482,21 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
                                    formValues.receiver_address.pincode !== prevReceiverPincode.current &&
                                    formValues.receiver_address.pincode?.length === 6;
     
-    const pickupNameChanged = prevPickupName.current && 
-                              formValues.pickup_address.name !== prevPickupName.current &&
-                              formValues.pickup_address.name?.length > 0;
-
     const pickupPincodeChanged = prevPickupPincode.current &&
                                   formValues.pickup_address.pincode !== prevPickupPincode.current &&
                                   formValues.pickup_address.pincode?.length === 6;
 
-    if (receiverPincodeChanged || pickupNameChanged || pickupPincodeChanged) {
+    if (receiverPincodeChanged) {
       // Clear selected courier
       form.setValue("courier_id", undefined);
       form.setValue("courier_name", "");
       form.setValue("shipping_charge", 0);
       form.setValue("total_amount", 0);
       
-      // Show message
+      // Show message for receiver pincode change
       sileo.info({
-        title: "Address Changed",
-        description: receiverPincodeChanged 
-          ? "Receiver pincode changed. Please select a new courier partner."
-          : "Pickup address changed. Please select a new courier partner."
+        title: "Receiver Pincode Changed",
+        description: "Receiver pincode changed. Please select a new courier partner."
       });
 
       // Move to step 2 for courier selection
@@ -513,13 +506,27 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
       if (formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6) {
         refetchRates();
       }
+    } else if (pickupPincodeChanged) {
+      // Clear selected courier
+      form.setValue("courier_id", undefined);
+      form.setValue("courier_name", "");
+      form.setValue("shipping_charge", 0);
+      form.setValue("total_amount", 0);
+      
+      // Show message for pickup pincode change
+      sileo.info({
+        title: "Pickup Pincode Changed",
+        description: "Pickup pincode changed. Please enter the pickup pincode in Step 1."
+      });
+
+      // Move to step 1 for pickup pincode entry
+      setCurrentStep(1);
     }
 
     // Update refs
     if (formValues.receiver_address.pincode) prevReceiverPincode.current = formValues.receiver_address.pincode;
-    if (formValues.pickup_address.name) prevPickupName.current = formValues.pickup_address.name;
     if (formValues.pickup_address.pincode) prevPickupPincode.current = formValues.pickup_address.pincode;
-  }, [formValues.receiver_address.pincode, formValues.pickup_address.name, formValues.pickup_address.pincode, currentStep, form, refetchRates, setCurrentStep]);
+  }, [formValues.receiver_address.pincode, formValues.pickup_address.pincode, currentStep, form, refetchRates, setCurrentStep]);
 
   // Store previously selected courier to check availability after rates change
   const prevSelectedCourierId = React.useRef<number | undefined>(formValues.courier_id);
