@@ -462,6 +462,18 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
     http.get(["order-rates", courierParams], `/orders/calculate-rates?${courierParams}`, currentStep === 2 && formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6)
   );
 
+  // Refetch rates when receiver pincode changes in Step 2
+  const prevReceiverPincode = React.useRef(formValues.receiver_address.pincode);
+  useEffect(() => {
+    if (currentStep === 2 && formValues.receiver_address.pincode && 
+        formValues.receiver_address.pincode !== prevReceiverPincode.current &&
+        formValues.pickup_address.pincode.length === 6 && 
+        formValues.receiver_address.pincode.length === 6) {
+      prevReceiverPincode.current = formValues.receiver_address.pincode;
+      refetchRates();
+    }
+  }, [formValues.receiver_address.pincode, currentStep, refetchRates, formValues.pickup_address.pincode]);
+
   const nextStep = async () => {
     const fieldsToValidate = getFieldsForStep(currentStep);
     const isValid = await form.trigger(fieldsToValidate as any);
