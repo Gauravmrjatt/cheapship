@@ -528,12 +528,14 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
   };
 
   const selectShiprocketPickup = (addr: ShiprocketPickupLocation) => {
-    // Only fill sender if "Same as pickup" is checked
+    // Always set the pickup pincode when pickup hub is selected
+    form.setValue("pickup_address.pincode", addr.pin_code.toString(), { shouldValidate: true });
+    
+    // Fill sender address if "Same as pickup" is checked
     if (formValues.same_as_pickup) {
       form.setValue("pickup_address.name", addr.name, { shouldValidate: true });
       form.setValue("pickup_address.phone", addr.phone, { shouldValidate: true });
       form.setValue("pickup_address.email", addr.email || "", { shouldValidate: true });
-      form.setValue("pickup_address.pincode", addr.pin_code.toString(), { shouldValidate: true });
       form.setValue("pickup_address.address", addr.address, { shouldValidate: true });
       form.setValue("pickup_address.city", addr.city, { shouldValidate: true });
       form.setValue("pickup_address.state", addr.state, { shouldValidate: true });
