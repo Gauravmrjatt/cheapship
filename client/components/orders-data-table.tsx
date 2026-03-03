@@ -1,6 +1,7 @@
 "use client"
-
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   flexRender,
   getCoreRowModel,
@@ -48,6 +49,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   MoreVerticalCircle01Icon,
@@ -67,9 +75,15 @@ import {
   Cancel01Icon,
   MapPinIcon,
   FileDownloadIcon,
-  LinkCircle02Icon
+  LinkCircle02Icon,
+  Location01Icon,
+  UserIcon,
+  Mail01Icon,
+  SmartPhone01Icon,
+  AlertCircleIcon
 } from "@hugeicons/core-free-icons"
 import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
+import { useAuth } from "@/lib/hooks/use-auth"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { sileo } from "sileo"
@@ -94,24 +108,25 @@ export type Order = {
   manifest_url?: string
   cod_amount?: number
   is_draft?: boolean
-  order_pickup_address?: { 
-    name: string; 
+  order_pickup_address?: {
+    name: string;
     phone?: string;
     address?: string;
-    city: string; 
-    state: string; 
+    city: string;
+    state: string;
     country?: string;
     pincode?: string;
   }
-  order_receiver_address?: { 
-    name: string; 
+  order_receiver_address?: {
+    name: string;
     phone?: string;
     address?: string;
-    city: string; 
-    state: string; 
+    city: string;
+    state: string;
     country?: string;
     pincode?: string;
   }
+  pickup_location?: string
   user?: {
     name: string;
     email: string;
@@ -150,6 +165,8 @@ export function OrdersDataTable({
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [isMounted, setIsMounted] = React.useState(false)
+  const [showPickupDialog, setShowPickupDialog] = React.useState(false)
+  const [selectedPickupLocation, setSelectedPickupLocation] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     setIsMounted(true)
@@ -157,6 +174,44 @@ export function OrdersDataTable({
 
   const cancelOrder = useCancelOrder();
   const queryClient = useQueryClient();
+  const { token } = useAuth();
+
+  interface PickupLocation {
+    id: string;
+    pickup_location: string;
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    pin_code: string;
+  }
+
+  const { data: pickupLocationsData, isLoading: isLoadingPickupLocations } = useQuery({
+    queryKey: ["pickup-locations"],
+    queryFn: async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/addresses/pickup`, {
+        headers: {
+          "Authorization": `Bearer ${token || ""}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) throw new Error("Failed to fetch pickup locations");
+      return response.json();
+    },
+    enabled: !!token && showPickupDialog
+  });
+
+  const matchingPickup = pickupLocationsData?.data?.shipping_address?.find(
+    (loc: PickupLocation) => loc.pickup_location === selectedPickupLocation
+  );
+
+  const handleOpenPickupDialog = (pickupLocation: string) => {
+    setSelectedPickupLocation(pickupLocation);
+    setShowPickupDialog(true);
+  };
 
   const handleCancelOrder = React.useCallback(async (orderId: string) => {
     try {
@@ -243,43 +298,56 @@ export function OrdersDataTable({
         const receiver = row.original.order_receiver_address;
         if (!pickup || !receiver) return <span className="text-muted-foreground text-xs">-</span>;
         return (
-          <Popover>
-            <PopoverTrigger render={
-              <div className="flex flex-col items-start cursor-help hover:text-primary transition-colors max-w-[150px]">
-                <span className="font-semibold text-foreground text-xs truncate">{pickup.city}, {pickup.state}</span>
-                <span className="text-[10px] text-muted-foreground truncate">to {receiver.city}, {receiver.state}</span>
-              </div>
-            } />
-            <PopoverContent className="w-72 p-3" side="right">
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
-                    <HugeiconsIcon icon={MapPinIcon} className="size-3" />
-                    Sender
+          <>
+            <Popover>
+              <PopoverTrigger render={
+                <div className="flex flex-col items-start cursor-help hover:text-primary transition-colors max-w-[150px]">
+                  <span className="font-semibold text-foreground text-xs truncate">{pickup.city}, {pickup.state}</span>
+                  <span className="text-[10px] text-muted-foreground truncate">to {receiver.city}, {receiver.state}</span>
+                </div>
+              } />
+              <PopoverContent className="w-72 p-3" side="right">
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                      <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                      Sender
+                    </div>
+                    <div className="text-xs space-y-0.5">
+                      <p className="font-medium">{pickup.name}</p>
+                      {pickup.address && <p>{pickup.address}</p>}
+                      <p>{pickup.city}, {pickup.state} - {pickup.pincode}</p>
+                      {pickup.phone && <p className="text-blue-600 font-medium">{pickup.phone}</p>}
+                    </div>
                   </div>
-                  <div className="text-xs space-y-0.5">
-                    <p className="font-medium">{pickup.name}</p>
-                    {pickup.address && <p>{pickup.address}</p>}
-                    <p>{pickup.city}, {pickup.state} - {pickup.pincode}</p>
-                    {pickup.phone && <p className="text-blue-600 font-medium">{pickup.phone}</p>}
+                  <Separator />
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                      <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                      Receiver
+                    </div>
+                    <div className="text-xs space-y-0.5">
+                      <p className="font-medium">{receiver.name}</p>
+                      {receiver.address && <p>{receiver.address}</p>}
+                      <p>{receiver.city}, {receiver.state} - {receiver.pincode}</p>
+                      {receiver.phone && <p className="text-blue-600 font-medium">{receiver.phone}</p>}
+                    </div>
                   </div>
                 </div>
-                <Separator />
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
-                    <HugeiconsIcon icon={MapPinIcon} className="size-3" />
-                    Receiver
-                  </div>
-                  <div className="text-xs space-y-0.5">
-                    <p className="font-medium">{receiver.name}</p>
-                    {receiver.address && <p>{receiver.address}</p>}
-                    <p>{receiver.city}, {receiver.state} - {receiver.pincode}</p>
-                    {receiver.phone && <p className="text-blue-600 font-medium">{receiver.phone}</p>}
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+            {row.original?.pickup_location && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-primary gap-1 h-7 px-2 mt-1"
+                onClick={() => handleOpenPickupDialog(row.original.pickup_location!)}
+              >
+                <HugeiconsIcon icon={Location01Icon} className="h-3 w-3" />
+                <span className="text-xs font-medium truncate max-w-[100px]">{row.original.pickup_location}</span>
+              </Button>
+            )}
+          </>
         )
       }
     },
@@ -348,22 +416,22 @@ export function OrdersDataTable({
         );
       },
     },
-   {
-        accessorKey: "tracking_number",
-        header: "AWB & Label",
-        cell: ({ row }) => {
-          const tracking = row.original.tracking_number;
-          const trackUrl = row.original.track_url;
-          const labelUrl = row.original.label_url;
-  
-          return (
-            <div className="flex flex-col gap-2">
-              {tracking ? (
-                <a
-                  href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="
+    {
+      accessorKey: "tracking_number",
+      header: "AWB & Label",
+      cell: ({ row }) => {
+        const tracking = row.original.tracking_number;
+        const trackUrl = row.original.track_url;
+        const labelUrl = BASE_URL + row.original.label_url;
+
+        return (
+          <div className="flex flex-col gap-2">
+            {tracking ? (
+              <a
+                href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
               inline-flex items-center
               text-xs font-mono font-medium
               text-primary
@@ -375,19 +443,19 @@ export function OrdersDataTable({
               rounded-md
               w-full
             "
-                >
-                  {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
-                </a>
-              ) : (
-                <span className="text-muted-foreground text-center text-xs">-</span>
-              )}
-  
-              {labelUrl && (
-            <a
-    href={labelUrl}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="
+              >
+                {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
+              </a>
+            ) : (
+              <span className="text-muted-foreground text-center text-xs">-</span>
+            )}
+
+            {labelUrl && (
+              <a
+                href={labelUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
       inline-flex items-center
       text-xs font-medium
       text-foreground
@@ -400,18 +468,18 @@ export function OrdersDataTable({
       rounded-xl
       w-full
     "
-  >
-    Label
-    <HugeiconsIcon
-      icon={FileDownloadIcon}
-      className="ml-auto size-3 text-muted-foreground"
-    />
-  </a>
-              )}
-            </div>
-          );
-        },
+              >
+                Label
+                <HugeiconsIcon
+                  icon={FileDownloadIcon}
+                  className="ml-auto size-3 text-muted-foreground"
+                />
+              </a>
+            )}
+          </div>
+        );
       },
+    },
     {
       id: "actions",
       header: "Actions",
@@ -574,7 +642,7 @@ export function OrdersDataTable({
           <Popover>
             <PopoverTrigger render={<Button variant="outline" size="sm" ><HugeiconsIcon icon={Calendar01Icon} className="size-4" />
               <span className="hidden lg:inline">Date Range</span></Button>}>
-              
+
             </PopoverTrigger>
             <PopoverContent className="w-80 p-4" align="end">
               <div className="space-y-4">
@@ -610,7 +678,7 @@ export function OrdersDataTable({
           <Popover>
             <PopoverTrigger render={<Button variant="outline" size="sm" > <HugeiconsIcon icon={FilterIcon} className="size-4" />
               <span className="hidden lg:inline">Filters</span></Button>}>
-             
+
               {activeFiltersCount > 0 && (
                 <Badge variant="secondary" className="ml-2 h-5 rounded-full px-1">
                   {activeFiltersCount}
@@ -671,9 +739,9 @@ export function OrdersDataTable({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="outline" size="sm" > <HugeiconsIcon icon={LayoutIcon} strokeWidth={2} data-icon="inline-start" />
-              <span className="hidden lg:inline">Columns</span></Button>}
+                <span className="hidden lg:inline">Columns</span></Button>}
             >
-             
+
               <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
@@ -794,6 +862,110 @@ export function OrdersDataTable({
           filteredCount={table.getFilteredRowModel().rows.length}
         />
       </div>
+
+      <Dialog open={showPickupDialog} onOpenChange={setShowPickupDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={Location01Icon} className="h-5 w-5 text-primary" />
+              Pickup Location Details
+            </DialogTitle>
+            <DialogDescription>
+              Complete address information for {selectedPickupLocation}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingPickupLocations ? (
+            <div className="space-y-4 py-4">
+              <div className="animate-pulse space-y-3">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-4 bg-muted rounded w-1/2"></div>
+                <div className="h-4 bg-muted rounded w-2/3"></div>
+              </div>
+            </div>
+          ) : matchingPickup ? (
+            <div className="space-y-4 py-4">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <HugeiconsIcon icon={MapPinIcon} className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Location Name</p>
+                    <p className="font-semibold">{matchingPickup.pickup_location}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <HugeiconsIcon icon={UserIcon} className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Contact Person</p>
+                    <p className="font-semibold">{matchingPickup.name}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <HugeiconsIcon icon={SmartPhone01Icon} className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Phone</p>
+                      <p className="font-medium text-sm">{matchingPickup.phone}</p>
+                    </div>
+                  </div>
+
+                  {matchingPickup.email && (
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <HugeiconsIcon icon={Mail01Icon} className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase">Email</p>
+                        <p className="font-medium text-sm">{matchingPickup.email}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <HugeiconsIcon icon={Location01Icon} className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Full Address</p>
+                    <p className="font-medium text-sm">{matchingPickup.address}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {matchingPickup.city}, {matchingPickup.state} - {matchingPickup.pin_code}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{matchingPickup.country}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <HugeiconsIcon icon={AlertCircleIcon} className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No pickup location details found</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                The pickup location &quot;{selectedPickupLocation}&quot; was not found in your saved locations.
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowPickupDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Tabs>
   )
 }

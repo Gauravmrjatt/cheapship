@@ -33,7 +33,7 @@ export const createOrderSchema = z.object({
   order_type: z.enum(["SURFACE", "EXPRESS", "CARGO"]),
   shipment_type: z.enum(["DOMESTIC", "INTERNATIONAL"]),
   payment_mode: z.enum(["PREPAID", "COD"]),
-  weight: z.number().min(0.1, "Weight is required"),
+  weight: z.number().min(1, "Weight is required"),
   length: z.number().min(1, "Length is required"),
   width: z.number().min(1, "Width is required"),
   height: z.number().min(1, "Height is required"),
@@ -74,7 +74,7 @@ export const shiprocketPickupSchema = z.object({
 export const courierRateInputSchema = z.object({
   pickup_pincode: z.string().min(6, "Pickup pincode is required"),
   delivery_pincode: z.string().min(6, "Delivery pincode is required"),
-  weight: z.number().min(0.1, "Weight is required"),
+  weight: z.number().min(1, "Weight is required"),
   cod: z.boolean(),
   declared_value: z.number().min(1, "Value is required"),
   length: z.number().min(1, "Length is required"),

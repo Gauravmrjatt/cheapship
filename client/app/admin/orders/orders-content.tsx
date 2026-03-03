@@ -1,9 +1,10 @@
 "use client";
-
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/skeletons";
+import { useQuery } from "@tanstack/react-query";
 import {
   flexRender,
   getCoreRowModel,
@@ -16,6 +17,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useAdminOrders, useAdminCancelOrder, useAdminGenerateLabel, AdminOrder } from "@/lib/hooks/use-admin";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { useSearchParams } from "next/navigation";
 import {
   Table,
@@ -51,6 +53,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -73,7 +82,12 @@ import {
   LayoutIcon,
   MapPinIcon,
   FileDownloadIcon,
-  LinkCircle02Icon
+  LinkCircle02Icon,
+  Location01Icon,
+  UserIcon,
+  Mail01Icon,
+  SmartPhone01Icon,
+  AlertCircleIcon
 } from "@hugeicons/core-free-icons";
 
 interface AdminOrderFilters {
@@ -105,9 +119,49 @@ function OrdersContent() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [isMounted, setIsMounted] = React.useState(false);
+  const [showPickupDialog, setShowPickupDialog] = React.useState(false);
+  const [selectedPickupLocation, setSelectedPickupLocation] = React.useState<string | null>(null);
 
   const cancelOrder = useAdminCancelOrder();
   const generateLabel = useAdminGenerateLabel();
+  const { token } = useAuth();
+
+  interface PickupLocation {
+    id: string;
+    pickup_location: string;
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    pin_code: string;
+  }
+
+  const { data: pickupLocationsData, isLoading: isLoadingPickupLocations } = useQuery({
+    queryKey: ["admin-pickup-locations"],
+    queryFn: async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/addresses/pickup`, {
+        headers: {
+          "Authorization": `Bearer ${token || ""}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) throw new Error("Failed to fetch pickup locations");
+      return response.json();
+    },
+    enabled: !!token && showPickupDialog
+  });
+
+  const matchingPickup = pickupLocationsData?.data?.shipping_address?.find(
+    (loc: PickupLocation) => loc.pickup_location === selectedPickupLocation
+  );
+
+  const handleOpenPickupDialog = (pickupLocation: string) => {
+    setSelectedPickupLocation(pickupLocation);
+    setShowPickupDialog(true);
+  };
 
   React.useEffect(() => {
     setIsMounted(true);
@@ -115,8 +169,14 @@ function OrdersContent() {
 
   React.useEffect(() => {
     const userIdFromQuery = searchParams.get("userId") || "";
+    const statusFromQuery = searchParams.get("shipment_status") || "";
+    
     if (userIdFromQuery) {
       setUserIdFilter(userIdFromQuery);
+    }
+    
+    if (statusFromQuery) {
+      setFilters(prev => ({ ...prev, shipment_status: statusFromQuery }));
     }
   }, [searchParams]);
 
@@ -271,12 +331,13 @@ function OrdersContent() {
         if (!pickup || !receiver) return <span className="text-muted-foreground text-xs">-</span>;
 
         return (
-          <Popover>
-            <PopoverTrigger render={
-              <div className="flex flex-col items-start cursor-help hover:text-primary transition-colors">
-                <span className="font-semibold text-foreground text-xs">{pickup.city}, {pickup.state}</span>
-                <span className="text-[10px] text-muted-foreground">to {receiver.city}, {receiver.state}</span>
-              </div>
+          <React.Fragment>
+            <Popover>
+              <PopoverTrigger render={
+                <div className="flex flex-col items-start cursor-help hover:text-primary transition-colors">
+                  <span className="font-semibold text-foreground text-xs">{pickup.city}, {pickup.state}</span>
+                  <span className="text-[10px] text-muted-foreground">to {receiver.city}, {receiver.state}</span>
+                </div>
             } />
             <PopoverContent className="w-72 p-3" side="left">
               <div className="space-y-3">
@@ -308,7 +369,19 @@ function OrdersContent() {
               </div>
             </PopoverContent>
           </Popover>
-        );
+          {row.original?.pickup_location && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-primary gap-1 h-7 px-2 mt-1"
+              onClick={() => handleOpenPickupDialog(row.original.pickup_location!)}
+            >
+              <HugeiconsIcon icon={Location01Icon} className="h-3 w-3" />
+              <span className="text-xs font-medium truncate max-w-[100px]">{row.original.pickup_location}</span>
+            </Button>
+          )}
+        </React.Fragment>
+      );
       }
     },
     {
@@ -362,7 +435,7 @@ function OrdersContent() {
       cell: ({ row }) => {
         const tracking = row.original.tracking_number;
         const trackUrl = row.original.track_url;
-        const labelUrl = row.original.label_url;
+        const labelUrl = BASE_URL + row.original.label_url;
 
         return (
           <div className="flex flex-col gap-2">
@@ -604,8 +677,10 @@ function OrdersContent() {
                   <SelectItem value="ALL">All Orders</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
                   <SelectItem value="MANIFESTED">Manifested</SelectItem>
+                  <SelectItem value="DISPATCHED">Dispatched</SelectItem>
                   <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
                   <SelectItem value="DELIVERED">Delivered</SelectItem>
+                  <SelectItem value="NOT_PICKED">Not Picked</SelectItem>
                   <SelectItem value="RTO">RTO</SelectItem>
                   <SelectItem value="DRAFT">Drafts</SelectItem>
                   <SelectItem value="CANCELLED">Cancelled</SelectItem>
@@ -613,12 +688,14 @@ function OrdersContent() {
               </SelectContent>
             </Select>
 
-            <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
+            <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 flex-wrap h-auto gap-1">
               <TabsTrigger value="ALL">All Orders</TabsTrigger>
               <TabsTrigger value="PENDING">Pending</TabsTrigger>
               <TabsTrigger value="MANIFESTED">Manifested</TabsTrigger>
+              <TabsTrigger value="DISPATCHED">Dispatched</TabsTrigger>
               <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
               <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
+              <TabsTrigger value="NOT_PICKED">Not Picked</TabsTrigger>
               <TabsTrigger value="RTO">RTO</TabsTrigger>
               <TabsTrigger value="DRAFT">Drafts</TabsTrigger>
               <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
@@ -907,6 +984,109 @@ function OrdersContent() {
           </div>
         </div>
 
+        <Dialog open={showPickupDialog} onOpenChange={setShowPickupDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <HugeiconsIcon icon={Location01Icon} className="h-5 w-5 text-primary" />
+                Pickup Location Details
+              </DialogTitle>
+              <DialogDescription>
+                Complete address information for {selectedPickupLocation}
+              </DialogDescription>
+            </DialogHeader>
+
+            {isLoadingPickupLocations ? (
+              <div className="space-y-4 py-4">
+                <div className="animate-pulse space-y-3">
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                  <div className="h-4 bg-muted rounded w-2/3"></div>
+                </div>
+              </div>
+            ) : matchingPickup ? (
+              <div className="space-y-4 py-4">
+                <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <HugeiconsIcon icon={MapPinIcon} className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Location Name</p>
+                      <p className="font-semibold">{matchingPickup.pickup_location}</p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <HugeiconsIcon icon={UserIcon} className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Contact Person</p>
+                      <p className="font-semibold">{matchingPickup.name}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <HugeiconsIcon icon={SmartPhone01Icon} className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase">Phone</p>
+                        <p className="font-medium text-sm">{matchingPickup.phone}</p>
+                      </div>
+                    </div>
+
+                    {matchingPickup.email && (
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <HugeiconsIcon icon={Mail01Icon} className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase">Email</p>
+                          <p className="font-medium text-sm truncate max-w-[120px]">{matchingPickup.email}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <HugeiconsIcon icon={Location01Icon} className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Full Address</p>
+                      <p className="font-medium text-sm">{matchingPickup.address}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {matchingPickup.city}, {matchingPickup.state} - {matchingPickup.pin_code}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{matchingPickup.country}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 text-center">
+                <HugeiconsIcon icon={AlertCircleIcon} className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No pickup location details found</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">
+                  The pickup location &quot;{selectedPickupLocation}&quot; was not found in saved locations.
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setShowPickupDialog(false)}>
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </Tabs>
     </div>
   );

@@ -22,12 +22,16 @@ import {
   CustomerService02Icon,
 } from "@hugeicons/core-free-icons"
 import { DashboardData } from "@/types/dashboard"
+import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 export function SectionCards({
   data,
 }: {
   data: DashboardData
 }) {
+  const router = useRouter()
+
   const cards = [
     {
       label: "Delivered Orders",
@@ -35,6 +39,8 @@ export function SectionCards({
       icon: DeliveryBox01Icon,
       footer: "Successfully delivered shipments",
       trend: "up",
+      status: "DELIVERED",
+      clickable: true,
     },
     {
       label: "In Transit Orders",
@@ -42,6 +48,8 @@ export function SectionCards({
       icon: TruckIcon,
       footer: "Orders currently on the way",
       trend: "up",
+      status: "IN_TRANSIT",
+      clickable: true,
     },
     {
       label: "Dispatched Orders",
@@ -49,6 +57,8 @@ export function SectionCards({
       icon: PackageIcon,
       footer: "Orders shipped from warehouse",
       trend: "up",
+      status: "DISPATCHED",
+      clickable: true,
     },
     {
       label: "Manifested Orders",
@@ -56,6 +66,8 @@ export function SectionCards({
       icon: BarChartIcon,
       footer: "Orders processed & manifested",
       trend: "up",
+      status: "MANIFESTED",
+      clickable: true,
     },
     {
       label: "RTO Orders",
@@ -63,6 +75,8 @@ export function SectionCards({
       icon: Cancel01Icon,
       footer: "Returned to origin shipments",
       trend: "down",
+      status: "RTO_IN_TRANSIT",
+      clickable: true,
     },
     {
       label: "Cancelled Orders",
@@ -70,6 +84,8 @@ export function SectionCards({
       icon: Alert02Icon,
       footer: "Orders cancelled by users",
       trend: "down",
+      status: "CANCELLED",
+      clickable: true,
     },
     {
       label: "Action Required",
@@ -77,6 +93,8 @@ export function SectionCards({
       icon: CustomerService02Icon,
       footer: "Orders needing manual attention",
       trend: "down",
+      status: "ACTION_REQUIRED",
+      // clickable: true,
     },
     {
       label: "Total Orders",
@@ -136,10 +154,20 @@ export function SectionCards({
     },
   ]
 
+  const handleCardClick = (status: string | undefined) => {
+    if (status) {
+      router.push(`/dashboard/orders?shipment_status=${status}`)
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-3 px-3 sm:gap-4 sm:px-4 lg:px-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {cards.map((card) => (
-        <Card key={card.label} className="@container/card">
+        <Card 
+          key={card.label} 
+          className={cn("@container/card", card.clickable && "cursor-pointer hover:shadow-md transition-shadow")}
+          onClick={() => handleCardClick(card.status)}
+        >
           <CardHeader>
             <CardDescription className="flex items-center gap-2">
               <HugeiconsIcon icon={card.icon} strokeWidth={2} className="size-4" />

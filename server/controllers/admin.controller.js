@@ -76,8 +76,13 @@ const resetAdminPassword = async (req, res) => {
 
 const getDashboardStats = async (req, res) => {
   const prisma = req.app.locals.prisma;
+  const now = new Date();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   try {
+    // Basic stats
     const [
       totalUsers,
       activeUsers,
@@ -91,9 +96,7 @@ const getDashboardStats = async (req, res) => {
       prisma.user.count({ where: { user_type: 'NORMAL', is_active: true } }),
       prisma.order.count(),
       prisma.order.aggregate({
-        _sum: {
-          shipping_charge: true
-        }
+        _sum: { shipping_charge: true }
       }),
       prisma.commissionWithdrawal.count({ where: { status: 'PENDING' } }),
       prisma.order.findMany({
@@ -107,23 +110,168 @@ const getDashboardStats = async (req, res) => {
       }),
       prisma.user.aggregate({
         where: { user_type: 'NORMAL' },
-        _sum: {
-          wallet_balance: true
-        }
+        _sum: { wallet_balance: true }
       })
     ]);
 
+    // Order counts by status
+    const [
+      deliveredOrdersCount,
+      inTransitOrdersCount,
+      dispatchedOrdersCount,
+      manifestedOrdersCount,
+      rtoOrdersCount,
+      cancelledOrdersCount,
+      pendingOrdersCount,
+      notPickedOrdersCount
+    ] = await Promise.all([
+      prisma.order.count({ where: { shipment_status: 'DELIVERED' } }),
+      prisma.order.count({ where: { shipment_status: 'IN_TRANSIT' } }),
+      prisma.order.count({ where: { shipment_status: 'DISPATCHED' } }),
+      prisma.order.count({ where: { shipment_status: 'MANIFESTED' } }),
+      prisma.order.count({ where: { shipment_status: 'RTO' } }),
+      prisma.order.count({ where: { shipment_status: 'CANCELLED' } }),
+      prisma.order.count({ where: { shipment_status: 'PENDING' } }),
+      prisma.order.count({ where: { shipment_status: 'NOT_PICKED' } })
+    ]);
+
+    // Last month orders for growth calculation
+    const lastMonthOrders = await prisma.order.count({
+      where: {
+        created_at: { gte: lastMonth }
+      }
+    });
+
+    // Total Weight Shipped (from delivered orders)
+    const deliveredOrdersWithWeight = await prisma.order.findMany({
+      where: {
+        shipment_status: 'DELIVERED',
+        weight: { not: null }
+      },
+      select: { weight: true }
+    });
+    const totalWeightShipped = deliveredOrdersWithWeight.reduce((sum, order) => sum + parseFloat(order.weight || 0), 0).toFixed(2);
+
+    // Average Delivery Time
+    let avgDeliveryTimeDays = 0;
+    const deliveredOrdersWithTimestamps = await prisma.order.findMany({
+      where: {
+        shipment_status: 'DELIVERED',
+        delivered_at: { not: null }
+      },
+      select: {
+        created_at: true,
+        delivered_at: true
+      }
+    });
+
+    if (deliveredOrdersWithTimestamps.length > 0) {
+      const totalDeliveryTimeMs = deliveredOrdersWithTimestamps.reduce((sum, order) => {
+        if (order.delivered_at && order.created_at) {
+          return sum + (new Date(order.delivered_at).getTime() - new Date(order.created_at).getTime());
+        }
+        return sum;
+      }, 0);
+      const avgDeliveryTimeMs = totalDeliveryTimeMs / deliveredOrdersWithTimestamps.length;
+      avgDeliveryTimeDays = (avgDeliveryTimeMs / (1000 * 60 * 60 * 24)).toFixed(0);
+    }
+
+    // Success and Return Rates
+    const deliverySuccessRate = totalOrders > 0 ? ((deliveredOrdersCount / totalOrders) * 100).toFixed(0) : 0;
+    const returnRate = totalOrders > 0 ? ((rtoOrdersCount / totalOrders) * 100).toFixed(0) : 0;
+
+    // Monthly Growth
+    const monthlyGrowthRaw = lastMonthOrders > 0 ? ((totalOrders - lastMonthOrders) / lastMonthOrders) * 100 : 100;
+    const monthlyGrowth = `${monthlyGrowthRaw > 0 ? '+' : ''}${monthlyGrowthRaw.toFixed(1)}%`;
+
+    // Pending Disputes
+    const weightDisputeOrders = await prisma.weightDispute.count({ where: { status: 'PENDING' } });
+    const rtoDisputeOrders = await prisma.rTODispute.count({ where: { status: 'PENDING' } });
+    const actionRequired = weightDisputeOrders + rtoDisputeOrders;
+
+    // 30-day graph data
+    const ordersForGraph = await prisma.order.findMany({
+      where: {
+        created_at: { gte: thirtyDaysAgo }
+      },
+      select: {
+        created_at: true,
+        shipment_status: true
+      },
+      orderBy: { created_at: 'asc' }
+    });
+
+    // Group orders by date and status
+    const graphDataMap = {};
+    for (let i = 0; i <= 30; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      graphDataMap[dateStr] = {
+        date: dateStr,
+        DELIVERED: 0,
+        PENDING: 0,
+        CANCELLED: 0,
+        IN_TRANSIT: 0,
+        DISPATCHED: 0,
+        MANIFESTED: 0,
+        RTO: 0,
+        NOT_PICKED: 0,
+        TOTAL: 0
+      };
+    }
+
+    ordersForGraph.forEach(order => {
+      const dateStr = new Date(order.created_at).toISOString().split('T')[0];
+      if (graphDataMap[dateStr]) {
+        graphDataMap[dateStr].TOTAL += 1;
+        const status = order.shipment_status;
+        if (graphDataMap[dateStr][status] !== undefined) {
+          graphDataMap[dateStr][status] += 1;
+        }
+      }
+    });
+
+    const graphData = Object.values(graphDataMap).sort((a, b) => a.date.localeCompare(b.date));
+
     res.json({
+      // Basic stats
       totalUsers,
       activeUsers,
       totalOrders,
       totalRevenue: totalRevenue._sum.shipping_charge || 0,
       totalUserBalance: userBalanceAggregate._sum.wallet_balance || 0,
       pendingWithdrawals,
-      recentOrders
+      recentOrders,
+
+      // Order status counts
+      deliveredOrders: deliveredOrdersCount,
+      inTransitOrders: inTransitOrdersCount,
+      dispatchedOrders: dispatchedOrdersCount,
+      manifestedOrders: manifestedOrdersCount,
+      rtoOrders: rtoOrdersCount,
+      pendingOrders: pendingOrdersCount,
+      notPickedOrders: notPickedOrdersCount,
+      cancelledOrders: cancelledOrdersCount,
+
+      // Metrics
+      lastMonthOrders,
+      totalWeightShipped: `${totalWeightShipped} kg`,
+      avgDeliveryTime: `${avgDeliveryTimeDays} days`,
+      deliverySuccessRate: `${deliverySuccessRate}%`,
+      returnRate: `${returnRate}%`,
+      monthlyGrowth,
+
+      // Disputes
+      weightDisputeOrders,
+      rtoDisputeOrders,
+      actionRequired,
+
+      // Graph data
+      graphData
     });
   } catch (error) {
-    console.error(error);
+    console.error('Admin dashboard stats error:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
@@ -354,7 +502,7 @@ const getWithdrawals = async (req, res) => {
       prisma.user.count({ where })
     ]);
 
-    const usersData = users.map(user => ({
+    const usersData = withdrawals.map(user => ({
       ...user,
       min_commission_rate: user.min_commission_rate ? parseFloat(user.min_commission_rate) : null,
       max_commission_rate: user.max_commission_rate ? parseFloat(user.max_commission_rate) : null

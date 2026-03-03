@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOrders, OrderFilters } from "@/lib/hooks/use-orders";
 import { OrdersDataTable } from "@/components/orders-data-table";
+import { useSearchParams } from "next/navigation";
 
 export default function OrdersPage() {
+  const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [filters, setFilters] = useState<OrderFilters>({
@@ -16,6 +18,14 @@ export default function OrdersPage() {
     to: "",
     search: "",
   });
+
+  useEffect(() => {
+    const status = searchParams.get("shipment_status");
+    if (status) {
+      setFilters((prev) => ({ ...prev, shipment_status: status }));
+      setPage(1);
+    }
+  }, [searchParams]);
 
   const { data, isLoading, isError } = useOrders(page, pageSize, filters);
 

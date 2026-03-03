@@ -126,7 +126,7 @@ export default function RateCalculatorPage() {
     const l = Number(formValues.length) || 0;
     const w = Number(formValues.width) || 0;
     const h = Number(formValues.height) || 0;
-    return (l * w * h) / 5000;
+    return ((l * w * h) / 5000) * 1000;
   }, [formValues.length, formValues.width, formValues.height]);
 
   const chargeableWeight = useMemo(() => {
@@ -136,7 +136,7 @@ export default function RateCalculatorPage() {
   const queryParams = useMemo(() => new URLSearchParams({
     pickup_postcode: formValues.pickupPincode,
     delivery_postcode: formValues.deliveryPincode,
-    weight: formValues.actualWeight?.toString(),
+    weight: ((formValues.actualWeight || 0) / 1000).toString(),
     cod: formValues.paymentType === "COD" ? "1" : "0",
     declared_value: formValues.shipmentValue?.toString(),
     length: formValues.length?.toString(),
@@ -202,12 +202,15 @@ export default function RateCalculatorPage() {
       courier_id: courier.courier_company_id.toString(),
       courier_name: courier.courier_name,
       rate: courier.rate.toString(),
+      payment_mode: formValues.paymentType,
     });
     router.push(`/dashboard/orders/new?${params.toString()}`);
   };
 
   const partners = data?.serviceable_couriers ?? [];
-  const filteredPartners = partners.filter(p => {
+  const filteredPartners = partners
+    .sort((a, b) => a.rate - b.rate)
+    .filter(p => {
     if (activeTab === "all") return true;
     return p.mode.toLowerCase() === activeTab.toLowerCase();
   });
@@ -292,10 +295,10 @@ export default function RateCalculatorPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <Field>
-                      <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actual Weight (KG)</FieldLabel>
+                      <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actual Weight (g)</FieldLabel>
                       <Input
                         {...form.register("actualWeight", { valueAsNumber: true })}
-                        placeholder="25"
+                        placeholder="500"
                         className="font-medium"
                       />
                       <FieldError errors={[errors.actualWeight]} />
@@ -422,16 +425,16 @@ export default function RateCalculatorPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Volumetric Weight</span>
-                  <span className="text-sm font-bold">{volumetricWeight.toFixed(2)} KG</span>
+                  <span className="text-sm font-bold">{(volumetricWeight * 1000).toFixed(0)} g</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Actual Weight</span>
-                  <span className="text-sm font-bold">{formValues.actualWeight || 0} KG</span>
+                  <span className="text-sm font-bold">{formValues.actualWeight || 0} g</span>
                 </div>
                 <Separator className="bg-primary/10" />
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">Chargeable Weight</span>
-                  <span className="text-lg font-black text-primary">{chargeableWeight.toFixed(2)} KG</span>
+                  <span className="text-lg font-black text-primary">{(chargeableWeight * 1000).toFixed(0)} g</span>
                 </div>
               </div>
             </CardContent>

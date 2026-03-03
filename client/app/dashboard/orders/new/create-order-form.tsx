@@ -167,9 +167,10 @@ interface PreSelectedCourier {
 
 interface CreateOrderContentProps {
   preSelectedCourier?: PreSelectedCourier | null;
+  preSelectedPaymentMode?: string | null;
 }
 
-export default function CreateOrderContent({ preSelectedCourier }: CreateOrderContentProps) {
+export default function CreateOrderContent({ preSelectedCourier, preSelectedPaymentMode }: CreateOrderContentProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isShipped, setShipped] = useState(false);
   const [openAddPickupSheet, setOpenAddPickupSheet] = useState(false);
@@ -274,7 +275,7 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
     resolver: zodResolver(createOrderSchema) as any,
     defaultValues: {
       order_type: "SURFACE", shipment_type: "DOMESTIC", payment_mode: "PREPAID",
-      total_amount: 0, cod_amount: 0, weight: 0.5, length: 1, width: 1, height: 1,
+      total_amount: 0, cod_amount: 0, weight: 500, length: 1, width: 1, height: 1,
       pickup_location: "",
       pickup_address: { name: "", phone: "", email: "", address: "", city: "", state: "", pincode: "", },
       receiver_address: { name: "", phone: "", email: "", address: "", city: "", state: "", pincode: "", },
@@ -303,7 +304,7 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
         order_type: rateCalculatorData.order_type,
         payment_mode: rateCalculatorData.paymentType,
         total_amount: rateCalculatorData.shipmentValue,
-        weight: rateCalculatorData.weight,
+        weight: rateCalculatorData.weight * 1000,
         length: rateCalculatorData.length, width: rateCalculatorData.width, height: rateCalculatorData.height,
         pickup_address: { ...formValues.pickup_address, pincode: rateCalculatorData.pickupPincode },
         receiver_address: { ...formValues.receiver_address, pincode: rateCalculatorData.deliveryPincode },
@@ -328,6 +329,15 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
       form.setValue("total_amount", preSelectedCourier.rate);
     }
   }, [preSelectedCourier, form]);
+
+  useEffect(() => {
+    if (preSelectedPaymentMode && (preSelectedPaymentMode === "COD" || preSelectedPaymentMode === "PREPAID")) {
+      form.setValue("payment_mode", preSelectedPaymentMode);
+      if (preSelectedPaymentMode === "COD") {
+        form.setValue("cod_amount", form.getValues("total_amount") || 0);
+      }
+    }
+  }, [preSelectedPaymentMode, form]);
 
   const { data: savedAddresses, isLoading: isLoadingSavedAddr } = useQuery<SavedAddress[]>(
     http.get(["saved-addresses"], "/addresses", true)
@@ -450,7 +460,7 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
   const courierParams = useMemo(() => new URLSearchParams({
     pickup_postcode: formValues.pickup_address.pincode,
     delivery_postcode: formValues.receiver_address.pincode,
-    weight: formValues.weight?.toString() || "0.5",
+    weight: ((formValues.weight || 500) / 1000).toString(),
     cod: formValues.payment_mode === "COD" ? "1" : "0",
     declared_value: formValues.total_amount?.toString() || "0",
     length: formValues.length?.toString() || "10",
@@ -552,13 +562,6 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
       });
       return;
     }
-    if (currentStep === 3 && !formValues.pickup_location) {
-      sileo.error({
-        title: "Pickup Address Required",
-        description: "Please select a pickup location to continue."
-      });
-      return;
-    }
     setCurrentStep((prev) => Math.min(prev + 1, steps.length));
   };
 
@@ -575,10 +578,12 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
 
   function onSubmit(values: z.infer<typeof createOrderSchema>) {
     const { shipping_charge, base_shipping_charge, courier_name, ...orderData } = values;
+    const weightInKg = values.weight / 1000;
+    const orderDataWithWeight = { ...orderData, weight: weightInKg };
     checkPhoneVerificationMutation(values.pickup_address.phone, {
       onSuccess: (data: any) => {
-        if (data.success && data.verified) createOrderMutation(orderData as any);
-        else { setPendingOrderData(orderData); sendOtpMutation({ phone: values.pickup_address.phone }, { onSuccess: () => setOpenOtpDialog(true) } as any); }
+        if (data.success && data.verified) createOrderMutation(orderDataWithWeight as any);
+        else { setPendingOrderData(orderDataWithWeight); sendOtpMutation({ phone: values.pickup_address.phone }, { onSuccess: () => setOpenOtpDialog(true) } as any); }
       },
     } as any);
   }
@@ -907,6 +912,22 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
 function StepOne({ form, fields, append, remove, allSuggestions, formValues, isLoadingPickup, isPickupValid, pickupLocality, isLoadingDelivery, isDeliveryValid, deliveryLocality, shiprocketPickups, selectShiprocketPickup, setOpenAddPickupSheet }: any) {
   const { errors } = form.formState;
 
+  const selectedPickup = shiprocketPickups?.find((l: any) => l.pickup_location === formValues.pickup_location);
+
+  const handlePickupLocationChange = (val: string) => {
+    const sel = shiprocketPickups?.find((l: any) => l.pickup_location === val);
+    if (sel) {
+      form.setValue("pickup_location", val);
+      form.setValue("pickup_address.pincode", sel.pin_code?.toString() || "", { shouldValidate: true });
+      form.setValue("pickup_address.name", sel.name || "", { shouldValidate: true });
+      form.setValue("pickup_address.phone", sel.phone || "", { shouldValidate: true });
+      form.setValue("pickup_address.email", sel.email || "", { shouldValidate: true });
+      form.setValue("pickup_address.address", sel.address || "", { shouldValidate: true });
+      form.setValue("pickup_address.city", sel.city || "", { shouldValidate: true });
+      form.setValue("pickup_address.state", sel.state || "", { shouldValidate: true });
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       <div className="lg:col-span-5 space-y-6">
@@ -920,7 +941,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
           <CardContent className="space-y-6 foex">
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                <Select value={formValues.pickup_location} onValueChange={(val) => { const sel = shiprocketPickups?.find((l: any) => l.pickup_location === val); if (sel) { form.setValue("pickup_address.pincode", sel.pin_code?.toString() || "", { shouldValidate: true }); form.setValue("pickup_location", val); } }}>
+                <Select value={formValues.pickup_location} onValueChange={handlePickupLocationChange}>
                   <SelectTrigger className="h-10 text-xs w-full"><SelectValue placeholder="Saved Hubs..." /></SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -933,6 +954,19 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               </div>
               {errors.pickup_location && <p className="text-[10px] text-destructive font-bold uppercase ml-1">{errors.pickup_location.message as string}</p>}
             </div>
+
+            {selectedPickup && (
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
+                <p className="text-[10px] font-bold text-primary uppercase">Selected Pickup Address</p>
+                <div className="text-xs space-y-0.5">
+                  <p className="font-semibold">{selectedPickup.name}</p>
+                  <p className="text-muted-foreground">{selectedPickup.address}, {selectedPickup.city}</p>
+                  <p className="text-muted-foreground">{selectedPickup.state} - {selectedPickup.pin_code}</p>
+                  <p className="text-muted-foreground">{selectedPickup.phone} • {selectedPickup.email}</p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <Field data-invalid={!!errors.pickup_address?.pincode}>
                 <FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Pickup Pincode</FieldLabel>
@@ -940,7 +974,8 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
                   {...form.register("pickup_address.pincode")}
                   aria-invalid={!!errors.pickup_address?.pincode}
                   placeholder="000000"
-                  className={cn("h-10", !isPickupValid && formValues.pickup_address.pincode?.length === 6 && "border-destructive")}
+                  readOnly={!!selectedPickup}
+                  className={cn("h-10", !isPickupValid && formValues.pickup_address.pincode?.length === 6 && "border-destructive", selectedPickup && "bg-muted/50 cursor-not-allowed")}
                 />
                 {isLoadingPickup ? <p className="text-[10px] text-muted-foreground mt-1 animate-pulse">Verifying...</p> : isPickupValid ? <p className="text-[10px] text-green-600 font-bold mt-1 uppercase tracking-tight">{pickupLocality?.data?.postcode_details?.city || pickupLocality?.postcode_details?.city}</p> : formValues.pickup_address.pincode?.length === 6 && <p className="text-[10px] text-destructive font-bold mt-1 uppercase tracking-tight">Invalid</p>}
                 <FieldError errors={[errors.pickup_address?.pincode]} className="text-[10px] font-bold uppercase" />
@@ -994,27 +1029,27 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
             )}
             <Separator />
             <div className="space-y-4">
-              <Field data-invalid={!!errors.weight}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Dead Weight (KG)</FieldLabel>
+              <Field data-invalid={!!errors.weight}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Dead Weight (g)</FieldLabel>
                 <div className="relative">
                   <HugeiconsIcon icon={Package01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
-                  <Input type="number" step="0.1" {...form.register("weight", { valueAsNumber: true })} aria-invalid={!!errors.weight} className="h-11 font-bold text-lg pl-10" />
+                  <Input type="number" step="1" {...form.register("weight", { valueAsNumber: true })} aria-invalid={!!errors.weight} className="h-11 font-bold text-lg pl-10" />
                 </div>
                 <FieldError errors={[errors.weight]} className="text-[10px] font-bold uppercase" />
               </Field>
               <div className="grid grid-cols-3 gap-3">
                 <Field data-invalid={!!errors.length}>
                   <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase">Length</FieldLabel>
-                  <Input type="number" {...form.register("length", { valueAsNumber: true })} aria-invalid={!!errors.length} className="text-center h-10 px-1" placeholder="L" />
+                  <Input type="number" {...form.register("length", { valueAsNumber: true })} aria-invalid={!!errors.length} className="text-center h-10 px-1" placeholder="L" onFocus={(e) => e.target.select()} />
                   <FieldError errors={[errors.length]} className="text-[10px] font-bold uppercase" />
                 </Field>
                 <Field data-invalid={!!errors.width}>
                   <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase">Width</FieldLabel>
-                  <Input type="number" {...form.register("width", { valueAsNumber: true })} aria-invalid={!!errors.width} className="text-center h-10 px-1" placeholder="W" />
+                  <Input type="number" {...form.register("width", { valueAsNumber: true })} aria-invalid={!!errors.width} className="text-center h-10 px-1" placeholder="W" onFocus={(e) => e.target.select()} />
                   <FieldError errors={[errors.width]} className="text-[10px] font-bold uppercase" />
                 </Field>
                 <Field data-invalid={!!errors.height}>
                   <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase">Height</FieldLabel>
-                  <Input type="number" {...form.register("height", { valueAsNumber: true })} aria-invalid={!!errors.height} className="text-center h-10 px-1" placeholder="H" />
+                  <Input type="number" {...form.register("height", { valueAsNumber: true })} aria-invalid={!!errors.height} className="text-center h-10 px-1" placeholder="H" onFocus={(e) => e.target.select()} />
                   <FieldError errors={[errors.height]} className="text-[10px] font-bold uppercase" />
                 </Field>
               </div>
@@ -1032,9 +1067,9 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
                 <HugeiconsIcon icon={Package01Icon} size={18} className="text-primary" />
                 Package Contents
               </CardTitle>
-              <Button type="button" variant="secondary" size="sm" onClick={() => append({ name: "", quantity: 1, price: 0 })} className="h-8 gap-1.5  px-3">
+              {/* <Button type="button" variant="secondary" size="sm" onClick={() => append({ name: "", quantity: 1, price: 0 })} className="h-8 gap-1.5  px-3">
                 <HugeiconsIcon icon={Add01Icon} size={14} /> Add Item
-              </Button>
+              </Button> */}
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -1475,7 +1510,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase font-bold">Weight</p>
-                  <p className="font-bold">{formValues.weight} kg</p>
+                  <p className="font-bold">{formValues.weight} g</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase font-bold">Mode</p>

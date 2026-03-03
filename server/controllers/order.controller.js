@@ -600,7 +600,8 @@ const createOrder = async (req, res) => {
           franchise_commission_rate: chosenCourier.franchise_commission_rate,
           franchise_commission_amount: Math.round(parseFloat(chosenCourier.franchise_commission_amount) * 100) / 100,
           cod_amount: payment_mode === 'COD' ? Math.round(parseFloat(cod_amount || total_amount) * 100) / 100 : null,
-          remittance_status: payment_mode === 'COD' ? 'PENDING' : 'NOT_APPLICABLE'
+          remittance_status: payment_mode === 'COD' ? 'PENDING' : 'NOT_APPLICABLE',
+          pickup_location: pickup_location || null
         }
       });
       // Create multi-level referral commissions with cascading percentages
@@ -970,9 +971,9 @@ const cancelOrder = async (req, res) => {
     }
 
     // Only allow cancellation if status is PENDING or PROCESSING
-    if (order.shipment_status !== 'PENDING' && order.shipment_status !== 'PROCESSING') {
+    if (order.shipment_status !== 'PENDING' && order.shipment_status !== 'PROCESSING' && order.shipment_status !== 'MANIFESTED') {
       return res.status(400).json({
-        message: 'Order can only be cancelled if status is PENDING or PROCESSING',
+        message: 'Order can only be cancelled if status is PENDING, PROCESSING, or MANIFESTED',
         current_status: order.shipment_status
       });
     }

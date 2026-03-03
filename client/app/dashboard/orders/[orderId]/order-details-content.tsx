@@ -1,26 +1,51 @@
 "use client";
 
 import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useOrder, useLiveOrderStatus, useAssignAWB, useSchedulePickup, useGenerateLabel } from "@/lib/hooks/use-order";
+import { useCancelOrder } from "@/lib/hooks/use-orders";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { OrderDetailSkeleton } from "@/components/skeletons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { 
-  RefreshIcon, 
-  PackageIcon, 
-  DeliveryTruck01Icon, 
-  Location01Icon, 
-  LinkCircle02Icon as ExternalLinkIcon, 
-  Timer01Icon, 
-  CheckmarkCircle01Icon, 
+import {
+  RefreshIcon,
+  PackageIcon,
+  DeliveryTruck01Icon,
+  Location01Icon,
+  LinkCircle02Icon as ExternalLinkIcon,
+  CheckmarkCircle01Icon,
   CircleDot,
   Clock01Icon as ClockIcon,
   Add01Icon,
   ShippingTruck01Icon,
-  Calendar01Icon
+  Calendar01Icon,
+  Cancel01Icon,
+  AlertCircleIcon,
+  UserIcon,
+  Mail01Icon,
+  SmartPhone01Icon,
+  MapPinIcon
 } from "@hugeicons/core-free-icons";
 
 const statusColors: Record<string, string> = {
@@ -46,6 +71,19 @@ const formatDate = (date: string | null) => {
   });
 };
 
+interface TrackingActivity {
+  status: string;
+  location?: string;
+  date?: string;
+}
+
+interface ShipmentHistory {
+  id: string;
+  status: string;
+  status_date: string;
+  location?: string;
+}
+
 export default function OrderDetailsPage({
   params,
 }: {
@@ -58,8 +96,46 @@ export default function OrderDetailsPage({
   const assignAWBMutation = useAssignAWB();
   const schedulePickupMutation = useSchedulePickup();
   const generateLabelMutation = useGenerateLabel();
+  const cancelOrderMutation = useCancelOrder();
+  const { token } = useAuth();
+
+  const [showCancelDialog, setShowCancelDialog] = React.useState(false);
+  const [isCancelling, setIsCancelling] = React.useState(false);
+  const [showPickupDialog, setShowPickupDialog] = React.useState(false);
 
   const [lastUpdated, setLastUpdated] = React.useState<Date>(new Date());
+
+  const { data: pickupLocationsData, isLoading: isLoadingPickupLocations } = useQuery({
+    queryKey: ["pickup-locations", orderId],
+    queryFn: async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/addresses/pickup`, {
+        headers: {
+          "Authorization": `Bearer ${token || ""}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) throw new Error("Failed to fetch pickup locations");
+      return response.json();
+    },
+    enabled: !!order?.pickup_location && showPickupDialog && !!token
+  });
+
+  interface PickupLocation {
+    id: string;
+    pickup_location: string;
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    pin_code: string;
+  }
+
+  const matchingPickup = pickupLocationsData?.data?.shipping_address?.find(
+    (loc: PickupLocation) => loc.pickup_location === order?.pickup_location
+  );
 
   React.useEffect(() => {
     if (liveStatus) {
@@ -84,6 +160,19 @@ export default function OrderDetailsPage({
       generateLabelMutation.mutate({ orderId });
     };
 
+    const handleCancelOrder = async () => {
+      setIsCancelling(true);
+      try {
+        await cancelOrderMutation(orderId);
+        refetch();
+        setShowCancelDialog(false);
+      } catch (error) {
+        console.error("Failed to cancel order:", error);
+      } finally {
+        setIsCancelling(false);
+      }
+    };
+
   if (isLoading) return <OrderDetailSkeleton />;
   if (isError) return <div className="max-w-7xl mx-auto py-10 px-4">Error fetching order details</div>;
   if (!order) return <div className="max-w-7xl mx-auto py-10 px-4">Order not found</div>;
@@ -92,6 +181,8 @@ export default function OrderDetailsPage({
   const isCancelled = order.shipment_status === "CANCELLED";
   const hasAWB = !!order.tracking_number;
   const isPending = order.shipment_status === "PENDING";
+  const isManifested = order.shipment_status === "MANIFESTED";
+  const isCancellable = (isPending || isManifested);
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-700">
@@ -133,6 +224,18 @@ export default function OrderDetailsPage({
             >
               {schedulePickupMutation.isPending ? <HugeiconsIcon icon={RefreshIcon} className="h-4 w-4 animate-spin" /> : <HugeiconsIcon icon={ShippingTruck01Icon} className="h-4 w-4" />}
               Schedule Pickup
+            </Button>
+          )}
+
+          {isCancellable && (
+            <Button 
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowCancelDialog(true)}
+              className="rounded-xl font-bold gap-2"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
+              Cancel Order
             </Button>
           )}
 
@@ -208,6 +311,17 @@ export default function OrderDetailsPage({
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Delivered Date</p>
               <p className="font-semibold">{formatDate(order.delivered_at)}</p>
+            </div>
+            <div>
+              <Button
+                variant="outline"
+                className=""
+                onClick={() => setShowPickupDialog(true)}
+                disabled={!order?.pickup_location}
+              >
+                <p className="font-semibold">{order?.pickup_location || "N/A"}</p>
+                <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4 text-primary" />
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -292,7 +406,7 @@ export default function OrderDetailsPage({
                   {liveStatus.live_status.activities && liveStatus.live_status.activities.length > 0 && (
                     <div className="mt-4 space-y-3">
                       <p className="text-xs font-medium text-muted-foreground uppercase">Tracking Timeline</p>
-                      {liveStatus.live_status.activities.map((activity: any, index: number) => (
+                      {liveStatus.live_status.activities.map((activity: TrackingActivity, index: number) => (
                         <div key={index} className="flex gap-3 text-sm">
                           <div className="flex flex-col items-center">
                             {index === 0 ? (
@@ -330,7 +444,7 @@ export default function OrderDetailsPage({
                 {order.track_url && (
                   <a href={order.track_url} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" size="sm">
-                      <HugeiconsIcon icon={Location01Icon} className="h-4 w-4 mr-2" />
+                      <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4 mr-2" />
                       Track on Shiprocket
                     </Button>
                   </a>
@@ -343,7 +457,7 @@ export default function OrderDetailsPage({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Card className="rounded-xl shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Pickup Address</CardTitle>
+              <CardTitle className="text-lg">Sender Address</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -389,7 +503,7 @@ export default function OrderDetailsPage({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {liveStatus.history.map((history: any) => (
+                {liveStatus.history.map((history: ShipmentHistory) => (
                   <div key={history.id} className="flex gap-4 pb-4 border-b last:border-0">
                     <div className="flex flex-col items-center">
                       <HugeiconsIcon icon={CircleDot} className="h-4 w-4 text-muted-foreground" />
@@ -408,6 +522,131 @@ export default function OrderDetailsPage({
           </Card>
         )}
       </div>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this order? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, Keep Order</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelOrder}
+              disabled={isCancelling}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isCancelling ? "Cancelling..." : "Yes, Cancel Order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={showPickupDialog} onOpenChange={setShowPickupDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={Location01Icon} className="h-5 w-5 text-primary" />
+              Pickup Location Details
+            </DialogTitle>
+            <DialogDescription>
+              Complete address information for {order?.pickup_location}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingPickupLocations ? (
+            <div className="space-y-4 py-4">
+              <div className="animate-pulse space-y-3">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-4 bg-muted rounded w-1/2"></div>
+                <div className="h-4 bg-muted rounded w-2/3"></div>
+              </div>
+            </div>
+          ) : matchingPickup ? (
+            <div className="space-y-4 py-4">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <HugeiconsIcon icon={MapPinIcon} className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Location Name</p>
+                    <p className="font-semibold">{matchingPickup.pickup_location}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <HugeiconsIcon icon={UserIcon} className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Contact Person</p>
+                    <p className="font-semibold">{matchingPickup.name}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <HugeiconsIcon icon={SmartPhone01Icon} className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Phone</p>
+                      <p className="font-medium text-sm">{matchingPickup.phone}</p>
+                    </div>
+                  </div>
+
+                  {matchingPickup.email && (
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <HugeiconsIcon icon={Mail01Icon} className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase">Email</p>
+                        <p className="font-medium text-sm ">{matchingPickup.email}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <HugeiconsIcon icon={Location01Icon} className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase">Full Address</p>
+                    <p className="font-medium text-sm">{matchingPickup.address}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {matchingPickup.city}, {matchingPickup.state} - {matchingPickup.pin_code}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{matchingPickup.country}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <HugeiconsIcon icon={AlertCircleIcon} className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No pickup location details found</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                The pickup location &quot;{order?.pickup_location}&quot; was not found in your saved locations.
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowPickupDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

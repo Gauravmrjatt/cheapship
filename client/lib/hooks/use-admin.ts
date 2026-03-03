@@ -36,12 +36,51 @@ export interface AdminWithdrawalResponse {
 }
 
 export interface DashboardStats {
+  // Basic stats
   totalUsers: number;
   activeUsers: number;
   totalOrders: number;
   totalRevenue: number;
   pendingWithdrawals: number;
   recentOrders: RecentOrder[];
+  totalUserBalance: number;
+
+  // Order status counts
+  deliveredOrders: number;
+  inTransitOrders: number;
+  dispatchedOrders: number;
+  manifestedOrders: number;
+  rtoOrders: number;
+  pendingOrders: number;
+  notPickedOrders: number;
+  cancelledOrders: number;
+
+  // Metrics
+  lastMonthOrders: number;
+  totalWeightShipped: string;
+  avgDeliveryTime: string;
+  deliverySuccessRate: string;
+  returnRate: string;
+  monthlyGrowth: string;
+
+  // Disputes
+  weightDisputeOrders: number;
+  rtoDisputeOrders: number;
+  actionRequired: number;
+
+  // Graph data
+  graphData: {
+    date: string;
+    DELIVERED: number;
+    PENDING: number;
+    CANCELLED: number;
+    IN_TRANSIT: number;
+    DISPATCHED: number;
+    MANIFESTED: number;
+    RTO: number;
+    NOT_PICKED: number;
+    TOTAL: number;
+  }[];
 }
 
 export interface AdminUser {
@@ -122,6 +161,7 @@ export interface AdminOrder {
     email: string;
     mobile?: string;
   };
+  pickup_location?: string;
 }
 
 export interface AdminOrdersResponse {
