@@ -1129,6 +1129,7 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
       form.setValue("pickup_address.name", "");
       form.setValue("pickup_address.phone", "");
       form.setValue("pickup_address.email", "");
+      form.setValue("pickup_address.pincode", "");
       form.setValue("pickup_address.address", "");
       form.setValue("pickup_address.city", "");
       form.setValue("pickup_address.state", "");
