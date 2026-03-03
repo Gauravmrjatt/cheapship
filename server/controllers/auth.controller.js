@@ -877,6 +877,7 @@ const getMe = async (req, res) => {
         is_active: true,
         kyc_status: true,
         security_deposit: true,
+        upi_id: true,
         created_at: true,
         updated_at: true
       }
@@ -899,7 +900,7 @@ const updateProfile = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { name, email, mobile } = req.body;
+  const { name, email, mobile, upi_id } = req.body;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
 
@@ -926,7 +927,8 @@ const updateProfile = async (req, res) => {
       data: {
         ...(name && { name }),
         ...(email && { email }),
-        ...(mobile && { mobile })
+        ...(mobile && { mobile }),
+        ...(upi_id !== undefined && { upi_id })
       },
       select: {
         id: true,
@@ -942,6 +944,7 @@ const updateProfile = async (req, res) => {
         is_active: true,
         kyc_status: true,
         security_deposit: true,
+        upi_id: true,
         created_at: true,
         updated_at: true
       }

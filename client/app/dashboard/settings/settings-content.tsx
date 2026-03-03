@@ -33,6 +33,7 @@ import {
   ShippingTruck01Icon,
   Wallet01Icon,
   Globe02Icon,
+  CreditCardIcon,
   
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ interface UserData {
   email: string;
   mobile: string;
   kyc_status: string;
+  upi_id?: string;
 }
 
 export default function SettingsPage() {
@@ -181,7 +183,8 @@ function ProfileTab({ http }: { http: any }) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    mobile: ""
+    mobile: "",
+    upi_id: ""
   });
 
   const { data: userData, isLoading } = useQuery<UserData>(
@@ -193,7 +196,8 @@ function ProfileTab({ http }: { http: any }) {
       setFormData({
         name: userData.name || "",
         email: userData.email || "",
-        mobile: userData.mobile || ""
+        mobile: userData.mobile || "",
+        upi_id: userData.upi_id || ""
       });
     }
   }, [userData]);
@@ -259,6 +263,19 @@ function ProfileTab({ http }: { http: any }) {
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className="pl-10 h-11 rounded-xl bg-background border-none ring-1 ring-border focus:ring-2 focus:ring-primary/20 transition-all font-medium" 
                   placeholder="john@example.com" 
+                />
+              </div>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="upi_id" className="text-sm font-medium">UPI ID (for COD payouts)</Label>
+              <div className="relative group">
+                <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
+                <Input 
+                  id="upi_id" 
+                  value={formData.upi_id}
+                  onChange={(e) => setFormData({...formData, upi_id: e.target.value})}
+                  className="pl-10 h-11 rounded-xl bg-background border-none ring-1 ring-border focus:ring-2 focus:ring-primary/20 transition-all font-medium" 
+                  placeholder="yourname@upi" 
                 />
               </div>
             </div>

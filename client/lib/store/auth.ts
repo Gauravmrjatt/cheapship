@@ -12,6 +12,8 @@ export interface User {
   min_commission_rate?: string;
   max_commission_rate?: string;
   assigned_rates?: Record<string, { rate: number; slab: number }>;
+  kyc_status?: "PENDING" | "SUBMITTED" | "VERIFIED" | "REJECTED";
+  upi_id?: string;
   _count?: {
     orders: number;
   };

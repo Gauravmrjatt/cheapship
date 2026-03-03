@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Shield01Icon, Warning01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
+import { Shield01Icon, UserWarning01Icon, ArrowRight01Icon, Wallet01Icon } from "@hugeicons/core-free-icons"
 
 export default function Dashboard() {
   const { data: dashboardData, isLoading, isError, error } = useDashboard();
@@ -18,6 +18,10 @@ export default function Dashboard() {
 
   const kycStatus = user?.kyc_status;
   const needsKycAction = kycStatus === "PENDING" || kycStatus === "REJECTED";
+  
+  const hasSecurityDeposit = parseFloat((user as any)?.security_deposit || "0") > 0;
+  const hasCodEnabled = kycStatus === "VERIFIED" && hasSecurityDeposit;
+  const needsUpi = hasCodEnabled && !user?.upi_id;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -36,7 +40,7 @@ export default function Dashboard() {
               <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className={`p-3 rounded-xl shrink-0 ${kycStatus === "REJECTED" ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}>
-                    <HugeiconsIcon icon={kycStatus === "REJECTED" ? Warning01Icon : Shield01Icon} size={24} />
+                    <HugeiconsIcon icon={kycStatus === "REJECTED" ? UserWarning01Icon : Shield01Icon} size={24} />
                   </div>
                   <div>
                     <h4 className="font-bold text-foreground">
@@ -51,9 +55,37 @@ export default function Dashboard() {
                 </div>
                 <Button 
                   className={`shrink-0 ${kycStatus === "REJECTED" ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"} text-white border-none rounded-xl flex items-center gap-2`}
-                  onClick={() => router.push("/dashboard/settings?tab=kyc")}
+                  onClick={() => router.push("/dashboard/settings?tab=profile")}
                 >
                   {kycStatus === "REJECTED" ? "Resubmit KYC" : "Verify Now"}
+                  <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        {needsUpi && (
+          <div className="px-4 lg:px-6 pt-4">
+            <Card className="border-blue-200 bg-blue-50/50 shadow-none rounded-2xl">
+              <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl shrink-0 bg-blue-100 text-blue-600">
+                    <HugeiconsIcon icon={Wallet01Icon} size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-foreground">
+                      Set your UPI ID for COD payouts
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      You have COD enabled but haven't set your UPI ID. Add your UPI to receive cash on delivery payments directly to your account.
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-xl flex items-center gap-2"
+                  onClick={() => router.push("/dashboard/settings?tab=profile")}
+                >
+                  Add UPI Now
                   <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
                 </Button>
               </CardContent>

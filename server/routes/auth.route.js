@@ -50,6 +50,8 @@ router.get('/login-history', authMiddleware, authController.getLoginHistory);
  *                 type: string
  *               mobile:
  *                 type: string
+ *               upi_id:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Profile updated successfully
@@ -62,7 +64,8 @@ router.put(
   [
     check('name', 'Name cannot be empty').optional().not().isEmpty(),
     check('email', 'Please include a valid email').optional().isEmail(),
-    check('mobile', 'Mobile number cannot be empty').optional().not().isEmpty()
+    check('mobile', 'Mobile number cannot be empty').optional().not().isEmpty(),
+    check('upi_id', 'UPI ID must be valid').optional().isString()
   ],
   authController.updateProfile
 );
