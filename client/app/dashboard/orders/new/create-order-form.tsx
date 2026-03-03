@@ -921,7 +921,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
           <CardContent className="space-y-6 foex">
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                <Select value={formValues.pickup_location} onValueChange={(val) => { const sel = shiprocketPickups?.find((l: any) => l.pickup_location === val); if (sel) { selectShiprocketPickup(sel); form.setValue("pickup_location", val); } }}>
+                <Select value={formValues.pickup_location} onValueChange={(val) => { const sel = shiprocketPickups?.find((l: any) => l.pickup_location === val); if (sel) { form.setValue("pickup_address.pincode", sel.pin_code?.toString() || "", { shouldValidate: true }); form.setValue("pickup_location", val); } }}>
                   <SelectTrigger className="h-10 text-xs w-full"><SelectValue placeholder="Saved Hubs..." /></SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
