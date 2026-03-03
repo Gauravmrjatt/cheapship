@@ -712,11 +712,10 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
                         disabled={isSubmitting || (currentStep === 4 && (
                           (() => {
                             const user = queryClient.getQueryData<any>(["me"]);
-                            const orderCountData = queryClient.getQueryData<any>(["order-count"]);
-                            const isFirstOrder = orderCountData?.total === 0;
                             const isKycVerified = user?.kyc_status === 'VERIFIED';
                             const hasSecurityDeposit = parseFloat(user?.security_deposit || "0") > 0;
-                            return isFirstOrder && (!isKycVerified || !hasSecurityDeposit);
+                            // Check for all orders (not just first order)
+                            return !isKycVerified || !hasSecurityDeposit;
                           })()
                         ))}
                       >
@@ -1400,11 +1399,11 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
     http.get(["order-count"], "/orders/count", true)
   );
 
-  const isFirstOrder = orderCountData?.ordersCount === 0;
+  // Check for all orders (not just first order)
   const isKycVerified = user?.kyc_status === 'VERIFIED';
   const hasSecurityDeposit = parseFloat(user?.security_deposit || "0") > 0;
 
-  const showVerificationBlock = isFirstOrder && (!isKycVerified || !hasSecurityDeposit);
+  const showVerificationBlock = !isKycVerified || !hasSecurityDeposit;
 
   if (isShipped) return (
     <div className="py-12 text-center space-y-6">

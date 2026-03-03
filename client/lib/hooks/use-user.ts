@@ -21,6 +21,7 @@ export interface UserProfile {
   default_referred_pickup_id: string | null;
   franchise_type: string | null;
   is_active: boolean;
+  kyc_status: "PENDING" | "SUBMITTED" | "VERIFIED" | "REJECTED";
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +41,7 @@ export const useUser = () => {
         mobile: query.data.mobile,
         wallet_balance: Number(query.data.wallet_balance),
         user_type: query.data.user_type,
+        kyc_status: query.data.kyc_status,
       });
     }
   }, [query.data, setUser]);

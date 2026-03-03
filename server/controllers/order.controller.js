@@ -264,27 +264,23 @@ const createOrder = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // First shipment KYC & Security Deposit Check
+    // KYC & Security Deposit Check for ALL orders (not just first order)
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { kyc_status: true, security_deposit: true }
     });
 
-    const nonDraftOrderCount = await prisma.order.count({
-      where: { user_id: userId, is_draft: false }
-    });
-
-    // Only enforce for the first non-draft order
-    if (nonDraftOrderCount === 0 && !is_draft) {
+    // Enforce KYC and Security Deposit for all non-draft orders
+    if (!is_draft) {
       if (user.kyc_status !== 'VERIFIED') {
         return res.status(403).json({
-          message: 'KYC verification (Aadhaar/PAN) is required for your first shipment.',
+          message: 'KYC verification (Aadhaar/PAN) is required to create an order.',
           code: 'KYC_REQUIRED'
         });
       }
       if (Number(user.security_deposit || 0) <= 0) {
         return res.status(403).json({
-          message: 'Security deposit is required for your first shipment.',
+          message: 'Security deposit is required to create an order.',
           code: 'SECURITY_DEPOSIT_REQUIRED'
         });
       }
