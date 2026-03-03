@@ -87,13 +87,41 @@ export interface AdminOrder {
   shipment_type: string;
   payment_mode: string;
   total_amount: number;
+  shipping_charge?: number;
+  base_shipping_charge?: number;
   shipment_status: string;
-  created_at: string;
+  created_at?: string;
+  tracking_number?: string;
+  shiprocket_shipment_id?: string;
+  courier_name?: string;
+  label_url?: string;
+  track_url?: string;
+  manifest_url?: string;
+  cod_amount?: number;
+  is_draft?: boolean;
+  order_pickup_address?: {
+    name: string;
+    phone?: string;
+    address?: string;
+    city: string;
+    state: string;
+    country?: string;
+    pincode?: string;
+  };
+  order_receiver_address?: {
+    name: string;
+    phone?: string;
+    address?: string;
+    city: string;
+    state: string;
+    country?: string;
+    pincode?: string;
+  };
   user?: {
     name: string;
     email: string;
+    mobile?: string;
   };
-  courier_name?: string;
 }
 
 export interface AdminOrdersResponse {
@@ -184,7 +212,18 @@ export const useToggleUserStatus = (isMounted?: React.MutableRefObject<boolean>)
   });
 };
 
-export const useAdminOrders = (page: number = 1, pageSize: number = 10, status: string = "ALL", search: string = "", userId: string = "") => {
+export const useAdminOrders = (
+  page: number = 1, 
+  pageSize: number = 10, 
+  status: string = "ALL", 
+  search: string = "", 
+  userId: string = "",
+  shipmentType: string = "ALL",
+  paymentMode: string = "ALL",
+  orderType: string = "ALL",
+  from: string = "",
+  to: string = ""
+) => {
   const http = useHttp();
   const queryParams = new URLSearchParams({
     page: page.toString(),
@@ -193,7 +232,14 @@ export const useAdminOrders = (page: number = 1, pageSize: number = 10, status: 
     search,
     userId
   });
-  return useQuery(http.get<AdminOrdersResponse>(["admin-orders", page, pageSize, status, search, userId], `/admin/orders?${queryParams.toString()}`));
+  
+  if (shipmentType !== "ALL") queryParams.append("shipmentType", shipmentType);
+  if (paymentMode !== "ALL") queryParams.append("paymentMode", paymentMode);
+  if (orderType !== "ALL") queryParams.append("orderType", orderType);
+  if (from) queryParams.append("from", from);
+  if (to) queryParams.append("to", to);
+  
+  return useQuery(http.get<AdminOrdersResponse>(["admin-orders", page, pageSize, status, search, userId, shipmentType, paymentMode, orderType, from, to], `/admin/orders?${queryParams.toString()}`));
 };
 
 export const useAdminOrder = (orderId: string) => {
@@ -425,6 +471,56 @@ export const useUpdateKycStatus = () => {
       sileo.success({ title: "KYC status updated" });
       queryClient.invalidateQueries({ queryKey: ["admin-kyc"] });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
+  });
+};
+
+export const useAdminCancelOrder = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await fetch(`${BASE_URL}/api/v1/admin/orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to cancel order');
+      return response.json();
+    },
+    onSuccess: () => {
+      sileo.success({ title: "Order cancelled successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+    },
+    onError: (err: any) => {
+      sileo.error({ title: err.message || "Failed to cancel order" });
+    }
+  });
+};
+
+export const useAdminGenerateLabel = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await fetch(`${BASE_URL}/api/v1/admin/orders/${orderId}/label`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to generate label');
+      return response.json();
+    },
+    onSuccess: () => {
+      sileo.success({ title: "Label generated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+    },
+    onError: (err: any) => {
+      sileo.error({ title: err.message || "Failed to generate label" });
     }
   });
 };

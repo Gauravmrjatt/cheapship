@@ -812,7 +812,18 @@ const createOrder = async (req, res) => {
 };
 
 const getOrders = async (req, res) => {
-  const { page = 1, pageSize = 10, shipment_status, order_type, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+  const { 
+    page = 1, 
+    pageSize = 10, 
+    shipment_status, 
+    order_type, 
+    shipment_type,
+    payment_mode,
+    from,
+    to,
+    sortBy = 'created_at', 
+    sortOrder = 'desc' 
+  } = req.query;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
 
@@ -833,8 +844,28 @@ const getOrders = async (req, res) => {
     }
   }
 
-  if (order_type) {
+  if (order_type && order_type !== 'ALL') {
     where.order_type = order_type;
+  }
+
+  if (shipment_type && shipment_type !== 'ALL') {
+    where.shipment_type = shipment_type;
+  }
+
+  if (payment_mode && payment_mode !== 'ALL') {
+    where.payment_mode = payment_mode;
+  }
+
+  if (from || to) {
+    where.created_at = {};
+    if (from) {
+      where.created_at.gte = new Date(from);
+    }
+    if (to) {
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      where.created_at.lte = toDate;
+    }
   }
 
   try {

@@ -88,8 +88,8 @@ export function AddressFormDialog({
 
   const { errors } = form.formState;
 
-  const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen) {
+  useEffect(() => {
+    if (open) {
       if (editingAddress) {
         form.reset({
           name: editingAddress.name,
@@ -117,6 +117,23 @@ export function AddressFormDialog({
           is_default: false,
         });
       }
+    }
+  }, [open, editingAddress, form]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      form.reset({
+        name: "",
+        phone: "",
+        email: "",
+        complete_address: "",
+        city: "",
+        state: "",
+        pincode: "",
+        country: "India",
+        address_label: "",
+        is_default: false,
+      });
     }
     onOpenChange(newOpen);
   };

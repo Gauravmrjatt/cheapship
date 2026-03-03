@@ -87,20 +87,15 @@ export default function AddressesPage() {
 
   const shiprocketPickupLocations: ShiprocketPickupLocation[] = shiprocketPickups?.data?.shipping_address || [];
 
-  const { mutate: deleteAddress, isPending: isDeleting } = useMutation({
-    mutationFn: (id: string) => fetch(`/api/v1/addresses/${id}`, {
-      method: "DELETE",
-      headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-    }).then(res => {
-      if (!res.ok) throw new Error("Failed to delete address");
-      return res.json();
-    }),
-    onSuccess: () => {
-      sileo.success({ title: "Address deleted successfully" });
-      queryClient.invalidateQueries({ queryKey: ["saved-addresses"] });
-      setState(prev => ({ ...prev, deleteConfirmOpen: false, addressToDelete: null }));
-    },
-  });
+  const { mutate: deleteAddress, isPending: isDeleting } = useMutation(
+    http.del("/addresses", {
+      onSuccess: () => {
+        sileo.success({ title: "Address deleted successfully" });
+        queryClient.invalidateQueries({ queryKey: ["saved-addresses"] });
+        setState(prev => ({ ...prev, deleteConfirmOpen: false, addressToDelete: null }));
+      },
+    })
+  );
 
   const { mutate: saveAddress, isPending: isSavingAddress } = useMutation(
     http.post("/addresses", {
@@ -115,30 +110,15 @@ export default function AddressesPage() {
     })
   );
 
-  const { mutate: updateAddress, isPending: isUpdatingAddress } = useMutation({
-    mutationFn: (data: any) => fetch(`/api/v1/addresses/${data.id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem("token")}`
+  const { mutate: updateAddress, isPending: isUpdatingAddress } = useMutation(
+    http.put((vars: { id: string }) => `/addresses/${vars.id}`, {
+      onSuccess: () => {
+        sileo.success({ title: "Address updated successfully" });
+        queryClient.invalidateQueries({ queryKey: ["saved-addresses"] });
+        setState(prev => ({ ...prev, addressDialogOpen: false, editingAddress: null }));
       },
-      body: JSON.stringify(data)
-    }).then(async res => {
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to update address");
-      }
-      return res.json();
-    }),
-    onSuccess: () => {
-      sileo.success({ title: "Address updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ["saved-addresses"] });
-      setState(prev => ({ ...prev, addressDialogOpen: false, editingAddress: null }));
-    },
-    onError: (error: Error) => {
-      sileo.error({ title: "Error", description: error.message || "Failed to update address" });
-    },
-  });
+    })
+  );
 
   const { mutate: savePickupLocation, isPending: isSavingPickup } = useMutation(
     http.post("/addresses/pickup", {

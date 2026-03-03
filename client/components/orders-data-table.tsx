@@ -51,7 +51,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   MoreVerticalCircle01Icon,
-  LeftToRightListBulletIcon,
+  LayoutIcon,
   ArrowDown01Icon,
   Add01Icon,
   ArrowLeftDoubleIcon,
@@ -64,7 +64,10 @@ import {
   SearchIcon,
   FilterIcon,
   Calendar01Icon,
-  Cancel01Icon
+  Cancel01Icon,
+  MapPinIcon,
+  FileDownloadIcon,
+  LinkCircle02Icon
 } from "@hugeicons/core-free-icons"
 import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -90,8 +93,25 @@ export type Order = {
   track_url?: string
   manifest_url?: string
   cod_amount?: number
-  order_pickup_address?: { name: string; city: string; state: string }
-  order_receiver_address?: { name: string; city: string; state: string }
+  is_draft?: boolean
+  order_pickup_address?: { 
+    name: string; 
+    phone?: string;
+    address?: string;
+    city: string; 
+    state: string; 
+    country?: string;
+    pincode?: string;
+  }
+  order_receiver_address?: { 
+    name: string; 
+    phone?: string;
+    address?: string;
+    city: string; 
+    state: string; 
+    country?: string;
+    pincode?: string;
+  }
   user?: {
     name: string;
     email: string;
@@ -223,10 +243,43 @@ export function OrdersDataTable({
         const receiver = row.original.order_receiver_address;
         if (!pickup || !receiver) return <span className="text-muted-foreground text-xs">-</span>;
         return (
-          <div className="flex flex-col text-[10px] text-muted-foreground max-w-[150px] truncate">
-            <span className="font-semibold text-foreground truncate">{pickup.city}, {pickup.state}</span>
-            <span className="truncate">to {receiver.city}, {receiver.state}</span>
-          </div>
+          <Popover>
+            <PopoverTrigger render={
+              <div className="flex flex-col items-start cursor-help hover:text-primary transition-colors max-w-[150px]">
+                <span className="font-semibold text-foreground text-xs truncate">{pickup.city}, {pickup.state}</span>
+                <span className="text-[10px] text-muted-foreground truncate">to {receiver.city}, {receiver.state}</span>
+              </div>
+            } />
+            <PopoverContent className="w-72 p-3" side="right">
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                    <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                    Sender
+                  </div>
+                  <div className="text-xs space-y-0.5">
+                    <p className="font-medium">{pickup.name}</p>
+                    {pickup.address && <p>{pickup.address}</p>}
+                    <p>{pickup.city}, {pickup.state} - {pickup.pincode}</p>
+                    {pickup.phone && <p className="text-blue-600 font-medium">{pickup.phone}</p>}
+                  </div>
+                </div>
+                <Separator />
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                    <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                    Receiver
+                  </div>
+                  <div className="text-xs space-y-0.5">
+                    <p className="font-medium">{receiver.name}</p>
+                    {receiver.address && <p>{receiver.address}</p>}
+                    <p>{receiver.city}, {receiver.state} - {receiver.pincode}</p>
+                    {receiver.phone && <p className="text-blue-600 font-medium">{receiver.phone}</p>}
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         )
       }
     },
@@ -295,36 +348,73 @@ export function OrdersDataTable({
         );
       },
     },
-    {
-      accessorKey: "tracking_number",
-      header: "AWB & Label",
-      cell: ({ row }) => {
-        const tracking = row.original.tracking_number;
-        const trackUrl = row.original.track_url;
-        const labelUrl = row.original.label_url;
-        return (
-          <div className="flex flex-col gap-1">
-            {tracking ? (
-              <a
-                href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-mono hover:underline text-primary font-medium bg-primary/10 px-1 py-0.5 rounded w-fit"
-              >
-                {tracking.slice(0, 12)}...
-              </a>
-            ) : <span className="text-muted-foreground text-[10px]">-</span>}
-            {labelUrl && (
-              <a href={labelUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] hover:underline text-blue-500 font-medium w-fit">
-                Label
-              </a>
-            )}
-          </div>
-        );
+   {
+        accessorKey: "tracking_number",
+        header: "AWB & Label",
+        cell: ({ row }) => {
+          const tracking = row.original.tracking_number;
+          const trackUrl = row.original.track_url;
+          const labelUrl = row.original.label_url;
+  
+          return (
+            <div className="flex flex-col gap-2">
+              {tracking ? (
+                <a
+                  href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="
+              inline-flex items-center
+              text-xs font-mono font-medium
+              text-primary
+              bg-primary/10
+              hover:bg-primary/20
+              hover:text-primary
+              transition-colors
+              px-2 py-1
+              rounded-md
+              w-full
+            "
+                >
+                  {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
+                </a>
+              ) : (
+                <span className="text-muted-foreground text-center text-xs">-</span>
+              )}
+  
+              {labelUrl && (
+            <a
+    href={labelUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="
+      inline-flex items-center
+      text-xs font-medium
+      text-foreground
+      bg-muted/40
+      border border-border
+      hover:bg-muted
+      hover:text-foreground
+      transition-colors
+      px-2 py-2
+      rounded-xl
+      w-full
+    "
+  >
+    Label
+    <HugeiconsIcon
+      icon={FileDownloadIcon}
+      className="ml-auto size-3 text-muted-foreground"
+    />
+  </a>
+              )}
+            </div>
+          );
+        },
       },
-    },
     {
       id: "actions",
+      header: "Actions",
       cell: ({ row }) => <ActionsCell row={row} handleCancelOrder={handleCancelOrder} />,
     },
   ], [handleCancelOrder]);
@@ -482,9 +572,9 @@ export function OrdersDataTable({
           </div>
 
           <Popover>
-            <PopoverTrigger render={<Button variant="outline" size="sm" />}>
-              <HugeiconsIcon icon={Calendar01Icon} className="size-4" />
-              <span className="hidden lg:inline">Date Range</span>
+            <PopoverTrigger render={<Button variant="outline" size="sm" ><HugeiconsIcon icon={Calendar01Icon} className="size-4" />
+              <span className="hidden lg:inline">Date Range</span></Button>}>
+              
             </PopoverTrigger>
             <PopoverContent className="w-80 p-4" align="end">
               <div className="space-y-4">
@@ -518,9 +608,9 @@ export function OrdersDataTable({
           </Popover>
 
           <Popover>
-            <PopoverTrigger render={<Button variant="outline" size="sm" />}>
-              <HugeiconsIcon icon={FilterIcon} className="size-4" />
-              <span className="hidden lg:inline">Filters</span>
+            <PopoverTrigger render={<Button variant="outline" size="sm" > <HugeiconsIcon icon={FilterIcon} className="size-4" />
+              <span className="hidden lg:inline">Filters</span></Button>}>
+             
               {activeFiltersCount > 0 && (
                 <Badge variant="secondary" className="ml-2 h-5 rounded-full px-1">
                   {activeFiltersCount}
@@ -580,10 +670,10 @@ export function OrdersDataTable({
 
           <DropdownMenu>
             <DropdownMenuTrigger
-              render={<Button variant="outline" size="sm" />}
+              render={<Button variant="outline" size="sm" > <HugeiconsIcon icon={LayoutIcon} strokeWidth={2} data-icon="inline-start" />
+              <span className="hidden lg:inline">Columns</span></Button>}
             >
-              <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} data-icon="inline-start" />
-              <span className="hidden lg:inline">Columns</span>
+             
               <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
@@ -602,7 +692,7 @@ export function OrdersDataTable({
           {table.getFilteredSelectedRowModel().rows.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button size="sm" variant="secondary" className="gap-2 border shadow-sm" />}>
-                <HugeiconsIcon icon={LeftToRightListBulletIcon} className="size-4" />
+                <HugeiconsIcon icon={LayoutIcon} className="size-4" />
                 <span className="hidden lg:inline">Bulk Actions</span>
                 <Badge className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full p-0 text-[10px]">{table.getFilteredSelectedRowModel().rows.length}</Badge>
               </DropdownMenuTrigger>

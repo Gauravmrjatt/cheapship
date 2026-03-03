@@ -53,6 +53,8 @@ interface UsersTableProps {
   data: AdminUser[];
   isLoading: boolean;
   pageSize: number;
+  columnVisibility: VisibilityState;
+  onColumnVisibilityChange: (visibility: VisibilityState) => void;
   onOpenBoundsSheet: (userId: string, userName: string, currentMin?: number, currentMax?: number) => void;
   onOpenCustomRatesSheet: (userId: string, userName: string, currentRates?: any) => void;
 }
@@ -61,13 +63,14 @@ export function UsersTable({
   data,
   isLoading,
   pageSize,
+  columnVisibility,
+  onColumnVisibilityChange,
   onOpenBoundsSheet,
   onOpenCustomRatesSheet,
 }: UsersTableProps) {
   const router = useRouter();
   const isMounted = React.useRef(true);
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
   const toggleStatusMutation = useToggleUserStatus(isMounted);
@@ -110,6 +113,7 @@ export function UsersTable({
       enableHiding: false,
     },
     {
+      id: "name",
       accessorKey: "name",
       header: "User Details",
       cell: ({ row }) => (
@@ -120,6 +124,7 @@ export function UsersTable({
       ),
     },
     {
+      id: "email",
       accessorKey: "email",
       header: "Contact",
       cell: ({ row }) => (
@@ -130,6 +135,7 @@ export function UsersTable({
       ),
     },
     {
+      id: "wallet_balance",
       accessorKey: "wallet_balance",
       header: () => <div className="text-right">Balance</div>,
       cell: ({ row }) => (
@@ -139,6 +145,7 @@ export function UsersTable({
       ),
     },
     {
+      id: "security_deposit",
       accessorKey: "security_deposit",
       header: () => <div className="text-right">Deposit</div>,
       cell: ({ row }) => (
@@ -159,6 +166,7 @@ export function UsersTable({
       ),
     },
     {
+      id: "is_active",
       accessorKey: "is_active",
       header: "Status",
       cell: ({ row }) => (
@@ -234,16 +242,6 @@ export function UsersTable({
                 <HugeiconsIcon icon={PercentIcon} size={14} className="mr-2" />
                 Set Commission Bounds
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onOpenCustomRatesSheet(
-                  row.original.id,
-                  row.original.name,
-                  row.original.assigned_rates
-                )}
-              >
-                <HugeiconsIcon icon={DeliveryTruck01Icon} size={14} className="mr-2" />
-                Set Service Overrides
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push(`/admin/transactions?userId=${row.original.id}`)}>
                 <HugeiconsIcon icon={Money03Icon} size={14} className="mr-2" />
                 View Transactions
@@ -270,7 +268,10 @@ export function UsersTable({
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: (updater) => {
+      const newValue = typeof updater === 'function' ? updater(columnVisibility) : updater;
+      onColumnVisibilityChange(newValue);
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),

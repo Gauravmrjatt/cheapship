@@ -73,11 +73,11 @@ export const ActionsCell = ({
             variant="ghost"
             className="data-open:bg-muted text-muted-foreground flex size-8"
             size="icon"
-          />
+          > <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
+            <span className="sr-only">Open menu</span></Button>
         }
       >
-        <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
-        <span className="sr-only">Open menu</span>
+
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuItem render={<Link href={`/dashboard/orders/${row.original.id}`} />}>

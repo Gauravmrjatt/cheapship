@@ -31,10 +31,11 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowRightDoubleIcon,
-  FilterIcon,
   LeftToRightListBulletIcon,
   ArrowDown01Icon,
 } from "@hugeicons/core-free-icons";
+
+import { VisibilityState } from "@tanstack/react-table";
 
 import { UsersTable } from "./users-table";
 import { CommissionBoundsSheet } from "./commission-bounds-sheet";
@@ -45,6 +46,7 @@ export default function AdminUsersPage() {
   const [pageSize, setPageSize] = React.useState(10);
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("ALL");
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
 
   const { data, isLoading } = useAdminUsers(page, pageSize, search, statusFilter);
 
@@ -122,10 +124,11 @@ export default function AdminUsersPage() {
               />
             </div>
 
-            <Button variant="outline" size="sm">
+            {/* Filters button commented out - functionality not implemented */}
+            {/* <Button variant="outline" size="sm">
               <HugeiconsIcon icon={FilterIcon} strokeWidth={2} />
               <span className="hidden lg:inline">Filters</span>
-            </Button>
+            </Button> */}
 
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
@@ -133,11 +136,61 @@ export default function AdminUsersPage() {
                 <span className="hidden lg:inline">Columns</span>
                 <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                {/* Simplified column visibility - would normally need table instance */}
-                <DropdownMenuCheckboxItem checked={true}>Name</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem checked={true}>Email</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem checked={true}>Status</DropdownMenuCheckboxItem>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["select"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, select: checked }))}
+                >
+                  Select
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["name"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, name: checked }))}
+                >
+                  User Details
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["email"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, email: checked }))}
+                >
+                  Contact
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["wallet_balance"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, wallet_balance: checked }))}
+                >
+                  Balance
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["security_deposit"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, security_deposit: checked }))}
+                >
+                  Deposit
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["orders"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, orders: checked }))}
+                >
+                  Orders
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["is_active"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, is_active: checked }))}
+                >
+                  Status
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["commission_bounds"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, commission_bounds: checked }))}
+                >
+                  Commission Bounds
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["actions"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, actions: checked }))}
+                >
+                  Actions
+                </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -148,6 +201,8 @@ export default function AdminUsersPage() {
             data={data?.data || []}
             isLoading={isLoading}
             pageSize={pageSize}
+            columnVisibility={columnVisibility}
+            onColumnVisibilityChange={setColumnVisibility}
             onOpenBoundsSheet={handleOpenBoundsSheet}
             onOpenCustomRatesSheet={handleOpenCustomRatesSheet}
           />

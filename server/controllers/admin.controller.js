@@ -99,7 +99,11 @@ const getDashboardStats = async (req, res) => {
       prisma.order.findMany({
         take: 5,
         orderBy: { created_at: 'desc' },
-        include: { user: { select: { name: true, email: true } } }
+        include: {
+          user: {
+            select: { name: true, email: true, mobile: true }
+          }
+        }
       }),
       prisma.user.aggregate({
         where: { user_type: 'NORMAL' },
@@ -165,6 +169,8 @@ const getUsers = async (req, res) => {
           wallet_balance: true,
           is_active: true,
           created_at: true,
+          min_commission_rate: true,
+          max_commission_rate: true,
           _count: {
             select: { orders: true }
           }
@@ -173,8 +179,14 @@ const getUsers = async (req, res) => {
       prisma.user.count({ where })
     ]);
 
+    const usersData = users.map(user => ({
+      ...user,
+      min_commission_rate: user.min_commission_rate ? parseFloat(user.min_commission_rate) : null,
+      max_commission_rate: user.max_commission_rate ? parseFloat(user.max_commission_rate) : null
+    }));
+
     res.json({
-      data: users,
+      data: usersData,
       pagination: {
         total,
         totalPages: Math.ceil(total / pageSizeNum),
@@ -209,7 +221,18 @@ const toggleUserStatus = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  const { page = 1, pageSize = 10, status, search, userId } = req.query;
+  const { 
+    page = 1, 
+    pageSize = 10, 
+    status, 
+    search, 
+    userId,
+    shipmentType,
+    paymentMode,
+    orderType,
+    from,
+    to
+  } = req.query;
 
   const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
@@ -223,6 +246,30 @@ const getAllOrders = async (req, res) => {
 
   if (userId) {
     where.user_id = userId;
+  }
+
+  if (shipmentType && shipmentType !== 'ALL') {
+    where.shipment_type = shipmentType;
+  }
+
+  if (paymentMode && paymentMode !== 'ALL') {
+    where.payment_mode = paymentMode;
+  }
+
+  if (orderType && orderType !== 'ALL') {
+    where.order_type = orderType;
+  }
+
+  if (from || to) {
+    where.created_at = {};
+    if (from) {
+      where.created_at.gte = new Date(from);
+    }
+    if (to) {
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999);
+      where.created_at.lte = toDate;
+    }
   }
 
   if (search) {
@@ -242,8 +289,10 @@ const getAllOrders = async (req, res) => {
         orderBy: { created_at: 'desc' },
         include: {
           user: {
-            select: { name: true, email: true }
-          }
+            select: { name: true, email: true, mobile: true }
+          },
+          order_pickup_address: true,
+          order_receiver_address: true
         }
       }),
       prisma.order.count({ where })
@@ -302,11 +351,17 @@ const getWithdrawals = async (req, res) => {
           }
         }
       }),
-      prisma.commissionWithdrawal.count({ where })
+      prisma.user.count({ where })
     ]);
 
+    const usersData = users.map(user => ({
+      ...user,
+      min_commission_rate: user.min_commission_rate ? parseFloat(user.min_commission_rate) : null,
+      max_commission_rate: user.max_commission_rate ? parseFloat(user.max_commission_rate) : null
+    }));
+
     res.json({
-      data: withdrawals,
+      data: usersData,
       pagination: {
         total,
         totalPages: Math.ceil(total / pageSizeNum),

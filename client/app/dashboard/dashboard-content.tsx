@@ -21,7 +21,7 @@ export default function Dashboard() {
   
   const hasSecurityDeposit = parseFloat((user as any)?.security_deposit || "0") > 0;
   const hasCodEnabled = kycStatus === "VERIFIED" && hasSecurityDeposit;
-  const needsUpi = hasCodEnabled && !user?.upi_id;
+  const needsUpi = !user?.upi_id;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -36,7 +36,7 @@ export default function Dashboard() {
       <div className="@container/main flex flex-1 flex-col gap-2">
         {needsKycAction && (
           <div className="px-4 lg:px-6 pt-4">
-            <Card className={kycStatus === "REJECTED" ? "border-red-200 bg-red-50/50 shadow-none rounded-2xl" : "border-amber-200 bg-amber-50/50 shadow-none rounded-2xl"}>
+            <Card className={kycStatus === "REJECTED" ? "border-red-600 bg-red-600/10 shadow-none rounded-2xl" : "border-amber-600 bg-amber-600/10 shadow-none rounded-2xl"}>
               <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className={`p-3 rounded-xl shrink-0 ${kycStatus === "REJECTED" ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}>
@@ -66,7 +66,7 @@ export default function Dashboard() {
         )}
         {needsUpi && (
           <div className="px-4 lg:px-6 pt-4">
-            <Card className="border-blue-200 bg-blue-50/50 shadow-none rounded-2xl">
+            <Card className="border-0  bg-blue-600/10 shadow-none rounded-2xl">
               <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="p-3 rounded-xl shrink-0 bg-blue-100 text-blue-600">

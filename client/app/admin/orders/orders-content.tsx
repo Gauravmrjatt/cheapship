@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense } from "react";
+import Link from "next/link";
 import { TableSkeleton } from "@/components/skeletons";
 import {
   flexRender,
@@ -14,24 +15,25 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useAdminOrders } from "@/lib/hooks/use-admin";
+import { useAdminOrders, useAdminCancelOrder, useAdminGenerateLabel, AdminOrder } from "@/lib/hooks/use-admin";
 import { useSearchParams } from "next/navigation";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Order } from "@/components/orders-data-table";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -49,34 +51,68 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { 
-  SearchIcon, 
-  Loading03Icon, 
-  CheckmarkCircle01Icon, 
+import { sileo } from "sileo";
+import {
+  SearchIcon,
+  Loading03Icon,
+  CheckmarkCircle01Icon,
   ArrowLeftDoubleIcon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowRightDoubleIcon,
   FilterIcon,
-  LeftToRightListBulletIcon,
   ArrowDown01Icon,
   DeliveryTruck01Icon,
+  Calendar01Icon,
+  Cancel01Icon,
+  Add01Icon,
+  MoreVerticalCircle01Icon,
+  LayoutIcon,
+  MapPinIcon,
+  FileDownloadIcon,
+  LinkCircle02Icon
 } from "@hugeicons/core-free-icons";
+
+interface AdminOrderFilters {
+  shipment_status: string;
+  search: string;
+  shipment_type: string;
+  payment_mode: string;
+  order_type: string;
+  from: string;
+  to: string;
+}
 
 function OrdersContent() {
   const searchParams = useSearchParams();
-  
+
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
-  const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("ALL");
+  const [filters, setFilters] = React.useState<AdminOrderFilters>({
+    shipment_status: "ALL",
+    search: "",
+    shipment_type: "ALL",
+    payment_mode: "ALL",
+    order_type: "ALL",
+    from: "",
+    to: "",
+  });
   const [userIdFilter, setUserIdFilter] = React.useState("");
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  
-  // Sync userId from searchParams after mount
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  const cancelOrder = useAdminCancelOrder();
+  const generateLabel = useAdminGenerateLabel();
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   React.useEffect(() => {
     const userIdFromQuery = searchParams.get("userId") || "";
     if (userIdFromQuery) {
@@ -84,29 +120,78 @@ function OrdersContent() {
     }
   }, [searchParams]);
 
-  const { data, isLoading } = useAdminOrders(page, pageSize, statusFilter, search, userIdFilter);
+  const { data, isLoading } = useAdminOrders(
+    page,
+    pageSize,
+    filters.shipment_status,
+    filters.search,
+    userIdFilter,
+    filters.shipment_type,
+    filters.payment_mode,
+    filters.order_type,
+    filters.from,
+    filters.to
+  );
+
+  const handleFilterUpdate = React.useCallback((key: keyof AdminOrderFilters, value: string) => {
+    if (!isMounted) return;
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPage(1);
+  }, [isMounted]);
 
   const handleStatusChange = (status: string | null) => {
     if (status) {
-      setStatusFilter(status);
-      setPage(1);
+      handleFilterUpdate("shipment_status", status);
     }
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
+  const clearAllFilters = React.useCallback(() => {
+    if (!isMounted) return;
+    setFilters({
+      shipment_status: "ALL",
+      search: "",
+      shipment_type: "ALL",
+      payment_mode: "ALL",
+      order_type: "ALL",
+      from: "",
+      to: "",
+    });
     setPage(1);
-  };
+  }, [isMounted]);
+
+  const activeFiltersCount = Object.entries(filters).filter(
+    ([key, value]) => value && value !== "ALL" && key !== "search" && key !== "shipment_status"
+  ).length;
 
   const tableData = React.useMemo(() => data?.data || [], [data?.data]);
 
-  const columns = React.useMemo<ColumnDef<Order>[]>(() => [
+  const handleCancelOrder = React.useCallback(async (orderId: string) => {
+    try {
+      await cancelOrder.mutateAsync(orderId);
+    } catch {
+      // Error handled in mutation
+    }
+  }, [cancelOrder]);
+
+  const handleGenerateLabel = React.useCallback(async (orderId: string) => {
+    try {
+      await generateLabel.mutateAsync(orderId);
+    } catch {
+      // Error handled in mutation
+    }
+  }, [generateLabel]);
+
+  const columns = React.useMemo<ColumnDef<AdminOrder>[]>(() => [
     {
       id: "select",
       header: ({ table }) => (
         <div className="flex items-center justify-center">
           <Checkbox
             checked={table.getIsAllPageRowsSelected()}
+            indeterminate={
+              table.getIsSomePageRowsSelected() &&
+              !table.getIsAllPageRowsSelected()
+            }
             onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
             aria-label="Select all"
           />
@@ -128,14 +213,22 @@ function OrdersContent() {
       accessorKey: "id",
       header: "Shipment ID",
       cell: ({ row }) => (
-        <span className="text-foreground font-medium uppercase">
-          #{row.original.id.toString().slice(0, 8)}
-        </span>
+        <div className="flex flex-col gap-1">
+          <Link
+            href={`/dashboard/orders/${row.original.id}`}
+            className="text-foreground hover:underline font-medium"
+          >
+            #{row.original.id.slice(0, 8)}
+          </Link>
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {row.original.created_at ? new Date(row.original.created_at).toLocaleString() : "-"}
+          </span>
+        </div>
       ),
       enableHiding: false,
     },
     {
-      accessorKey: "user.name",
+      accessorKey: "user",
       header: "User",
       cell: ({ row }) => {
         const user = row.original.user;
@@ -143,22 +236,105 @@ function OrdersContent() {
           <div className="flex flex-col">
             <span className="text-xs font-medium text-foreground">{user?.name}</span>
             <span className="text-[10px] text-muted-foreground">{user?.email}</span>
+            {user?.mobile && (
+              <span className="text-[10px] text-blue-600 font-medium">{user.mobile}</span>
+            )}
           </div>
         );
       },
     },
+    // {
+    //   accessorKey: "order_type",
+    //   header: "Type",
+    //   cell: ({ row }) => (
+    //     <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
+    //       {row.original.order_type}
+    //     </Badge>
+    //   ),
+    // },
+    // {
+    //   accessorKey: "shipment_type",
+    //   header: "Service",
+    //   cell: ({ row }) => (
+    //     <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
+    //       {row.original.shipment_type}
+    //     </Badge>
+    //   ),
+    // },
     {
-      accessorKey: "courier_name",
-      header: "Courier",
+      id: "routing",
+      header: "Routing",
       cell: ({ row }) => {
-        const order = row.original;
+        const pickup = row.original.order_pickup_address;
+        const receiver = row.original.order_receiver_address;
+
+        if (!pickup || !receiver) return <span className="text-muted-foreground text-xs">-</span>;
+
         return (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium">{order.courier_name || "N/A"}</span>
-            <Badge variant="outline" className="text-[9px] uppercase font-bold py-0">{order.shipment_type}</Badge>
-          </div>
+          <Popover>
+            <PopoverTrigger render={
+              <div className="flex flex-col items-start cursor-help hover:text-primary transition-colors">
+                <span className="font-semibold text-foreground text-xs">{pickup.city}, {pickup.state}</span>
+                <span className="text-[10px] text-muted-foreground">to {receiver.city}, {receiver.state}</span>
+              </div>
+            } />
+            <PopoverContent className="w-72 p-3" side="left">
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                    <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                    Sender
+                  </div>
+                  <div className="text-xs space-y-0.5">
+                    <p className="font-medium">{pickup.name}</p>
+                    {pickup.address && <p>{pickup.address}</p>}
+                    <p>{pickup.city}, {pickup.state} - {pickup.pincode}</p>
+                    {pickup.phone && <p className="text-blue-600 font-medium">{pickup.phone}</p>}
+                  </div>
+                </div>
+                <Separator />
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                    <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                    Receiver
+                  </div>
+                  <div className="text-xs space-y-0.5">
+                    <p className="font-medium">{receiver.name}</p>
+                    {receiver.address && <p>{receiver.address}</p>}
+                    <p>{receiver.city}, {receiver.state} - {receiver.pincode}</p>
+                    {receiver.phone && <p className="text-blue-600 font-medium">{receiver.phone}</p>}
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         );
-      },
+      }
+    },
+    {
+      accessorKey: "payment_mode",
+      header: "Payment",
+      cell: ({ row }) => (
+        <span className="capitalize">{row.original.payment_mode}</span>
+      ),
+    },
+    {
+      accessorKey: "total_amount",
+      header: () => <div className="text-right">Amount</div>,
+      cell: ({ row }) => (
+        <div className="text-right tabular-nums font-bold text-xs">
+          ₹{Number(row.original.total_amount).toLocaleString("en-IN")}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "cod_amount",
+      header: () => <div className="text-right">COD</div>,
+      cell: ({ row }) => (
+        <div className="text-right tabular-nums">
+          {row.original.payment_mode === "COD" && row.original.cod_amount ? `₹${Number(row.original.cod_amount).toLocaleString("en-IN")}` : "-"}
+        </div>
+      ),
     },
     {
       accessorKey: "shipment_status",
@@ -181,74 +357,156 @@ function OrdersContent() {
       },
     },
     {
-      accessorKey: "total_amount",
-      header: () => <div className="text-right">Final Rate</div>,
+      accessorKey: "tracking_number",
+      header: "AWB & Label",
       cell: ({ row }) => {
-        const order = row.original as any;
+        const tracking = row.original.tracking_number;
+        const trackUrl = row.original.track_url;
+        const labelUrl = row.original.label_url;
+
         return (
-          <div className="text-right tabular-nums font-bold text-xs">
-            ₹{Number(order.total_amount).toLocaleString("en-IN")}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: "price_breakdown",
-      header: () => <div className="text-right">Base Rate</div>,
-      cell: ({ row }) => {
-        const order = row.original as any;
-        const baseCharge = order.price_breakdown?.base_shipping_charge;
-        return (
-          <div className="text-right tabular-nums text-xs text-muted-foreground">
-            {baseCharge ? `₹${Number(baseCharge).toLocaleString("en-IN")}` : "-"}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: "commission",
-      header: () => <div className="text-right">Commission</div>,
-      cell: ({ row }) => {
-        const order = row.original as any;
-        const breakdown = order.price_breakdown;
-        if (!breakdown) return <div className="text-right text-xs">-</div>;
-        
-        const globalAmount = Number(breakdown.global_commission_amount || 0);
-        const franchiseAmount = Number(breakdown.franchise_commission_amount || 0);
-        const totalCommission = globalAmount + franchiseAmount;
-        
-        return (
-          <div className="text-right tabular-nums text-xs">
-            <span className="text-orange-600 dark:text-orange-400">
-              ₹{totalCommission.toLocaleString("en-IN")}
-            </span>
-            {breakdown.global_commission_rate > 0 && (
-              <span className="text-[10px] text-muted-foreground ml-1">
-                (G:{breakdown.global_commission_rate}%)
-              </span>
+          <div className="flex flex-col gap-2">
+            {tracking ? (
+              <a
+                href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+            inline-flex items-center
+            text-xs font-mono font-medium
+            text-primary
+            bg-primary/10
+            hover:bg-primary/20
+            hover:text-primary
+            transition-colors
+            px-2 py-1
+            rounded-md
+            w-full
+          "
+              >
+                {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
+              </a>
+            ) : (
+              <span className="text-muted-foreground text-center text-xs">-</span>
             )}
-            {breakdown.franchise_commission_rate > 0 && (
-              <span className="text-[10px] text-muted-foreground ml-1">
-                (F:{breakdown.franchise_commission_rate}%)
-              </span>
+
+            {labelUrl && (
+          <a
+  href={labelUrl}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="
+    inline-flex items-center
+    text-xs font-medium
+    text-foreground
+    bg-muted/40
+    border border-border
+    hover:bg-muted
+    hover:text-foreground
+    transition-colors
+    px-2 py-2
+    rounded-xl
+    w-full
+  "
+>
+  Label
+  <HugeiconsIcon
+    icon={FileDownloadIcon}
+    className="ml-auto size-3 text-muted-foreground"
+  />
+</a>
             )}
           </div>
         );
       },
     },
     {
-      accessorKey: "created_at",
-      header: "Date",
+      accessorKey: "courier_name",
+      header: "Courier",
       cell: ({ row }) => {
-        const order = row.original as any;
+        const order = row.original;
         return (
-          <div className="text-[10px] text-muted-foreground font-medium">
-            {new Date(order.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs font-medium">{order.courier_name || "N/A"}</span>
+            <div>
+              <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
+                {row.original.order_type}
+              </Badge>
+              <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
+                {row.original.shipment_type}
+              </Badge>
+            </div>
           </div>
         );
       },
     },
-  ], []);
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const order = row.original;
+        const isPending = order.shipment_status === "PENDING";
+        const hasLabel = !!order.label_url;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger render={
+              <Button variant="ghost" size="icon" className="size-8">
+                <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
+              </Button>
+            } />
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem>
+                <Link href={`/dashboard/orders/${order.id}`} className="w-full">
+                  View Details
+                </Link>
+              </DropdownMenuItem>
+              {order.tracking_number && order.track_url && (
+                <DropdownMenuItem>
+                  <a href={order.track_url} target="_blank" rel="noopener noreferrer" className="w-full">
+                    Track Shipment
+                  </a>
+                </DropdownMenuItem>
+              )}
+              {hasLabel ? (
+                <DropdownMenuItem>
+                  <a href={order.label_url} target="_blank" rel="noopener noreferrer" className="w-full">
+                    Download Label
+                  </a>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() => handleGenerateLabel(order.id)}
+                  disabled={generateLabel.isPending}
+                >
+                  {generateLabel.isPending ? "Generating..." : "Generate Label"}
+                </DropdownMenuItem>
+              )}
+              {order.is_draft && (
+                <DropdownMenuItem>
+                  <Link href={`/dashboard/orders/new?id=${order.id}`} className="w-full text-primary font-bold">
+                    Ship Now
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              {isPending && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => handleCancelOrder(order.id)}
+                    disabled={cancelOrder.isPending}
+                  >
+                    {cancelOrder.isPending ? "Cancelling..." : "Cancel Order"}
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ], [handleCancelOrder, handleGenerateLabel, cancelOrder.isPending, generateLabel.isPending]);
 
   const table = useReactTable({
     data: tableData,
@@ -268,24 +526,76 @@ function OrdersContent() {
     getSortedRowModel: getSortedRowModel(),
   });
 
+  const handleExportCSV = React.useCallback(() => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows.map(r => r.original);
+    if (selectedRows.length === 0) return;
+
+    const headers = ["Order ID", "Date", "Service", "Protocol", "Payment", "Amount", "COD", "Status", "AWB", "Pickup City", "Receiver City"];
+    const csvContent = [
+      headers.join(","),
+      ...selectedRows.map(row => [
+        row.id,
+        row.created_at ? new Date(row.created_at).toLocaleString() : "",
+        row.shipment_type,
+        row.order_type,
+        row.payment_mode,
+        row.total_amount,
+        row.cod_amount || 0,
+        row.shipment_status,
+        row.tracking_number || "",
+        row.order_pickup_address?.city || "",
+        row.order_receiver_address?.city || ""
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `cheapship_orders_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    sileo.success({ title: `Exported ${selectedRows.length} orders` });
+  }, [table]);
+
+  const handleBulkLabels = React.useCallback(() => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows.map(r => r.original);
+    const labelUrls = selectedRows.map(r => r.label_url).filter(Boolean);
+
+    if (labelUrls.length === 0) {
+      sileo.error({ title: "No labels found for selected orders." });
+      return;
+    }
+
+    sileo.info({ title: `Opening ${labelUrls.length} labels in new tabs... Ensure popups are allowed.` });
+
+    labelUrls.forEach((url, i) => {
+      setTimeout(() => {
+        window.open(url, "_blank");
+      }, i * 300);
+    });
+  }, [table]);
+
   return (
     <div className="w-full space-y-0 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1 px-4 lg:px-6">
+      <div className="flex flex-col gap-1 ">
         <p className="text-muted-foreground">
-          {userIdFilter 
-            ? `Viewing orders for user ID: ${userIdFilter}` 
+          {userIdFilter
+            ? `Viewing orders for user ID: ${userIdFilter}`
             : ""}
         </p>
       </div>
-     
+
       <Tabs
-        value={statusFilter}
+        value={filters.shipment_status}
         onValueChange={handleStatusChange}
         className="w-full flex-col justify-start gap-6"
       >
         <div className="flex items-center justify-between ">
           <div className="flex items-center gap-4">
-            <Select value={statusFilter} onValueChange={handleStatusChange}>
+            <Select value={filters.shipment_status} onValueChange={handleStatusChange}>
               <SelectTrigger className="flex w-fit lg:hidden" size="sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -293,9 +603,11 @@ function OrdersContent() {
                 <SelectGroup>
                   <SelectItem value="ALL">All Orders</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="PROCESSING">Processing</SelectItem>
+                  <SelectItem value="MANIFESTED">Manifested</SelectItem>
                   <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
                   <SelectItem value="DELIVERED">Delivered</SelectItem>
+                  <SelectItem value="RTO">RTO</SelectItem>
+                  <SelectItem value="DRAFT">Drafts</SelectItem>
                   <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectGroup>
               </SelectContent>
@@ -304,8 +616,11 @@ function OrdersContent() {
             <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
               <TabsTrigger value="ALL">All Orders</TabsTrigger>
               <TabsTrigger value="PENDING">Pending</TabsTrigger>
+              <TabsTrigger value="MANIFESTED">Manifested</TabsTrigger>
               <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
               <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
+              <TabsTrigger value="RTO">RTO</TabsTrigger>
+              <TabsTrigger value="DRAFT">Drafts</TabsTrigger>
               <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
             </TabsList>
           </div>
@@ -316,22 +631,127 @@ function OrdersContent() {
               <Input
                 placeholder="Search orders..."
                 className="pl-9 h-8"
-                value={search}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                value={filters.search}
+                onChange={(e) => handleFilterUpdate("search", e.target.value)}
               />
             </div>
-            
-            <Button variant="outline" size="sm">
-              <HugeiconsIcon icon={FilterIcon} strokeWidth={2} />
-              <span className="hidden lg:inline">Filters</span>
-            </Button>
+
+            <Popover>
+              <PopoverTrigger render={
+                <Button variant="outline" size="sm">
+                  <HugeiconsIcon icon={Calendar01Icon} className="size-4" />
+                  <span className="hidden lg:inline">Date Range</span>
+                </Button>
+              } />
+              <PopoverContent className="w-80 p-4" align="end">
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm">Select Date Range</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase opacity-40">From</Label>
+                      <Input
+                        type="date"
+                        className="h-8"
+                        value={filters.from}
+                        onChange={(e) => handleFilterUpdate("from", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase opacity-40">To</Label>
+                      <Input
+                        type="date"
+                        className="h-8"
+                        value={filters.to}
+                        onChange={(e) => handleFilterUpdate("to", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" className="flex-1 h-8 text-xs" onClick={() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      handleFilterUpdate("from", today);
+                      handleFilterUpdate("to", today);
+                    }}>Today</Button>
+                    <Button variant="ghost" className="flex-1 h-8 text-xs" onClick={() => {
+                      handleFilterUpdate("from", "");
+                      handleFilterUpdate("to", "");
+                    }}>Reset</Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger render={
+                <Button variant="outline" size="sm">
+                  <HugeiconsIcon icon={FilterIcon} className="size-4" />
+                  <span className="hidden lg:inline">Filters</span>
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-5 rounded-full px-1">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
+                </Button>
+              } />
+              <PopoverContent className="w-64 p-4 space-y-4" align="end">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Service Layer</Label>
+                    <Select value={filters.shipment_type} onValueChange={(v) => handleFilterUpdate("shipment_type", v ?? "ALL")}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Services</SelectItem>
+                        <SelectItem value="DOMESTIC">Domestic</SelectItem>
+                        <SelectItem value="INTERNATIONAL">International</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Payment Mode</Label>
+                    <Select value={filters.payment_mode} onValueChange={(v) => handleFilterUpdate("payment_mode", v ?? "ALL")}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Payments</SelectItem>
+                        <SelectItem value="PREPAID">Prepaid</SelectItem>
+                        <SelectItem value="COD">COD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Logistics Protocol</Label>
+                    <Select value={filters.order_type} onValueChange={(v) => handleFilterUpdate("order_type", v ?? "ALL")}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Protocols</SelectItem>
+                        <SelectItem value="SURFACE">Surface</SelectItem>
+                        <SelectItem value="EXPRESS">Express</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Separator />
+                <Button variant="ghost" className="w-full h-8 text-xs text-destructive" onClick={clearAllFilters}>
+                  Clear All Filters
+                </Button>
+              </PopoverContent>
+            </Popover>
 
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-                <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} data-icon="inline-start" />
-                <span className="hidden lg:inline">Columns</span>
-                <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
-              </DropdownMenuTrigger>
+              <DropdownMenuTrigger render={
+                <Button variant="outline" size="sm">
+                  <HugeiconsIcon icon={LayoutIcon} strokeWidth={2} data-icon="inline-start" />
+                  <span className="hidden lg:inline">Columns</span>
+                  <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
+                </Button>
+              } />
               <DropdownMenuContent align="end" className="w-40">
                 {table.getAllColumns().filter(c => c.getCanHide()).map((column) => (
                   <DropdownMenuCheckboxItem
@@ -345,12 +765,49 @@ function OrdersContent() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+
+
+            <Link href="/dashboard/orders/new">
+              <Button size="sm">
+                <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
+                <span className="hidden lg:inline">New Order</span>
+              </Button>
+            </Link>
           </div>
         </div>
 
-        <div className="relative flex flex-col gap-4">
+        {(activeFiltersCount > 0 || filters.search || filters.from) && (
+          <div className="flex flex-wrap items-center gap-2 ">
+            {filters.search && (
+              <Badge variant="secondary" className="px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1.5">
+                Search: {filters.search}
+                <button onClick={() => handleFilterUpdate("search", "")} className="hover:text-foreground"><HugeiconsIcon icon={Cancel01Icon} className="size-2.5" /></button>
+              </Badge>
+            )}
+            {filters.from && (
+              <Badge variant="secondary" className="px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1.5">
+                Date Applied
+                <button onClick={() => { handleFilterUpdate("from", ""); handleFilterUpdate("to", ""); }} className="hover:text-foreground"><HugeiconsIcon icon={Cancel01Icon} className="size-2.5" /></button>
+              </Badge>
+            )}
+            {filters.shipment_type !== "ALL" && (
+              <Badge variant="secondary" className="px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1.5 uppercase">
+                {filters.shipment_type}
+                <button onClick={() => handleFilterUpdate("shipment_type", "ALL")} className="hover:text-foreground"><HugeiconsIcon icon={Cancel01Icon} className="size-2.5" /></button>
+              </Badge>
+            )}
+            {activeFiltersCount > 0 && (
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all" onClick={clearAllFilters}>
+                Clear All
+              </Button>
+            )}
+          </div>
+        )}
+
+        <div className="relative flex flex-col gap-4 ">
           <div className="overflow-x-auto border rounded-2xl">
-            <Table className="min-w-[640px]">
+            <Table className="min-w-[900px]">
               <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
@@ -390,11 +847,29 @@ function OrdersContent() {
             </Table>
           </div>
 
-          <div className="flex items-center justify-between px-4">
-            <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-              {table.getFilteredSelectedRowModel().rows.length} of{" "}
-              {data?.pagination?.total || 0} orders selected.
+          <div className="flex items-center justify-between ">
+            <div className="text-muted-foreground hidden flex-1 text-sm lg:flex items-center justify-baseline gap-4">
+              <div>
+                {table.getFilteredSelectedRowModel().rows.length} of{" "}
+                {data?.pagination?.total || 0} orders selected
+              </div>
+              {table.getFilteredSelectedRowModel().rows.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={
+                    <Button size="sm" variant="secondary" className="gap-2 border shadow-sm">
+                      <HugeiconsIcon icon={LayoutIcon} className="size-4" />
+                      <span className="hidden lg:inline">Bulk Actions</span>
+                      <Badge className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full p-0 text-[10px]">{table.getFilteredSelectedRowModel().rows.length}</Badge>
+                    </Button>
+                  } />
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleExportCSV}>Export CSV</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleBulkLabels}>Download Labels</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
+
             <div className="flex w-full items-center gap-8 lg:w-fit">
               <div className="hidden items-center gap-2 lg:flex">
                 <Label htmlFor="rows-per-page" className="text-sm font-medium">Rows per page</Label>
@@ -431,6 +906,7 @@ function OrdersContent() {
             </div>
           </div>
         </div>
+
       </Tabs>
     </div>
   );
