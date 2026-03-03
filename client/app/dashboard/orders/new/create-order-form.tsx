@@ -492,16 +492,21 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
       // Show message for receiver pincode change
       sileo.info({
         title: "Receiver Pincode Changed",
-        description: "Receiver pincode changed. Please enter the pickup pincode in Step 1."
+        description: "Receiver pincode changed. Please select a new courier partner."
       });
 
-      // Move to step 1 for pincode entry
-      setCurrentStep(1);
+      // Move to step 2 for courier selection
+      setCurrentStep(2);
+
+      // Refetch rates if pincodes are valid
+      if (formValues.pickup_address.pincode.length === 6 && formValues.receiver_address.pincode.length === 6) {
+        refetchRates();
+      }
     }
 
     // Update ref
     if (formValues.receiver_address.pincode) prevReceiverPincode.current = formValues.receiver_address.pincode;
-  }, [formValues.receiver_address.pincode, currentStep, form, setCurrentStep]);
+  }, [formValues.receiver_address.pincode, currentStep, form, setCurrentStep, refetchRates]);
 
   // Store previously selected courier to check availability after rates change
   const prevSelectedCourierId = React.useRef<number | undefined>(formValues.courier_id);
@@ -596,14 +601,12 @@ export default function CreateOrderContent({ preSelectedCourier }: CreateOrderCo
   };
 
   const selectShiprocketPickup = (addr: ShiprocketPickupLocation) => {
-    // Always set the pickup pincode when pickup hub is selected
-    form.setValue("pickup_address.pincode", addr.pin_code.toString(), { shouldValidate: true });
-
-    // Fill sender address if "Same as pickup" is checked
+    // Only fill sender details if "Same as pickup" is checked
     if (formValues.same_as_pickup) {
       form.setValue("pickup_address.name", addr.name, { shouldValidate: true });
       form.setValue("pickup_address.phone", addr.phone, { shouldValidate: true });
       form.setValue("pickup_address.email", addr.email || "", { shouldValidate: true });
+      form.setValue("pickup_address.pincode", addr.pin_code.toString(), { shouldValidate: true });
       form.setValue("pickup_address.address", addr.address, { shouldValidate: true });
       form.setValue("pickup_address.city", addr.city, { shouldValidate: true });
       form.setValue("pickup_address.state", addr.state, { shouldValidate: true });
@@ -1107,19 +1110,17 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
 
   // Auto-fill receiver address from Step 1 delivery pincode when entering Step 2
   React.useEffect(() => {
-    if (formValues.receiver_address.pincode && deliveryLocality) {
-      // Receiver pincode is already filled from Step 1, just ensure city/state are set
-      if (deliveryLocality?.data?.postcode_details || deliveryLocality?.postcode_details) {
-        const postcodeData = deliveryLocality?.data?.postcode_details || deliveryLocality?.postcode_details;
-        if (!formValues.receiver_address.city) {
-          form.setValue("receiver_address.city", postcodeData.city || "", { shouldValidate: false });
-        }
-        if (!formValues.receiver_address.state) {
-          form.setValue("receiver_address.state", postcodeData.state || "", { shouldValidate: false });
-        }
+    // Only fill if pincode exists, locality data is loaded (not loading), and city is not already set
+    if (formValues.receiver_address.pincode && deliveryLocality && !isLoadingDelivery) {
+      const postcodeData = deliveryLocality?.data?.postcode_details || deliveryLocality?.postcode_details;
+      if (postcodeData && !formValues.receiver_address.city) {
+        form.setValue("receiver_address.city", postcodeData.city || "", { shouldValidate: false });
+      }
+      if (postcodeData && !formValues.receiver_address.state) {
+        form.setValue("receiver_address.state", postcodeData.state || "", { shouldValidate: false });
       }
     }
-  }, [deliveryLocality, formValues.receiver_address.pincode]);
+  }, [deliveryLocality, formValues.receiver_address.pincode, isLoadingDelivery, form]);
 
   // Keep sender empty by default - only fill when "Same as pickup" is checked
   React.useEffect(() => {
@@ -1172,10 +1173,10 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
           <Checkbox id="same-as" checked={formValues.same_as_pickup} onCheckedChange={handleSameAsPickupChange} />
           <Label htmlFor="same-as" className="text-sm font-medium cursor-pointer">Details same as pickup hub</Label>
         </div>
-        <div className="flex items-center space-x-2">
+        {/* <div className="flex items-center space-x-2">
           <Checkbox id="make-pickup" checked={formValues.make_pickup_address} onCheckedChange={(c) => form.setValue("make_pickup_address", !!c)} />
           <Label htmlFor="make-pickup" className="text-sm font-medium cursor-pointer">Register this as new hub</Label>
-        </div>
+        </div> */}
         {/* <div className="flex items-center space-x-2">
           <Checkbox id="save-addresses" checked={formValues.save_receiver_address} onCheckedChange={(c) => {
             form.setValue("save_pickup_address", !!c);
