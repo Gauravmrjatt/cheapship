@@ -267,9 +267,9 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
       },
       onError: (error: any) => {
         const errorMessage = error?.message || "Failed to create order";
-        sileo.error({ 
-          title: "Order Failed", 
-          description: errorMessage 
+        sileo.error({
+          title: "Order Failed",
+          description: errorMessage
         });
       }
     })
@@ -627,16 +627,18 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   };
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-500 pb-32">
+    <div className="min-h-[calc(100vh-var(--header-height,80px))]  p-4">
+      {/* Header */}
+
       {/* Stepper */}
-      <div className="relative border rounded-xl bg-card p-6 shadow-sm overflow-hidden">
+      <div className="relative border rounded-xl bg-card p-4 md:p-6 shadow-sm overflow-hidden mb-6">
         <div className="absolute top-11 left-12 right-12 h-0.5 bg-muted " />
         <div
           className="absolute -top-12 left-12 h-0.5 bg-primary transition-all duration-500"
           style={{ width: `calc(${((currentStep - 1) / (steps.length - 1)) * 100}% - 24px)` }}
         />
 
-        <div className="relative flex justify-between z-10">
+        <div className="relative flex justify-between z-10 ">
           {steps.map((s) => (
             <div key={s.id} className="flex flex-col items-center gap-3 w-20">
               <div className={cn(
@@ -1422,7 +1424,7 @@ function VerificationCard({
   )
 }
 
-function StepFour({ formValues, isShipped, createdOrderId, router, http , shiprocketPickups }: any) {
+function StepFour({ formValues, isShipped, createdOrderId, router, http, shiprocketPickups }: any) {
   const { data: user } = useQuery<any>(
     http.get(["me"], "/auth/me", true)
   );
@@ -1484,61 +1486,61 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
 
       {/* New Balance & Security Summary */}
       {!showVerificationBlock && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-blue-200">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <HugeiconsIcon icon={Wallet01Icon} size={20} className="text-blue-600" />
+        <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 dark:from-primary/10 dark:to-primary/5 dark:border-primary/30 rounded-2xl p-4 md:p-6 space-y-4">
+          <div className="flex items-center gap-3 pb-3 border-b border-primary/20 dark:border-primary/30">
+            <div className="p-2 bg-primary/10 dark:bg-primary/20 rounded-lg">
+              <HugeiconsIcon icon={Wallet01Icon} size={20} className="text-primary" />
             </div>
             <div>
-              <h3 className="font-bold text-blue-900">Order Security Summary</h3>
-              <p className="text-xs text-blue-600">Balance check before creating order</p>
+              <h3 className="font-bold text-foreground">Order Security Summary</h3>
+              <p className="text-xs text-muted-foreground">Balance check before creating order</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/60 rounded-xl p-4 space-y-2">
-              <p className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">Undelivered Orders</p>
-              <p className="text-2xl font-black text-blue-900">{undeliveredCount}</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Undelivered Orders</p>
+              <p className="text-xl md:text-2xl font-black text-foreground">{undeliveredCount}</p>
             </div>
-            <div className="bg-white/60 rounded-xl p-4 space-y-2">
-              <p className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">Undelivered Amount</p>
-              <p className="text-2xl font-black text-blue-900">₹{undeliveredAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Undelivered Amount</p>
+              <p className="text-xl md:text-2xl font-black text-foreground">₹{undeliveredAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-white/60 rounded-xl p-4 space-y-2">
-              <p className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">This Order Amount</p>
-              <p className="text-2xl font-black text-blue-900">₹{orderAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">This Order Amount</p>
+              <p className="text-xl md:text-2xl font-black text-foreground">₹{orderAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-white/60 rounded-xl p-4 space-y-2">
-              <p className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">Security Deposit</p>
-              <p className="text-2xl font-black text-blue-900">₹{securityForThisOrder.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Security Deposit</p>
+              <p className="text-xl md:text-2xl font-black text-foreground">₹{securityForThisOrder.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
           </div>
 
-          <div className="bg-white/60 rounded-xl p-4 space-y-3">
+          <div className="bg-card/60 dark:bg-card/40 rounded-xl p-4 space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-blue-800">Total Required (Wallet)</span>
-              <span className="text-lg font-black text-blue-900">₹{requiredBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="text-sm font-medium text-muted-foreground">Total Required (Wallet)</span>
+              <span className="text-lg font-black text-foreground">₹{requiredBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-blue-800">Your Wallet Balance</span>
-              <span className="text-lg font-black text-blue-900">₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            {/* <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-muted-foreground">Your Wallet Balance</span>
+              <span className="text-lg font-black text-foreground">₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div> */}
+            <div className="flex justify-between items-center pt-2 border-t border-primary/20 dark:border-primary/30">
+              <span className="text-sm font-bold text-foreground">Your Wallet Balance</span>
+              <span className="text-lg font-black text-green-600 dark:text-green-400">₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
-            <div className="flex justify-between items-center pt-2 border-t border-blue-200">
-              <span className="text-sm font-bold text-blue-900">Security Deposit (Separate)</span>
-              <span className="text-lg font-black text-green-600">₹{securityDeposit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-            <p className="text-[10px] text-blue-600 italic pt-1">
+            <p className="text-[10px] text-muted-foreground italic pt-1">
               * Only wallet balance is used. Security deposit is held separately and released on delivery.
             </p>
           </div>
 
           {!hasEnoughBalance && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-              <HugeiconsIcon icon={Cancel01Icon} size={20} className="text-red-500 shrink-0" />
+            <div className="bg-destructive/10 border border-destructive/20 dark:border-destructive/40 rounded-xl p-4 flex items-center gap-3">
+              <HugeiconsIcon icon={Cancel01Icon} size={20} className="text-destructive shrink-0" />
               <div>
-                <p className="font-bold text-red-700 text-sm">Insufficient Balance</p>
-                <p className="text-xs text-red-600">
-                  You need at least ₹{requiredBalance.toLocaleString('en-IN')} in your wallet. 
+                <p className="font-bold text-destructive text-sm">Insufficient Balance</p>
+                <p className="text-xs text-muted-foreground">
+                  You need at least ₹{requiredBalance.toLocaleString('en-IN')} in your wallet.
                   Please top up ₹{(requiredBalance - walletBalance).toLocaleString('en-IN')} more.
                 </p>
               </div>
@@ -1546,12 +1548,12 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
           )}
 
           {hasEnoughBalance && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={20} className="text-green-500 shrink-0" />
+            <div className="bg-green-500/10 border border-green-500/20 dark:border-green-500/40 rounded-xl p-4 flex items-center gap-3">
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={20} className="text-green-600 dark:text-green-400 shrink-0" />
               <div>
-                <p className="font-bold text-green-700 text-sm">Sufficient Balance</p>
-                <p className="text-xs text-green-600">
-                  ₹{orderAmount.toLocaleString('en-IN')} will be deducted for shipping + 
+                <p className="font-bold text-green-700 dark:text-green-300 text-sm">Sufficient Balance</p>
+                <p className="text-xs text-muted-foreground">
+                  ₹{orderAmount.toLocaleString('en-IN')} will be deducted for shipping +
                   ₹{securityForThisOrder.toLocaleString('en-IN')} will be held as security deposit.
                 </p>
               </div>
@@ -1559,7 +1561,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
           )}
         </div>
       )}
-      
+
       {/* Tabs for Shipment, Pickup Hub, Sender, Receiver */}
       <Tabs defaultValue="shipment" className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-5 p-1 bg-transparent h-30">

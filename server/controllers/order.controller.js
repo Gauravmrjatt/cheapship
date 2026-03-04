@@ -478,7 +478,7 @@ const createOrder = async (req, res) => {
       });
 
       // 4. Create transaction record for order payment (DEBIT)
-      await tx.transaction.create({
+      const orderPaymentTransaction = await tx.transaction.create({
         data: {
           user_id: userId,
           amount: orderAmount,
@@ -490,7 +490,7 @@ const createOrder = async (req, res) => {
       });
 
       // 5. Create transaction record for security deposit (CREDIT to security)
-      await tx.transaction.create({
+      const securityDepositTransaction = await tx.transaction.create({
         data: {
           user_id: userId,
           amount: securityDepositAmount,
@@ -741,18 +741,21 @@ const createOrder = async (req, res) => {
         }
       } catch (shipmentError) {
         console.error('Error creating shipment:', shipmentError);
+        
+        // Auto-cancel the order if shipment creation failed
+        try {
+          await tx.order.update({
+            where: { id: order.id },
+            data: { shipment_status: 'CANCELLED' }
+          });
+          console.log(`Order ${order.id} auto-cancelled due to shipment creation failure`);
+        } catch (cancelError) {
+          console.error('Failed to auto-cancel order:', cancelError);
+        }
+        
         // Re-throw the error to rollback the transaction
         throw new Error(shipmentError.message || 'Failed to create shipment');
       }
-
-      // 4. Update transaction with order ID
-      await tx.transaction.update({
-        where: { id: transaction.id },
-        data: {
-          description: `Shipping charge for Order #${order.id}`,
-          reference_id: order.id.toString()
-        }
-      });
 
       await tx.orderPickupAddress.create({
         data: {
@@ -991,9 +994,10 @@ const cancelOrder = async (req, res) => {
       });
 
       const refundAmount = Number(order.shipping_charge || 0);
+      const securityAmount = Number(order.shipping_charge || 0); // Security deposit equals shipping charge
 
+      // Refund shipping charge to wallet
       if (refundAmount > 0) {
-        // Refund the wallet
         await tx.user.update({
           where: { id: userId },
           data: {
@@ -1001,14 +1005,46 @@ const cancelOrder = async (req, res) => {
           }
         });
 
-        // Create transaction record
         await tx.transaction.create({
           data: {
             user_id: userId,
             amount: refundAmount,
             type: 'CREDIT',
+            category: 'REFUND',
             status: 'SUCCESS',
-            description: `Refund for cancelled order #${id}`,
+            description: `Shipping charge refund for cancelled order #${id}`,
+            reference_id: id.toString()
+          }
+        });
+      }
+
+      // Refund security deposit
+      if (securityAmount > 0) {
+        // Deduct from security deposit
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            security_deposit: { decrement: securityAmount }
+          }
+        });
+
+        // Add back to wallet
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            wallet_balance: { increment: securityAmount }
+          }
+        });
+
+        // Create transaction record for security refund
+        await tx.transaction.create({
+          data: {
+            user_id: userId,
+            amount: securityAmount,
+            type: 'CREDIT',
+            category: 'REFUND',
+            status: 'SUCCESS',
+            description: `Security deposit refund for cancelled order #${id}`,
             reference_id: id.toString()
           }
         });
