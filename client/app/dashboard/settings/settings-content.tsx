@@ -293,11 +293,8 @@ function ProfileTab({ http }: { http: any }) {
   );
 }
 
-import { WalletTopUp } from "@/components/wallet-top-up";
-
 function KycTab({ http }: { http: any }) {
   const queryClient = useQueryClient();
-  const [isDepositDialogOpen, setIsDepositDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     pan_number: "",
     aadhaar_number: "",
@@ -370,11 +367,10 @@ function KycTab({ http }: { http: any }) {
   if (isLoading) return <SettingsSkeleton />;
 
   const isKycVerified = userData?.kyc_status === "VERIFIED";
-  const hasSecurityDeposit = parseFloat((userData as any)?.security_deposit || "0") > 0;
 
   const permissions = [
     { name: "Domestic Shipping", description: "Ship packages within India", status: "Active", icon: ShippingTruck01Icon },
-    { name: "COD Shipments", description: "Collect cash on delivery", status: isKycVerified && hasSecurityDeposit ? "Active" : "Locked", icon: Wallet01Icon },
+    { name: "COD Shipments", description: "Collect cash on delivery", status: isKycVerified ? "Active" : "Locked", icon: Wallet01Icon },
     { name: "International Shipping", description: "Ship to 220+ countries", status: isKycVerified ? "Active" : "Locked", icon: Globe02Icon },
     { name: "Bulk Order Upload", description: "CSV/Excel order processing", status: isKycVerified ? "Active" : "Locked", icon: Building06Icon },
   ];
@@ -493,62 +489,7 @@ function KycTab({ http }: { http: any }) {
             </CardContent>
           </Card>
         </div>
-
-        <div className="space-y-6">
-          <Card className="rounded-2xl border-none bg-muted/20 shadow-sm overflow-hidden h-fit">
-            <CardHeader className="bg-background/50 border-b pb-4">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={Wallet01Icon} size={20} className="text-primary" />
-                <CardTitle className="text-lg font-bold">Security Deposit</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="text-center p-6 bg-background rounded-2xl shadow-inner border">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Current Balance</p>
-                <p className="text-4xl font-black text-foreground">₹{Number((userData as any)?.security_deposit || 0).toLocaleString("en-IN")}</p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-muted-foreground">Deposit Status</span>
-                  <Badge variant={hasSecurityDeposit ? "default" : "outline"} className={cn("px-2 rounded-md font-bold text-[10px] uppercase", hasSecurityDeposit ? "bg-green-600 border-none" : "text-amber-600 border-amber-600")}>
-                    {hasSecurityDeposit ? "Paid" : "Action Required"}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm border-t border-border/50 pt-3">
-                  <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">Refundable</span>
-                  <span className="font-bold text-green-600 text-xs uppercase tracking-widest">Yes</span>
-                </div>
-              </div>
-
-              {!hasSecurityDeposit ? (
-                <Button 
-                  onClick={() => setIsDepositDialogOpen(true)}
-                  className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-xs bg-primary shadow-sm hover:scale-[1.01] transition-transform"
-                >
-                  Pay Deposit
-                </Button>
-              ) : (
-                <div className="p-4 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center gap-3">
-                  <HugeiconsIcon icon={CheckmarkCircle02Icon} size={18} className="text-green-600 shrink-0" />
-                  <p className="text-[11px] font-bold text-green-700 leading-tight uppercase tracking-tight">Active & Protected</p>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="bg-background/50 p-4 border-t">
-              <p className="text-[10px] text-muted-foreground text-center font-medium leading-relaxed italic">
-                A one-time refundable amount to activate advanced features like COD.
-              </p>
-            </CardFooter>
-          </Card>
-        </div>
       </div>
-      <WalletTopUp 
-        open={isDepositDialogOpen} 
-        onOpenChange={setIsDepositDialogOpen} 
-        category="SECURITY_DEPOSIT" 
-        initialAmount="1000"
-      />
     </div>
   );
 }

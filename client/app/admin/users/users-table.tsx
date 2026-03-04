@@ -13,8 +13,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { 
-  useToggleUserStatus, 
-  useRefundSecurityDeposit
+  useToggleUserStatus
 } from "@/lib/hooks/use-admin";
 import {
   Table,
@@ -74,17 +73,10 @@ export function UsersTable({
   const [rowSelection, setRowSelection] = React.useState({});
 
   const toggleStatusMutation = useToggleUserStatus(isMounted);
-  const refundDepositMutation = useRefundSecurityDeposit();
 
   const handleToggleStatus = (userId: string, currentStatus?: boolean) => {
     if (currentStatus === undefined || confirm(`Are you sure you want to ${currentStatus ? 'block' : 'unblock'} this user?`)) {
       toggleStatusMutation.mutate({ userId, is_active: !currentStatus });
-    }
-  };
-
-  const handleRefundDeposit = (userId: string, userName: string, amount: number) => {
-    if (confirm(`Are you sure you want to refund ₹${amount} security deposit to ${userName}'s wallet?`)) {
-      refundDepositMutation.mutate(userId);
     }
   };
 
@@ -141,16 +133,6 @@ export function UsersTable({
       cell: ({ row }) => (
         <div className="text-right tabular-nums font-bold text-xs">
           ₹{Number(row.original.wallet_balance).toLocaleString("en-IN")}
-        </div>
-      ),
-    },
-    {
-      id: "security_deposit",
-      accessorKey: "security_deposit",
-      header: () => <div className="text-right">Deposit</div>,
-      cell: ({ row }) => (
-        <div className="text-right tabular-nums font-bold text-xs text-primary">
-          ₹{Number(row.original.security_deposit || 0).toLocaleString("en-IN")}
         </div>
       ),
     },
@@ -220,16 +202,6 @@ export function UsersTable({
                 <HugeiconsIcon icon={row.original.is_active ? UserBlock01Icon : CheckmarkCircle01Icon} size={14} className="mr-2" />
                 {row.original.is_active ? "Block User" : "Unblock User"}
               </DropdownMenuItem>
-
-              {Number(row.original.security_deposit || 0) > 0 && (
-                <DropdownMenuItem
-                  className="text-primary font-medium"
-                  onClick={() => handleRefundDeposit(row.original.id, row.original.name, Number(row.original.security_deposit))}
-                >
-                  <HugeiconsIcon icon={MoneyReceiveCircleIcon} size={14} className="mr-2" />
-                  Refund Security Deposit
-                </DropdownMenuItem>
-              )}
 
               <DropdownMenuItem
                 onClick={() => onOpenBoundsSheet(

@@ -21,7 +21,7 @@ import { Alert02Icon } from "@hugeicons/core-free-icons";
 interface WalletTopUpProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category?: 'WALLET_TOPUP' | 'SECURITY_DEPOSIT';
+  category?: 'WALLET_TOPUP';
   initialAmount?: string;
 }
 
@@ -71,7 +71,7 @@ export function WalletTopUp({ open, onOpenChange, category = 'WALLET_TOPUP', ini
         amount: order.amount,
         currency: order.currency as "INR",
         name: "Cheap Ship",
-        description: category === 'SECURITY_DEPOSIT' ? "Security Deposit" : "Wallet Top-up",
+        description: "Wallet Top-up",
         order_id: order.id,
         handler: (response) => {
           verifyPaymentMutation.mutate({
@@ -123,11 +123,9 @@ export function WalletTopUp({ open, onOpenChange, category = 'WALLET_TOPUP', ini
     }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{category === 'SECURITY_DEPOSIT' ? "Pay Security Deposit" : "Top Up Wallet"}</DialogTitle>
+          <DialogTitle>Top Up Wallet</DialogTitle>
           <DialogDescription>
-            {category === 'SECURITY_DEPOSIT' 
-              ? "Pay a one-time refundable security deposit to activate COD and higher limits."
-              : "Add funds to your wallet to pay for shipping charges."}
+            Add funds to your wallet to pay for shipping charges.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -139,24 +137,21 @@ export function WalletTopUp({ open, onOpenChange, category = 'WALLET_TOPUP', ini
               placeholder="Enter amount (e.g. 500)"
               value={topUpAmount}
               onChange={(e) => setTopUpAmount(e.target.value)}
-              disabled={category === 'SECURITY_DEPOSIT'}
               className="h-12 text-lg font-bold"
             />
           </div>
-          {category !== 'SECURITY_DEPOSIT' && (
-            <div className="grid grid-cols-3 gap-2">
-              {[500, 1000, 2000].map(amt => (
-                <Button
-                  key={amt}
-                  variant="outline"
-                  className="h-10 text-xs font-bold"
-                  onClick={() => setTopUpAmount(amt.toString())}
-                >
-                  ₹{amt}
-                </Button>
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-3 gap-2">
+            {[500, 1000, 2000].map(amt => (
+              <Button
+                key={amt}
+                variant="outline"
+                className="h-10 text-xs font-bold"
+                onClick={() => setTopUpAmount(amt.toString())}
+              >
+                ₹{amt}
+              </Button>
+            ))}
+          </div>
         </div>
         {displayError && (
           <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-lg">

@@ -101,25 +101,6 @@ export interface AdminUser {
   };
 }
 
-export const useRefundSecurityDeposit = () => {
-  const queryClient = useQueryClient();
-  const http = useHttp();
-  return useMutation({
-    mutationFn: async (userId: string) => {
-      const mutator = http.post<any, {}>(`/admin/users/${userId}/refund-security-deposit`).mutationFn;
-      return mutator({});
-    },
-    onSuccess: () => {
-      sileo.success({ title: "Security deposit refunded successfully" });
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-    },
-    onError: (err: any) => {
-      sileo.error({ title: "Failed to refund security deposit", description: err.message });
-    }
-  });
-};
-
 export interface AdminOrder {
   id: string;
   order_type: string;

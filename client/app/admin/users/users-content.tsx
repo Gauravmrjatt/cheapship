@@ -162,12 +162,6 @@ export default function AdminUsersPage() {
                   Balance
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem 
-                  checked={columnVisibility["security_deposit"] !== false}
-                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, security_deposit: checked }))}
-                >
-                  Deposit
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem 
                   checked={columnVisibility["orders"] !== false}
                   onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, orders: checked }))}
                 >

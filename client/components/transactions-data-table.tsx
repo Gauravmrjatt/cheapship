@@ -104,7 +104,6 @@ const categoryLabels: Record<string, { label: string; icon: typeof Wallet01Icon 
   REFUND: { label: "Refund", icon: Delete02Icon },
   COD_REMITTANCE: { label: "COD Remittance", icon: DeliveryViewIcon },
   COMMISSION: { label: "Commission", icon: Coins01Icon },
-  SECURITY_DEPOSIT: { label: "Security Deposit", icon: Money03Icon },
 }
 
 export function TransactionsDataTable({
@@ -364,7 +363,6 @@ export function TransactionsDataTable({
               <SelectContent>
                 <SelectItem value="ALL">All</SelectItem>
                 <SelectItem value="WALLET_TOPUP">Wallet Topup</SelectItem>
-                <SelectItem value="SECURITY_DEPOSIT">Security Deposit</SelectItem>
                 <SelectItem value="ORDER_PAYMENT">Orders</SelectItem>
                 <SelectItem value="REFUND">Refunds</SelectItem>
                 <SelectItem value="COD_REMITTANCE">COD Remittance</SelectItem>
@@ -375,7 +373,6 @@ export function TransactionsDataTable({
             <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
               <TabsTrigger value="ALL">All Transactions</TabsTrigger>
               <TabsTrigger value="WALLET_TOPUP">Wallet Transactions</TabsTrigger>
-              <TabsTrigger value="SECURITY_DEPOSIT">Security Deposit</TabsTrigger>
             </TabsList>
           </div>
 

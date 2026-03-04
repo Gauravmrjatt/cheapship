@@ -172,6 +172,7 @@ router.get('/remittances/pending', orderController.getPendingRemittances);
 router.get('/remittances/summary', orderController.getRemittanceSummary);
 router.get('/count', orderController.getOrdersCount);
 router.get('/remittances/history', orderController.getRemittanceHistory);
+router.get('/undelivered-summary', orderController.getUndeliveredSummary);
 
 /**
  * @swagger

@@ -63,9 +63,6 @@ router.get(
   adminController.getAllTransactions
 );
 
-// Refund Security Deposit
-router.post('/users/:userId/refund-security-deposit', adminController.refundSecurityDeposit);
-
 // Withdrawals
 router.get('/withdrawals', adminController.getWithdrawals);
 router.post('/withdrawals/:id/process', adminController.processWithdrawal);

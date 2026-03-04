@@ -19,8 +19,7 @@ export default function Dashboard() {
   const kycStatus = user?.kyc_status;
   const needsKycAction = kycStatus === "PENDING" || kycStatus === "REJECTED";
   
-  const hasSecurityDeposit = parseFloat((user as any)?.security_deposit || "0") > 0;
-  const hasCodEnabled = kycStatus === "VERIFIED" && hasSecurityDeposit;
+  const hasCodEnabled = kycStatus === "VERIFIED";
   const needsUpi = !user?.upi_id;
 
   if (isLoading) {

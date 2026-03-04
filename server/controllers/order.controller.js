@@ -264,53 +264,18 @@ const createOrder = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // KYC & Security Deposit Check for ALL orders (not just first order)
+    // KYC Check for ALL orders (not just first order)
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { kyc_status: true, security_deposit: true }
+      select: { kyc_status: true, wallet_balance: true, security_deposit: true }
     });
 
-    // Enforce KYC and Security Deposit for all non-draft orders
+    // Enforce KYC for all non-draft orders
     if (!is_draft) {
       if (user.kyc_status !== 'VERIFIED') {
         return res.status(403).json({
           message: 'KYC verification (Aadhaar/PAN) is required to create an order.',
           code: 'KYC_REQUIRED'
-        });
-      }
-      if (Number(user.security_deposit || 0) <= 0) {
-        return res.status(403).json({
-          message: 'Security deposit is required to create an order.',
-          code: 'SECURITY_DEPOSIT_REQUIRED'
-        });
-      }
-    }
-
-    // In-transit safety rule: User must have Wallet Balance + Security Deposit >= Double the sum of shipping charges for all in-transit orders
-    if (!is_draft) {
-      const inTransitOrders = await prisma.order.findMany({
-        where: {
-          user_id: userId,
-          shipment_status: 'IN_TRANSIT',
-          is_draft: false
-        },
-        select: { shipping_charge: true }
-      });
-
-      const totalInTransitShippingCharge = inTransitOrders.reduce((sum, o) => sum + parseFloat(o.shipping_charge || 0), 0);
-      const userBalance = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { wallet_balance: true, security_deposit: true }
-      });
-
-      const totalAvailable = parseFloat(userBalance.wallet_balance || 0) + parseFloat(userBalance.security_deposit || 0);
-
-      if (totalAvailable < (totalInTransitShippingCharge * 2)) {
-        return res.status(403).json({
-          message: 'Insufficient balance for risk mitigation. Your (Wallet Balance + Security Deposit) must be at least double the shipping charges of all in-transit orders.',
-          code: 'INSUFFICIENT_SAFETY_BALANCE',
-          required: (totalInTransitShippingCharge * 2),
-          available: totalAvailable
         });
       }
     }
@@ -465,54 +430,74 @@ const createOrder = async (req, res) => {
     const serverBaseCharge = chosenCourier.base_rate;
 
     const newOrder = await prisma.$transaction(async (tx) => {
-      // 1. Check wallet balance and in-transit safety rules
+      // 1. Check wallet balance with new formula
       const user = await tx.user.findUnique({
         where: { id: userId },
         select: { wallet_balance: true, security_deposit: true }
       });
 
       const orderAmount = Number(serverShippingCharge || 0);
+      const securityDepositAmount = orderAmount; // Same as order amount
+      const totalDeduction = orderAmount * 2; // 2x order amount for wallet deduction
 
-      // In-Transit Safety logic
-      const inTransitOrders = await tx.order.findMany({
+      // New validation: Get undelivered orders (not including cancelled, delivered, RTO)
+      const undeliveredOrders = await tx.order.findMany({
         where: {
           user_id: userId,
           shipment_status: {
-            in: ['MANIFESTED', 'IN_TRANSIT', 'DISPATCHED', 'PENDING']
-          }
+            in: ['PENDING', 'MANIFESTED', 'IN_TRANSIT', 'DISPATCHED', 'NOT_PICKED']
+          },
+          is_draft: false
         },
         select: { shipping_charge: true }
       });
 
-      const inTransitTotal = inTransitOrders.reduce((sum, order) => sum + Number(order.shipping_charge || 0), 0);
-      const newInTransitTotal = inTransitTotal + orderAmount;
-      const requiredSecureBalance = newInTransitTotal * 2;
-      const currentSecuredAmount = Number(user.wallet_balance) + Number(user.security_deposit || 0);
+      const undeliveredTotal = undeliveredOrders.reduce((sum, order) => sum + Number(order.shipping_charge || 0), 0);
+      
+      // New formula: wallet_balance > (undeliveredTotal) + (2 × newOrderAmount)
+      const requiredBalance = undeliveredTotal + (orderAmount * 2);
 
-      if (currentSecuredAmount < requiredSecureBalance) {
-        throw new Error(`In-transit safety limit exceeded. Required limits (Wallet + Security): ₹${requiredSecureBalance.toFixed(2)}, Available: ₹${currentSecuredAmount.toFixed(2)} based on your active in-transit shipping charges of ₹${newInTransitTotal.toFixed(2)}.`);
+      if (Number(user.wallet_balance) < requiredBalance) {
+        throw new Error(`Insufficient wallet balance. Required: ₹${requiredBalance.toFixed(2)} (Undelivered Orders: ₹${undeliveredTotal.toFixed(2)} + This Order: ₹${(orderAmount * 2).toFixed(2)}), Available Wallet Balance: ₹${Number(user.wallet_balance).toFixed(2)}`);
       }
 
-      if (Number(user.wallet_balance) < orderAmount) {
-        throw new Error(`Insufficient wallet balance. Required: ₹${orderAmount}, Available: ₹${user.wallet_balance}`);
-      }
-
-      // 2. Debit the wallet
+      // 2. Debit wallet (2x order amount - 1x for shipping, 1x as security hold)
       await tx.user.update({
         where: { id: userId },
         data: {
-          wallet_balance: { decrement: orderAmount }
+          wallet_balance: { decrement: totalDeduction }
         }
       });
 
-      // 3. Create transaction record
-      const transaction = await tx.transaction.create({
+      // 3. Transfer to security deposit (1x order amount)
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          security_deposit: { increment: securityDepositAmount }
+        }
+      });
+
+      // 4. Create transaction record for order payment (DEBIT)
+      await tx.transaction.create({
         data: {
           user_id: userId,
           amount: orderAmount,
           type: 'DEBIT',
+          category: 'ORDER_PAYMENT',
           status: 'SUCCESS',
           description: `Shipping charge for Order ${order_type}`,
+        }
+      });
+
+      // 5. Create transaction record for security deposit (CREDIT to security)
+      await tx.transaction.create({
+        data: {
+          user_id: userId,
+          amount: securityDepositAmount,
+          type: 'CREDIT',
+          category: 'SECURITY_DEPOSIT',
+          status: 'SUCCESS',
+          description: `Security deposit held for Order ${order_type}`,
         }
       });
 
@@ -1158,8 +1143,39 @@ const processOrderUpdate = async (prisma, order, payload, res) => {
     updateData.pickup_scheduled_date = new Date(payload.pickup_scheduled_date);
   }
 
+  // Handle security deposit release on delivery
   if (newStatus === 'DELIVERED') {
     updateData.delivered_at = new Date();
+    
+    // Get the shipping charge (security deposit amount held for this order)
+    const securityAmount = Number(order.shipping_charge || 0);
+    
+    if (securityAmount > 0) {
+      // Use transaction to ensure atomicity
+      await prisma.$transaction(async (tx) => {
+        // Release security deposit back to wallet
+        await tx.user.update({
+          where: { id: order.user_id },
+          data: {
+            security_deposit: { decrement: securityAmount },
+            wallet_balance: { increment: securityAmount }
+          }
+        });
+
+        // Create transaction record for security release
+        await tx.transaction.create({
+          data: {
+            user_id: order.user_id,
+            amount: securityAmount,
+            type: 'CREDIT',
+            category: 'REFUND',
+            status: 'SUCCESS',
+            description: `Security deposit released for Order #${order.id} (Delivered)`,
+            reference_id: String(order.id)
+          }
+        });
+      });
+    }
   }
 
   const updatedOrder = await prisma.order.update({
@@ -1777,6 +1793,56 @@ const scheduleOrderPickup = async (req, res) => {
   }
 };
 
+const getUndeliveredSummary = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const userId = req.user.id;
+
+  try {
+    // Get all undelivered orders (not including cancelled, delivered, RTO)
+    const undeliveredOrders = await prisma.order.findMany({
+      where: {
+        user_id: userId,
+        shipment_status: {
+          in: ['PENDING', 'MANIFESTED', 'IN_TRANSIT', 'DISPATCHED', 'NOT_PICKED']
+        },
+        is_draft: false
+      },
+      select: {
+        id: true,
+        shipping_charge: true,
+        shipment_status: true,
+        created_at: true
+      }
+    });
+
+    const undeliveredCount = undeliveredOrders.length;
+    const undeliveredTotal = undeliveredOrders.reduce(
+      (sum, order) => sum + Number(order.shipping_charge || 0), 
+      0
+    );
+
+    // Get user wallet and security deposit info
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        wallet_balance: true,
+        security_deposit: true
+      }
+    });
+
+    res.json({
+      success: true,
+      undelivered_count: undeliveredCount,
+      undelivered_amount: undeliveredTotal,
+      wallet_balance: Number(user.wallet_balance || 0),
+      security_deposit: Number(user.security_deposit || 0)
+    });
+  } catch (error) {
+    console.error('Error fetching undelivered summary:', error);
+    res.status(500).json({ message: 'Error fetching summary' });
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
@@ -1797,5 +1863,6 @@ module.exports = {
   updateRemittanceStatus,
   generateOrderInvoice,
   assignOrderAWB,
-  scheduleOrderPickup
+  scheduleOrderPickup,
+  getUndeliveredSummary
 };

@@ -28,7 +28,7 @@ import {
   SelectGroup,
 } from "@/components/ui/select";
 import { useHttp } from "@/lib/hooks/use-http";
-import { useCheckPhoneVerificationMutation } from "@/lib/hooks/use-orders";
+import { useCheckPhoneVerificationMutation, useUndeliveredSummary } from "@/lib/hooks/use-orders";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -265,6 +265,13 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
           } as any);
         }
       },
+      onError: (error: any) => {
+        const errorMessage = error?.message || "Failed to create order";
+        sileo.error({ 
+          title: "Order Failed", 
+          description: errorMessage 
+        });
+      }
     })
   );
 
@@ -718,9 +725,8 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
                           (() => {
                             const user = queryClient.getQueryData<any>(["me"]);
                             const isKycVerified = user?.kyc_status === 'VERIFIED';
-                            const hasSecurityDeposit = parseFloat(user?.security_deposit || "0") > 0;
-                            // Check for all orders (not just first order)
-                            return !isKycVerified || !hasSecurityDeposit;
+                            // Only KYC is required now
+                            return !isKycVerified;
                           })()
                         ))}
                       >
@@ -967,8 +973,8 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field data-invalid={!!errors.pickup_address?.pincode}>
+            <div className="grid grid-cols-1 gap-4">
+              {/* <Field data-invalid={!!errors.pickup_address?.pincode}>
                 <FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Pickup Pincode</FieldLabel>
                 <Input
                   {...form.register("pickup_address.pincode")}
@@ -979,7 +985,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
                 />
                 {isLoadingPickup ? <p className="text-[10px] text-muted-foreground mt-1 animate-pulse">Verifying...</p> : isPickupValid ? <p className="text-[10px] text-green-600 font-bold mt-1 uppercase tracking-tight">{pickupLocality?.data?.postcode_details?.city || pickupLocality?.postcode_details?.city}</p> : formValues.pickup_address.pincode?.length === 6 && <p className="text-[10px] text-destructive font-bold mt-1 uppercase tracking-tight">Invalid</p>}
                 <FieldError errors={[errors.pickup_address?.pincode]} className="text-[10px] font-bold uppercase" />
-              </Field>
+              </Field> */}
 
               <Field data-invalid={!!errors.receiver_address?.pincode}>
                 <FieldLabel className="text-xs font-bold text-muted-foreground uppercase">
@@ -998,7 +1004,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
 
             <Separator />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {/* <Field data-invalid={!!errors.order_type}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Mode</FieldLabel>
                 <Select onValueChange={(v) => form.setValue("order_type", v as any)} value={formValues.order_type}>
                   <SelectTrigger aria-invalid={!!errors.order_type} className=""><SelectValue /></SelectTrigger>
@@ -1334,11 +1340,9 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates }:
 
 function VerificationCard({
   isKycVerified,
-  hasSecurityDeposit,
   router,
 }: {
   isKycVerified: boolean;
-  hasSecurityDeposit: boolean;
   router: any;
 }) {
   const steps = [
@@ -1349,13 +1353,6 @@ function VerificationCard({
       action: () => router.push("/dashboard/settings?tab=kyc"),
       actionLabel: "Verify",
     },
-    {
-      title: "Security Deposit",
-      description: "One-time refundable deposit",
-      completed: hasSecurityDeposit,
-      action: () => router.push("/dashboard/wallet"),
-      actionLabel: "Pay Now",
-    },
   ]
 
   return (
@@ -1363,12 +1360,12 @@ function VerificationCard({
       <CardHeader className="space-y-1 pb-4 bg-muted/20">
         <CardTitle className="flex items-center gap-2 text-base">
           <HugeiconsIcon icon={Shield01Icon} size={18} className="text-primary" />
-          First Shipment Verification
+          KYC Verification Required
         </CardTitle>
 
         <CardDescription className="text-xs leading-relaxed">
-          Complete verification and pay a refundable security deposit
-          before creating your first shipment.
+          Complete KYC verification before creating an order.
+          Security deposit will be automatically held from your wallet.
         </CardDescription>
       </CardHeader>
 
@@ -1433,12 +1430,24 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
   const { data: orderCountData } = useQuery<any>(
     http.get(["order-count"], "/orders/count", true)
   );
+  const { data: undeliveredSummary } = useQuery<any>(
+    http.get(["undelivered-summary"], "/orders/undelivered-summary", true)
+  );
 
-  // Check for all orders (not just first order)
+  // Check for KYC (security deposit check removed - now automatic)
   const isKycVerified = user?.kyc_status === 'VERIFIED';
-  const hasSecurityDeposit = parseFloat(user?.security_deposit || "0") > 0;
 
-  const showVerificationBlock = !isKycVerified || !hasSecurityDeposit;
+  const showVerificationBlock = !isKycVerified;
+
+  // Calculate balance requirements
+  const orderAmount = parseFloat(formValues?.shipping_charge || "0");
+  const undeliveredCount = undeliveredSummary?.undelivered_count || 0;
+  const undeliveredAmount = parseFloat(undeliveredSummary?.undelivered_amount || "0");
+  const walletBalance = parseFloat(user?.wallet_balance || "0");
+  const securityDeposit = parseFloat(undeliveredSummary?.security_deposit || "0");
+  const requiredBalance = undeliveredAmount + (orderAmount * 2);
+  const securityForThisOrder = orderAmount;
+  const hasEnoughBalance = walletBalance >= requiredBalance;
 
   if (isShipped) return (
     <div className="py-12 text-center space-y-6">
@@ -1465,13 +1474,90 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http , shipro
 
   return (
     <div className="space-y-8">
-      {/* KYC & Deposit Alerts for First Order */}
+      {/* KYC Verification Alert */}
       {showVerificationBlock && (
         <VerificationCard
           isKycVerified={isKycVerified}
-          hasSecurityDeposit={hasSecurityDeposit}
           router={router}
         />
+      )}
+
+      {/* New Balance & Security Summary */}
+      {!showVerificationBlock && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center gap-3 pb-3 border-b border-blue-200">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <HugeiconsIcon icon={Wallet01Icon} size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-blue-900">Order Security Summary</h3>
+              <p className="text-xs text-blue-600">Balance check before creating order</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/60 rounded-xl p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">Undelivered Orders</p>
+              <p className="text-2xl font-black text-blue-900">{undeliveredCount}</p>
+            </div>
+            <div className="bg-white/60 rounded-xl p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">Undelivered Amount</p>
+              <p className="text-2xl font-black text-blue-900">₹{undeliveredAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div className="bg-white/60 rounded-xl p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">This Order Amount</p>
+              <p className="text-2xl font-black text-blue-900">₹{orderAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div className="bg-white/60 rounded-xl p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">Security Deposit</p>
+              <p className="text-2xl font-black text-blue-900">₹{securityForThisOrder.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+          </div>
+
+          <div className="bg-white/60 rounded-xl p-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-blue-800">Total Required (Wallet)</span>
+              <span className="text-lg font-black text-blue-900">₹{requiredBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-blue-800">Your Wallet Balance</span>
+              <span className="text-lg font-black text-blue-900">₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-blue-200">
+              <span className="text-sm font-bold text-blue-900">Security Deposit (Separate)</span>
+              <span className="text-lg font-black text-green-600">₹{securityDeposit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <p className="text-[10px] text-blue-600 italic pt-1">
+              * Only wallet balance is used. Security deposit is held separately and released on delivery.
+            </p>
+          </div>
+
+          {!hasEnoughBalance && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+              <HugeiconsIcon icon={Cancel01Icon} size={20} className="text-red-500 shrink-0" />
+              <div>
+                <p className="font-bold text-red-700 text-sm">Insufficient Balance</p>
+                <p className="text-xs text-red-600">
+                  You need at least ₹{requiredBalance.toLocaleString('en-IN')} in your wallet. 
+                  Please top up ₹{(requiredBalance - walletBalance).toLocaleString('en-IN')} more.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {hasEnoughBalance && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={20} className="text-green-500 shrink-0" />
+              <div>
+                <p className="font-bold text-green-700 text-sm">Sufficient Balance</p>
+                <p className="text-xs text-green-600">
+                  ₹{orderAmount.toLocaleString('en-IN')} will be deducted for shipping + 
+                  ₹{securityForThisOrder.toLocaleString('en-IN')} will be held as security deposit.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       )}
       
       {/* Tabs for Shipment, Pickup Hub, Sender, Receiver */}

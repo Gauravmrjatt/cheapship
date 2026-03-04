@@ -95,3 +95,9 @@ export const useVerifyPhoneOtp = () => {
   
   return useMutation(post("/addresses/verify-otp"));
 };
+
+export const useUndeliveredSummary = () => {
+  const { get } = useHttp();
+  
+  return useQuery(get(["undelivered-summary"], "/orders/undelivered-summary"));
+};
