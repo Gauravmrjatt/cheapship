@@ -1029,7 +1029,7 @@ function OrdersContent() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-green-100 rounded-lg">
                         <HugeiconsIcon icon={SmartPhone01Icon} className="h-4 w-4 text-green-600" />
@@ -1047,7 +1047,7 @@ function OrdersContent() {
                         </div>
                         <div>
                           <p className="text-xs font-medium text-muted-foreground uppercase">Email</p>
-                          <p className="font-medium text-sm truncate max-w-[120px]">{matchingPickup.email}</p>
+                          <p className="font-medium text-sm ">{matchingPickup.email}</p>
                         </div>
                       </div>
                     )}

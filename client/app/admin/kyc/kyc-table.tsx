@@ -234,8 +234,8 @@ export function KycTable({
 
   return (
     <div className="overflow-x-auto border rounded-2xl">
-      <Table className="min-w-[640px]">
-        <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
+      <Table className="min-w-[640px] rounded-2xl">
+        <TableHeader className="bg-muted sticky top-0 z-10">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
@@ -246,7 +246,7 @@ export function KycTable({
             </TableRow>
           ))}
         </TableHeader>
-        <TableBody className="**:data-[slot=table-cell]:first:w-8 rounded-2xl">
+        <TableBody className="**:data-[slot=table-cell]:first:w-8">
           {isLoading ? (
             Array.from({ length: pageSize }).map((_, index) => (
               <TableRow key={index}>

@@ -8,6 +8,7 @@ export interface Transaction {
   id: string;
   user_id: string;
   amount: number;
+  closing_balance: number | null;
   type: 'CREDIT' | 'DEBIT';
   category: 'WALLET_TOPUP' | 'ORDER_PAYMENT' | 'REFUND' | 'COD_REMITTANCE' | 'COMMISSION' | 'SECURITY_DEPOSIT';
   status: 'PENDING' | 'SUCCESS' | 'FAILED';

@@ -317,6 +317,8 @@ const getUsers = async (req, res) => {
           wallet_balance: true,
           is_active: true,
           created_at: true,
+          upi_id: true,
+          security_deposit: true,
           min_commission_rate: true,
           max_commission_rate: true,
           _count: {
@@ -606,10 +608,17 @@ const processWithdrawal = async (req, res) => {
           }
         }
 
+        // Get updated wallet balance
+        const updatedUser = await tx.user.findUnique({
+          where: { id: withdrawal.user_id },
+          select: { wallet_balance: true }
+        });
+
         await tx.transaction.create({
           data: {
             user_id: withdrawal.user_id,
             amount: withdrawal.amount,
+            closing_balance: Number(updatedUser.wallet_balance),
             type: 'DEBIT',
             category: 'COMMISSION',
             status: 'SUCCESS',
@@ -1356,11 +1365,18 @@ const refundSecurityDeposit = async (req, res) => {
         }
       });
 
+      // Get updated balances
+      const updatedUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: { wallet_balance: true, security_deposit: true }
+      });
+
       // 2. Create Debit transaction for security deposit
       await tx.transaction.create({
         data: {
           user_id: userId,
           amount: depositAmount,
+          closing_balance: Number(updatedUser.security_deposit),
           type: 'DEBIT',
           category: 'SECURITY_DEPOSIT',
           status: 'SUCCESS',
@@ -1373,6 +1389,7 @@ const refundSecurityDeposit = async (req, res) => {
         data: {
           user_id: userId,
           amount: depositAmount,
+          closing_balance: Number(updatedUser.wallet_balance),
           type: 'CREDIT',
           category: 'REFUND',
           status: 'SUCCESS',

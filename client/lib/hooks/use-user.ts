@@ -42,6 +42,7 @@ export const useUser = () => {
         wallet_balance: Number(query.data.wallet_balance),
         user_type: query.data.user_type,
         kyc_status: query.data.kyc_status,
+        upi_id: query.data.upi_id || "",
       });
     }
   }, [query.data, setUser]);

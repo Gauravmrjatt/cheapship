@@ -49,21 +49,21 @@ export function AddressCard({
   onDelete: (id: string) => void; 
 }) {
   return (
-    <Card className="group hover:shadow-md transition-all duration-200 border-border/50">
+    <Card className="group hover:shadow-md transition-all duration-200 border-border/50 h-full">
       <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <p className="font-bold text-lg">{addr.name}</p>
+        <div className="flex justify-between items-start gap-2">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-bold text-lg truncate">{addr.name}</p>
               {addr.is_default && (
-                <Badge variant="default" className="text-[10px] px-1.5 py-0 uppercase">Default</Badge>
+                <Badge variant="default" className="text-[10px] px-1.5 py-0 uppercase shrink-0">Default</Badge>
               )}
             </div>
             {addr.address_label && (
               <p className="text-xs font-bold text-primary uppercase tracking-widest">{addr.address_label}</p>
             )}
           </div>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
             <Button
               variant="ghost"
               size="icon"

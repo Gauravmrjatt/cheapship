@@ -20,8 +20,9 @@ export default function Dashboard() {
   const needsKycAction = kycStatus === "PENDING" || kycStatus === "REJECTED";
   
   const hasCodEnabled = kycStatus === "VERIFIED";
-  const needsUpi = !user?.upi_id;
+  const needsUpi = !user?.upi_id && user?.upi_id === "";
 
+  console.log(user?.upi_id)
   if (isLoading) {
     return <DashboardSkeleton />;
   }

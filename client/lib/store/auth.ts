@@ -35,7 +35,7 @@ export const useAuthStore = create<AuthState>()(
       setToken: (token) => set({ token }),
     }),
     {
-      name: "auth-storage", // name of the item in the storage (must be unique)
+      name: "auth-storage",
     }
   )
 );

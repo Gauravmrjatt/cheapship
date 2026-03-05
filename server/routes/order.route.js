@@ -98,6 +98,7 @@ router.post(
     check('shipment_type', 'Shipment type is required').isIn(['DOMESTIC', 'INTERNATIONAL']),
     check('payment_mode', 'Payment mode is required').isIn(['PREPAID', 'COD']),
     check('total_amount', 'Total amount is required').isNumeric(),
+    check('cod_amount', 'COD amount must be a number').optional().isNumeric(),
     check('pickup_address', 'Pickup address is required').isObject(),
     check('pickup_address.name', 'Pickup address name is required').not().isEmpty(),
     check('pickup_address.phone', 'Pickup address phone is required').not().isEmpty(),

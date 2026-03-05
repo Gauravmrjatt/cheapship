@@ -91,11 +91,12 @@ export interface AdminUser {
   is_active: boolean;
   user_type: string;
   wallet_balance: number;
-  security_deposit: number;
   created_at: string;
   min_commission_rate?: number;
   max_commission_rate?: number;
   assigned_rates?: any;
+  upi_id?: string;
+  security_deposit?: number;
   _count?: {
     orders: number;
   };

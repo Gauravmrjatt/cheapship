@@ -159,11 +159,23 @@ const verifyRazorpayPayment = async (req, res) => {
       const transaction = await prisma.$transaction(async (tx) => {
         const isSecurityDeposit = category === 'SECURITY_DEPOSIT';
 
-        // 1. Create transaction record
+        // Get current wallet balance before transaction
+        const currentUser = await tx.user.findUnique({ 
+          where: { id: userId }, 
+          select: { wallet_balance: true, security_deposit: true } 
+        });
+        
+        const currentBalance = isSecurityDeposit 
+          ? Number(currentUser.security_deposit) 
+          : Number(currentUser.wallet_balance);
+        const closingBalance = currentBalance + Number(amount);
+
+        // 1. Create transaction record with closing_balance
         const newTransaction = await tx.transaction.create({
           data: {
             user_id: userId,
             amount: amount,
+            closing_balance: closingBalance,
             type: 'CREDIT',
             category: category,
             status: 'SUCCESS',

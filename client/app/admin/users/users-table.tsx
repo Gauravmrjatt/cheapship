@@ -12,7 +12,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { 
+import {
   useToggleUserStatus
 } from "@/lib/hooks/use-admin";
 import {
@@ -123,17 +123,23 @@ export function UsersTable({
         <div className="flex flex-col text-xs">
           <span className="font-medium">{row.original.email}</span>
           <span className="text-muted-foreground">{row.original.mobile}</span>
+          <span className="text-muted-foreground">{row.original.upi_id || "-"}</span>
         </div>
       ),
     },
     {
       id: "wallet_balance",
       accessorKey: "wallet_balance",
-      header: () => <div className="text-right">Balance</div>,
+      header: () => <div className="text-center">Balance</div>,
       cell: ({ row }) => (
-        <div className="text-right tabular-nums font-bold text-xs">
-          ₹{Number(row.original.wallet_balance).toLocaleString("en-IN")}
-        </div>
+        <>
+          <div className="text-center tabular-nums font-bold text-xs">
+           Usable :  ₹{Number(row.original.wallet_balance).toLocaleString("en-IN")}
+          </div>
+          <div className="text-center tabular-nums font-bold text-xs">
+           Security : ₹{Number(row.original.security_deposit).toLocaleString("en-IN")}
+          </div>
+        </>
       ),
     },
     {
@@ -227,7 +233,7 @@ export function UsersTable({
         </div>
       ),
     },
-  ], [toggleStatusMutation, refundDepositMutation, onOpenBoundsSheet, onOpenCustomRatesSheet, router]);
+  ], [toggleStatusMutation, onOpenBoundsSheet, onOpenCustomRatesSheet, router]);
 
   const table = useReactTable({
     data,

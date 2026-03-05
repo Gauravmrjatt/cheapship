@@ -303,6 +303,15 @@ export function TransactionsDataTable({
       ),
     },
     {
+      accessorKey: "closing_balance",
+      header: () => <div className="text-right">Balance</div>,
+      cell: ({ row }) => (
+        <div className="text-right tabular-nums text-muted-foreground">
+          ₹{Number(row.original.closing_balance || 0).toLocaleString("en-IN")}
+        </div>
+      ),
+    },
+    {
       accessorKey: "created_at",
       header: "Date",
       cell: ({ row }) => (
@@ -348,10 +357,10 @@ export function TransactionsDataTable({
     <Tabs
       value={filters?.category ?? "ALL"}
       onValueChange={(v) => handleFilterUpdate("category", v === "ALL" ? undefined : v)}
-      className="w-full flex-col justify-start gap-6"
+      className="w-full flex-col justify-start gap-6 overflow-hidden"
     >
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Select
               value={filters?.category ?? "ALL"}
@@ -387,7 +396,7 @@ export function TransactionsDataTable({
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Select
               value={filters?.type ?? "ALL"}
@@ -404,11 +413,11 @@ export function TransactionsDataTable({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative w-64">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <div className="relative w-full sm:w-64 min-w-[150px]">
               <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder="Search transactions..."
+                placeholder="Search..."
                 className="pl-9 h-8"
                 value={filters?.search ?? ""}
                 onChange={(e) => handleFilterUpdate("search", e.target.value || undefined)}

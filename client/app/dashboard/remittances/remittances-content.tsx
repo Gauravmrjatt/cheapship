@@ -237,8 +237,8 @@ export default function RemittancesPage() {
   });
 
   return (
-    <div className="w-full space-y-6 animate-in p-5 fade-in duration-500">
-      <div className="grid gap-4 md:grid-cols-4">
+    <div className="w-full space-y-6 animate-in p-5 fade-in duration-500 overflow-hidden">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-4">
           <p className="text-sm font-medium text-muted-foreground">Total COD Collected</p>
           {isLoadingSummary ? <div className="h-7 w-32 bg-muted animate-pulse rounded mt-1" /> : (
@@ -277,11 +277,11 @@ export default function RemittancesPage() {
           </TabsList>
         </Tabs>
 
-        <div className="flex items-center gap-2">
-          <div className="relative hidden w-64 lg:block">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+          <div className="relative w-full sm:w-64 min-w-[150px]">
             <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Search orders..."
+              placeholder="Search..."
               className="pl-9 h-8"
               value={search}
               onChange={(e) => setSearch(e.target.value)}

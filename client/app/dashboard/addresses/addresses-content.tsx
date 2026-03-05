@@ -193,29 +193,31 @@ export default function AddressesPage() {
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight lg:text-4xl text-foreground">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight lg:text-4xl text-foreground truncate">
             Address Book
           </h1>
-          <p className="text-muted-foreground text-lg mt-1">
+          <p className="text-muted-foreground text-sm sm:text-lg mt-1">
             Manage your saved pickup and delivery locations.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
-            className="rounded-2xl gap-2 font-bold shadow-sm"
+            className="rounded-2xl gap-2 font-bold shadow-sm flex-1 sm:flex-none"
             onClick={() => setState(prev => ({ ...prev, pickupDialogOpen: true }))}
           >
             <HugeiconsIcon icon={RocketIcon} size={18} />
-            Add Pickup Location
+            <span className="hidden sm:inline">Add Pickup Location</span>
+            <span className="sm:hidden">Pickup</span>
           </Button>
           <Button
-            className="rounded-2xl gap-2 font-bold shadow-sm"
+            className="rounded-2xl gap-2 font-bold shadow-sm flex-1 sm:flex-none"
             onClick={() => handleOpenAddressDialog()}
           >
             <HugeiconsIcon icon={Add01Icon} size={18} />
-            Add New Address
+            <span className="hidden sm:inline">Add New Address</span>
+            <span className="sm:hidden">Add</span>
           </Button>
         </div>
       </div>
@@ -228,7 +230,7 @@ export default function AddressesPage() {
               <CardTitle className="text-lg">Registered Pickup Locations</CardTitle>
             </div>
             <CardDescription>
-              Shiprocket-registered locations for order pickups
+              Registered locations for order pickups
             </CardDescription>
           </CardHeader>
           <CardContent>

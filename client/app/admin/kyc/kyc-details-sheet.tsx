@@ -197,7 +197,7 @@ function DocRow({
   const available = Boolean(value)
 
   return (
-    <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
+    <div className="flex items-center justify-between rounded-md border p-3">
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">{label}</p>
 

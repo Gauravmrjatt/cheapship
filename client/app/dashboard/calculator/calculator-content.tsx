@@ -126,17 +126,23 @@ export default function RateCalculatorPage() {
     const l = Number(formValues.length) || 0;
     const w = Number(formValues.width) || 0;
     const h = Number(formValues.height) || 0;
-    return ((l * w * h) / 5000) * 1000;
+    return (l * w * h) / 5000;
   }, [formValues.length, formValues.width, formValues.height]);
 
   const chargeableWeight = useMemo(() => {
-    return Math.max(formValues.actualWeight || 0, volumetricWeight);
+    const actualWeight = formValues.actualWeight || 0;
+    const isFlyer = actualWeight <= 1000; // 1kg or less
+    const volumetric = volumetricWeight;
+    
+    // For flyers (1kg or less), use actual weight even if volumetric is higher
+    // For all other packages, use the higher of actual or volumetric weight
+    return isFlyer ? actualWeight : Math.max(actualWeight, volumetric);
   }, [formValues.actualWeight, volumetricWeight]);
 
   const queryParams = useMemo(() => new URLSearchParams({
     pickup_postcode: formValues.pickupPincode,
     delivery_postcode: formValues.deliveryPincode,
-    weight: ((formValues.actualWeight || 0) / 1000).toString(),
+    weight: (formValues.actualWeight || 0).toString(),
     cod: formValues.paymentType === "COD" ? "1" : "0",
     declared_value: formValues.shipmentValue?.toString(),
     length: formValues.length?.toString(),
@@ -297,6 +303,8 @@ export default function RateCalculatorPage() {
                     <Field>
                       <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actual Weight (g)</FieldLabel>
                       <Input
+                        type="number"
+                        max={1000000}
                         {...form.register("actualWeight", { valueAsNumber: true })}
                         placeholder="500"
                         className="font-medium"
@@ -434,7 +442,7 @@ export default function RateCalculatorPage() {
                 <Separator className="bg-primary/10" />
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">Chargeable Weight</span>
-                  <span className="text-lg font-black text-primary">{(chargeableWeight * 1000).toFixed(0)} g</span>
+                  <span className="text-lg font-black text-primary">{(Math.max(volumetricWeight * 1000, formValues.actualWeight || 0) ).toFixed(0)} g</span>
                 </div>
               </div>
             </CardContent>

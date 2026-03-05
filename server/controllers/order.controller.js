@@ -263,6 +263,14 @@ const createOrder = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
 
+  // COD amount validation
+  if (payment_mode === 'COD') {
+    const codAmount = parseFloat(cod_amount) || parseFloat(total_amount);
+    if (codAmount > 100000) {
+      return res.status(400).json({ error: 'COD amount cannot exceed 1 lakh (₹100,000)' });
+    }
+  }
+
   try {
     // KYC Check for ALL orders (not just first order)
     const user = await prisma.user.findUnique({
@@ -477,11 +485,18 @@ const createOrder = async (req, res) => {
         }
       });
 
+      // Get updated balances after deductions
+      const updatedUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: { wallet_balance: true, security_deposit: true }
+      });
+
       // 4. Create transaction record for order payment (DEBIT)
       const orderPaymentTransaction = await tx.transaction.create({
         data: {
           user_id: userId,
           amount: orderAmount,
+          closing_balance: Number(updatedUser.wallet_balance),
           type: 'DEBIT',
           category: 'ORDER_PAYMENT',
           status: 'SUCCESS',
@@ -494,6 +509,7 @@ const createOrder = async (req, res) => {
         data: {
           user_id: userId,
           amount: securityDepositAmount,
+          closing_balance: Number(updatedUser.security_deposit),
           type: 'CREDIT',
           category: 'SECURITY_DEPOSIT',
           status: 'SUCCESS',
@@ -1005,10 +1021,17 @@ const cancelOrder = async (req, res) => {
           }
         });
 
+        // Get updated wallet balance
+        const updatedUser = await tx.user.findUnique({
+          where: { id: userId },
+          select: { wallet_balance: true, security_deposit: true }
+        });
+
         await tx.transaction.create({
           data: {
             user_id: userId,
             amount: refundAmount,
+            closing_balance: Number(updatedUser.wallet_balance),
             type: 'CREDIT',
             category: 'REFUND',
             status: 'SUCCESS',
@@ -1036,11 +1059,18 @@ const cancelOrder = async (req, res) => {
           }
         });
 
-        // Create transaction record for security refund
+        // Get updated balances
+        const updatedUser = await tx.user.findUnique({
+          where: { id: userId },
+          select: { wallet_balance: true, security_deposit: true }
+        });
+
+        // Create transaction record for security refund to wallet
         await tx.transaction.create({
           data: {
             user_id: userId,
             amount: securityAmount,
+            closing_balance: Number(updatedUser.wallet_balance),
             type: 'CREDIT',
             category: 'REFUND',
             status: 'SUCCESS',
@@ -1179,40 +1209,47 @@ const processOrderUpdate = async (prisma, order, payload, res) => {
     updateData.pickup_scheduled_date = new Date(payload.pickup_scheduled_date);
   }
 
-  // Handle security deposit release on delivery
-  if (newStatus === 'DELIVERED') {
-    updateData.delivered_at = new Date();
-    
-    // Get the shipping charge (security deposit amount held for this order)
-    const securityAmount = Number(order.shipping_charge || 0);
-    
-    if (securityAmount > 0) {
-      // Use transaction to ensure atomicity
-      await prisma.$transaction(async (tx) => {
-        // Release security deposit back to wallet
-        await tx.user.update({
-          where: { id: order.user_id },
-          data: {
-            security_deposit: { decrement: securityAmount },
-            wallet_balance: { increment: securityAmount }
-          }
-        });
+    // Handle security deposit release on delivery
+    if (newStatus === 'DELIVERED') {
+      updateData.delivered_at = new Date();
+      
+      // Get the shipping charge (security deposit amount held for this order)
+      const securityAmount = Number(order.shipping_charge || 0);
+      
+      if (securityAmount > 0) {
+        // Use transaction to ensure atomicity
+        await prisma.$transaction(async (tx) => {
+          // Release security deposit back to wallet
+          await tx.user.update({
+            where: { id: order.user_id },
+            data: {
+              security_deposit: { decrement: securityAmount },
+              wallet_balance: { increment: securityAmount }
+            }
+          });
 
-        // Create transaction record for security release
-        await tx.transaction.create({
-          data: {
-            user_id: order.user_id,
-            amount: securityAmount,
-            type: 'CREDIT',
-            category: 'REFUND',
-            status: 'SUCCESS',
-            description: `Security deposit released for Order #${order.id} (Delivered)`,
-            reference_id: String(order.id)
-          }
+          // Get updated wallet balance
+          const updatedUser = await tx.user.findUnique({
+            where: { id: order.user_id },
+            select: { wallet_balance: true }
+          });
+
+          // Create transaction record for security release
+          await tx.transaction.create({
+            data: {
+              user_id: order.user_id,
+              amount: securityAmount,
+              closing_balance: Number(updatedUser.wallet_balance),
+              type: 'CREDIT',
+              category: 'REFUND',
+              status: 'SUCCESS',
+              description: `Security deposit released for Order #${order.id} (Delivered)`,
+              reference_id: String(order.id)
+            }
+          });
         });
-      });
+      }
     }
-  }
 
   const updatedOrder = await prisma.order.update({
     where: { id: order.id },

@@ -187,6 +187,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   const http = useHttp();
   const queryClient = useQueryClient();
   const { data: rateCalculatorData, clearRateData } = useRateCalculatorStore();
+  const isFromCalculator = !!rateCalculatorData;
 
   const pickupForm = useForm<z.infer<typeof shiprocketPickupSchema>>({
     resolver: zodResolver(shiprocketPickupSchema),
@@ -311,7 +312,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
         order_type: rateCalculatorData.order_type,
         payment_mode: rateCalculatorData.paymentType,
         total_amount: rateCalculatorData.shipmentValue,
-        weight: rateCalculatorData.weight * 1000,
+        weight: rateCalculatorData.weight,
         length: rateCalculatorData.length, width: rateCalculatorData.width, height: rateCalculatorData.height,
         pickup_address: { ...formValues.pickup_address, pincode: rateCalculatorData.pickupPincode },
         receiver_address: { ...formValues.receiver_address, pincode: rateCalculatorData.deliveryPincode },
@@ -467,7 +468,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   const courierParams = useMemo(() => new URLSearchParams({
     pickup_postcode: formValues.pickup_address.pincode,
     delivery_postcode: formValues.receiver_address.pincode,
-    weight: ((formValues.weight || 500) / 1000).toString(),
+    weight: formValues.weight.toString(),
     cod: formValues.payment_mode === "COD" ? "1" : "0",
     declared_value: formValues.total_amount?.toString() || "0",
     length: formValues.length?.toString() || "10",
@@ -576,7 +577,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
 
   const getFieldsForStep = (step: number) => {
     switch (step) {
-      case 1: return ["order_type", "payment_mode", "weight", "length", "width", "height", "products", "pickup_address.pincode", "receiver_address.pincode"];
+      case 1: return ["pickup_location", "order_type", "payment_mode", "weight", "length", "width", "height", "products", "pickup_address.pincode", "receiver_address.pincode"];
       case 2: return ["courier_id"];
       case 3: return ["pickup_location", "pickup_address", "receiver_address"];
       default: return [];
@@ -674,7 +675,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
             )} className="space-y-8">
               {currentStep === 1 && <StepOne form={form} fields={fields} append={append} remove={remove} allSuggestions={allProductSuggestions} formValues={formValues} isLoadingPickup={isLoadingPickup} isPickupValid={isPickupPincodeValid} pickupLocality={pickupLocality} isLoadingDelivery={isLoadingDelivery} isDeliveryValid={isDeliveryPincodeValid} deliveryLocality={deliveryLocality} shiprocketPickups={shiprocketPickupLocations} setOpenAddPickupSheet={setOpenAddPickupSheet} selectShiprocketPickup={selectShiprocketPickup} />}
               {currentStep === 2 && <StepThree form={form} rateData={rateData} isLoadingRates={isLoadingRates} formValues={formValues} refetchRates={refetchRates} />}
-              {currentStep === 3 && <StepTwo form={form} shiprocketPickups={shiprocketPickupLocations} savedAddresses={savedAddresses} selectSavedAddress={selectSavedAddress} selectShiprocketPickup={selectShiprocketPickup} formValues={formValues} isLoadingPickup={isLoadingPickup} isPickupValid={isPickupPincodeValid} pickupLocality={pickupLocality} isLoadingDelivery={isLoadingDelivery} isDeliveryValid={isDeliveryPincodeValid} deliveryLocality={deliveryLocality} setOpenAddPickupSheet={setOpenAddPickupSheet} />}
+              {currentStep === 3 && <StepTwo form={form} shiprocketPickups={shiprocketPickupLocations} savedAddresses={savedAddresses} selectSavedAddress={selectSavedAddress} selectShiprocketPickup={selectShiprocketPickup} formValues={formValues} isLoadingPickup={isLoadingPickup} isPickupValid={isPickupPincodeValid} pickupLocality={pickupLocality} isLoadingDelivery={isLoadingDelivery} isDeliveryValid={isDeliveryPincodeValid} deliveryLocality={deliveryLocality} setOpenAddPickupSheet={setOpenAddPickupSheet} isFromCalculator={isFromCalculator} />}
               {currentStep === 4 && <StepFour formValues={formValues} shiprocketPickups={shiprocketPickupLocations} isShipped={isShipped} createdOrderId={createdOrderId} isCreatingOrder={isCreatingOrder} router={router} http={http} />}
 
               {/* Navigation Buttons */}
@@ -997,6 +998,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
                   {...form.register("receiver_address.pincode")}
                   aria-invalid={!!errors.receiver_address?.pincode}
                   placeholder="000000"
+                  
                   className={cn("h-10", !isDeliveryValid && formValues.receiver_address.pincode?.length === 6 && "border-destructive")}
                 />
                 {isLoadingDelivery ? <p className="text-[10px] text-muted-foreground mt-1 animate-pulse">Verifying...</p> : isDeliveryValid ? <p className="text-[10px] text-green-600 font-bold mt-1 uppercase tracking-tight">{deliveryLocality?.data?.postcode_details?.city || deliveryLocality?.postcode_details?.city}</p> : formValues.receiver_address.pincode?.length === 6 && <p className="text-[10px] text-destructive font-bold mt-1 uppercase tracking-tight">Invalid</p>}
@@ -1027,10 +1029,10 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               </Field>
             </div>
             {formValues.payment_mode === "COD" && (
-              <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount</FieldLabel>
+              <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount (Max ₹1,00,000)</FieldLabel>
                 <div className="relative">
                   <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-                  <Input type="number" {...form.register("cod_amount", { valueAsNumber: true })} aria-invalid={!!errors.cod_amount} className="pl-9" />
+                  <Input type="number" max={100000} {...form.register("cod_amount", { valueAsNumber: true })} aria-invalid={!!errors.cod_amount} className="pl-9" />
                 </div>
                 <FieldError errors={[errors.cod_amount]} className="text-[10px] font-bold uppercase" />
               </Field>
@@ -1040,7 +1042,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               <Field data-invalid={!!errors.weight}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Dead Weight (g)</FieldLabel>
                 <div className="relative">
                   <HugeiconsIcon icon={Package01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
-                  <Input type="number" step="1" {...form.register("weight", { valueAsNumber: true })} aria-invalid={!!errors.weight} className="h-11 font-bold text-lg pl-10" />
+                  <Input type="number" step="1" max={1000000} {...form.register("weight", { valueAsNumber: true })} aria-invalid={!!errors.weight} className="h-11 font-bold text-lg pl-10" />
                 </div>
                 <FieldError errors={[errors.weight]} className="text-[10px] font-bold uppercase" />
               </Field>
@@ -1145,7 +1147,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
   );
 }
 
-function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, selectShiprocketPickup, formValues, isLoadingPickup, isPickupValid, pickupLocality, isLoadingDelivery, isDeliveryValid, deliveryLocality }: any) {
+function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, selectShiprocketPickup, formValues, isLoadingPickup, isPickupValid, pickupLocality, isLoadingDelivery, isDeliveryValid, deliveryLocality, isFromCalculator }: any) {
   const { watch } = form;
   const pickupLocationValue = watch("pickup_location");
   const receiverPincodeValue = watch("receiver_address.pincode");
@@ -1207,8 +1209,8 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <AddressFormCard prefix="pickup_address" title="Sender Details" icon={UserCircle02Icon} savedAddresses={savedAddresses} onSelect={(a: any) => selectSavedAddress(a, "pickup_address")} isLoading={isLoadingPickup} isValid={isPickupValid} locality={pickupLocality} form={form} />
-        <AddressFormCard prefix="receiver_address" title="Receiver Details" icon={UserGroupIcon} savedAddresses={savedAddresses} onSelect={(a: any) => selectSavedAddress(a, "receiver_address")} isLoading={isLoadingDelivery} isValid={isDeliveryValid} locality={deliveryLocality} form={form} readOnlyPincode={formValues.same_as_pickup} />
+        <AddressFormCard prefix="pickup_address" title="Sender Details" icon={UserCircle02Icon} savedAddresses={savedAddresses} onSelect={(a: any) => selectSavedAddress(a, "pickup_address")} isLoading={isLoadingPickup} isValid={isPickupValid} locality={pickupLocality} form={form} readOnlyPincode={isFromCalculator} />
+        <AddressFormCard prefix="receiver_address" title="Receiver Details" icon={UserGroupIcon} savedAddresses={savedAddresses} onSelect={(a: any) => selectSavedAddress(a, "receiver_address")} isLoading={isLoadingDelivery} isValid={isDeliveryValid} locality={deliveryLocality} form={form} readOnlyPincode={isFromCalculator || formValues.same_as_pickup} />
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-6 p-6 border bg-muted/20 rounded-xl">

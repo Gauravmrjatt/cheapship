@@ -236,7 +236,7 @@ export default function FranchisePage() {
 
       {/* Sheet for Partner Shipments */}
       <Sheet open={state.showOrdersSheet} onOpenChange={(open) => setState(prev => ({ ...prev, showOrdersSheet: open }))}>
-        <SheetContent side="right" className="sm:max-w-7xl flex flex-col h-full p-0">
+        <SheetContent side="right" className="sm:max-w-7xl flex flex-col h-full p-0 w-full sm:w-3/4 [&>button]:top-4 [&>button]:right-4 [&>button]:w-10 [&>button]:h-10 [&>button]:rounded-full [&>button]:bg-muted [&>button]:flex [&>button]:items-center [&>button]:justify-center">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-lg bg-muted flex items-center justify-center">
@@ -261,7 +261,7 @@ export default function FranchisePage() {
 
       {/* Sheet for Yield Rate Edit */}
       <Sheet open={state.showRatesSheet} onOpenChange={(open) => setState(prev => ({ ...prev, showRatesSheet: open }))}>
-        <SheetContent side="right" className="sm:max-w-md flex flex-col h-full p-0">
+        <SheetContent side="right" className="sm:max-w-md flex flex-col h-full p-0 w-full sm:w-3/4 [&>button]:top-4 [&>button]:right-4 [&>button]:w-10 [&>button]:h-10 [&>button]:rounded-full [&>button]:bg-muted [&>button]:flex [&>button]:items-center [&>button]:justify-center">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-lg bg-muted flex items-center justify-center">

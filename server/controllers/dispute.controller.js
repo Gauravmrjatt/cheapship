@@ -176,24 +176,31 @@ const resolveWeightDispute = async (req, res) => {
 
             // If accepted, deduct the difference from user's wallet
             if (status === 'ACCEPTED' && dispute.difference_amount > 0) {
-                // Create a transaction record
+                // Update user wallet first
+                await tx.user.update({
+                    where: { id: dispute.user_id },
+                    data: {
+                        wallet_balance: { decrement: dispute.difference_amount }
+                    }
+                });
+
+                // Get updated wallet balance
+                const updatedUser = await tx.user.findUnique({
+                    where: { id: dispute.user_id },
+                    select: { wallet_balance: true }
+                });
+
+                // Create a transaction record with closing_balance
                 await tx.transaction.create({
                     data: {
                         user_id: dispute.user_id,
                         amount: dispute.difference_amount,
+                        closing_balance: Number(updatedUser.wallet_balance),
                         type: 'DEBIT',
                         category: 'ORDER_PAYMENT', // Or a new category like WEIGHT_DISPUTE
                         status: 'SUCCESS',
                         description: `Weight mismatch deduction for Order #${dispute.order_id}`,
                         reference_id: dispute.order_id.toString()
-                    }
-                });
-
-                // Update user wallet
-                await tx.user.update({
-                    where: { id: dispute.user_id },
-                    data: {
-                        wallet_balance: { decrement: dispute.difference_amount }
                     }
                 });
             }

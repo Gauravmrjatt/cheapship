@@ -315,13 +315,13 @@ export function CODOrdersDataTable({
     <Tabs
       value={filters?.status ?? "ALL"}
       onValueChange={(v) => { handleFilterUpdate("status", v); onPageChange?.(1) }}
-      className="w-full flex-col justify-start gap-6"
+      className="w-full flex-col justify-start gap-6 overflow-hidden"
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 overflow-hidden">
         <CODStatsCards summary={summary} totalOrders={pagination?.total} isLoading={isLoading} />
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
             <Select
               value={filters?.status ?? "ALL"}
               onValueChange={(v) => { if (v) { handleFilterUpdate("status", v); onPageChange?.(1) } }}
@@ -347,16 +347,16 @@ export function CODOrdersDataTable({
             </TabsList>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             <div className="hidden md:flex bg-muted/60 p-1 rounded-lg">
               <Button variant={filters?.order_source === "ALL" ? "secondary" : "ghost"} size="sm" onClick={() => { handleFilterUpdate("order_source", "ALL"); onPageChange?.(1); }} className="h-7 text-xs px-3 shadow-none">All</Button>
               <Button variant={filters?.order_source === "USER_ORDERS" ? "secondary" : "ghost"} size="sm" onClick={() => { handleFilterUpdate("order_source", "USER_ORDERS"); onPageChange?.(1); }} className="h-7 text-xs px-3 shadow-none">User COD</Button>
               <Button variant={filters?.order_source === "MY_ORDERS" ? "secondary" : "ghost"} size="sm" onClick={() => { handleFilterUpdate("order_source", "MY_ORDERS"); onPageChange?.(1); }} className="h-7 text-xs px-3 shadow-none">My Orders</Button>
             </div>
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64 min-w-[150px]">
               <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder="Search orders..."
+                placeholder="Search..."
                 className="pl-9 h-8"
                 value={filters?.search ?? ""}
                 onChange={(e) => { handleFilterUpdate("search", e.target.value); onPageChange?.(1) }}

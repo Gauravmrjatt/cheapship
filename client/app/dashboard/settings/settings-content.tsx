@@ -115,10 +115,10 @@ export default function SettingsPage() {
             <div className="flex-1 w-full min-w-0 space-y-6">
               {/* CTA Alert Panel */}
               {!isKycVerified && (
-                <Card className="border-amber-200 bg-amber-50/50 shadow-none rounded-2xl">
+                <Card className="border-amber-200 bg-amber-50/50">
                   <CardContent className="p-4 sm:p-6 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-amber-100 rounded-xl text-amber-600 shrink-0">
+                      <div className="p-3 bg-amber-100 rounded-lg text-amber-600 shrink-0">
                         <HugeiconsIcon icon={Shield01Icon} size={24} />
                       </div>
                       <div>
@@ -127,7 +127,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <Button 
-                      className="hidden sm:flex bg-amber-600 hover:bg-amber-700 text-white border-none rounded-xl"
+                      className="hidden sm:flex bg-amber-600 hover:bg-amber-700 text-white"
                       onClick={() => handleTabChange("kyc")}
                     >
                       Verify Now
@@ -170,7 +170,7 @@ function NavTrigger({ value, icon, label }: { value: string; icon: any; label: s
   return (
     <TabsTrigger 
       value={value} 
-      className="rounded-xl gap-3 py-2.5 px-4 md:w-full justify-start text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground transition-all font-medium text-sm border-none shadow-none"
+      className="gap-3 py-2.5 px-4 md:w-full justify-start text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
     >
       <HugeiconsIcon icon={icon} size={18} />
       <span className="whitespace-nowrap">{label}</span>
@@ -219,7 +219,7 @@ function ProfileTab({ http }: { http: any }) {
   if (isLoading) return <SettingsSkeleton />;
 
   return (
-    <Card className="rounded-2xl shadow-sm border-none bg-muted/20">
+    <Card>
       <CardHeader className="pb-4">
         <CardTitle className="text-xl font-bold">Personal Information</CardTitle>
         <CardDescription>Update your personal details and account email.</CardDescription>
@@ -235,7 +235,7 @@ function ProfileTab({ http }: { http: any }) {
                   id="name" 
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="pl-10 h-11 rounded-xl bg-background border-none ring-1 ring-border focus:ring-2 focus:ring-primary/20 transition-all font-medium" 
+                  className="pl-10" 
                   placeholder="John Doe" 
                 />
               </div>
@@ -248,7 +248,7 @@ function ProfileTab({ http }: { http: any }) {
                   id="mobile" 
                   value={formData.mobile}
                   onChange={(e) => setFormData({...formData, mobile: e.target.value})}
-                  className="pl-10 h-11 rounded-xl bg-background border-none ring-1 ring-border focus:ring-2 focus:ring-primary/20 transition-all font-medium" 
+                  className="pl-10" 
                   placeholder="9876543210" 
                 />
               </div>
@@ -261,7 +261,7 @@ function ProfileTab({ http }: { http: any }) {
                   id="email" 
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="pl-10 h-11 rounded-xl bg-background border-none ring-1 ring-border focus:ring-2 focus:ring-primary/20 transition-all font-medium" 
+                  className="pl-10" 
                   placeholder="john@example.com" 
                 />
               </div>
@@ -274,7 +274,7 @@ function ProfileTab({ http }: { http: any }) {
                   id="upi_id" 
                   value={formData.upi_id}
                   onChange={(e) => setFormData({...formData, upi_id: e.target.value})}
-                  className="pl-10 h-11 rounded-xl bg-background border-none ring-1 ring-border focus:ring-2 focus:ring-primary/20 transition-all font-medium" 
+                  className="pl-10" 
                   placeholder="yourname@upi" 
                 />
               </div>
@@ -282,7 +282,7 @@ function ProfileTab({ http }: { http: any }) {
           </div>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={isPending} className="h-11 px-8 rounded-xl gap-2 font-bold transition-all shadow-sm">
+            <Button type="submit" disabled={isPending}>
               {isPending ? <HugeiconsIcon icon={Loading03Icon} className="animate-spin" size={18} /> : <HugeiconsIcon icon={CheckmarkCircle02Icon} size={18} />}
               Save Changes
             </Button>
@@ -300,6 +300,7 @@ function KycTab({ http }: { http: any }) {
     aadhaar_number: "",
     gst_number: ""
   });
+  const [panError, setPanError] = useState("");
 
   const { data: userData } = useQuery<UserData>(
     http.get(["me"], "/auth/me")
@@ -319,6 +320,26 @@ function KycTab({ http }: { http: any }) {
     }
   }, [kycData]);
 
+  const validatePanNumber = (pan: string): boolean => {
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    return panRegex.test(pan);
+  };
+
+  const handlePanChange = (value: string) => {
+    const upperValue = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    setFormData({ ...formData, pan_number: upperValue });
+    
+    if (upperValue.length === 10) {
+      if (validatePanNumber(upperValue)) {
+        setPanError("");
+      } else {
+        setPanError("Invalid PAN format. Use: AAAAA1234A");
+      }
+    } else if (upperValue.length > 0) {
+      setPanError("");
+    }
+  };
+
   const { mutate: updateKyc, isPending: isUpdating } = useMutation(
     http.put("/auth/kyc", {
       onSuccess: () => {
@@ -331,6 +352,12 @@ function KycTab({ http }: { http: any }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (formData.pan_number && !validatePanNumber(formData.pan_number)) {
+      setPanError("Invalid PAN format. Use: AAAAA1234A");
+      return;
+    }
+    
     const dataToSubmit: Record<string, string> = {};
     if (formData.pan_number) dataToSubmit.pan_number = formData.pan_number.toUpperCase();
     if (formData.aadhaar_number) dataToSubmit.aadhaar_number = formData.aadhaar_number;
@@ -341,13 +368,13 @@ function KycTab({ http }: { http: any }) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "VERIFIED":
-        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 px-3 py-1 rounded-lg text-xs font-bold uppercase">Verified</Badge>;
+        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Verified</Badge>;
       case "SUBMITTED":
-        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 px-3 py-1 rounded-lg text-xs font-bold uppercase">Submitted</Badge>;
+        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Submitted</Badge>;
       case "REJECTED":
-        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20 px-3 py-1 rounded-lg text-xs font-bold uppercase">Rejected</Badge>;
+        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20">Rejected</Badge>;
       default:
-        return <Badge className="bg-muted text-muted-foreground border-none px-3 py-1 rounded-lg text-xs font-bold uppercase">Pending</Badge>;
+        return <Badge variant="secondary">Pending</Badge>;
     }
   };
 
@@ -355,13 +382,13 @@ function KycTab({ http }: { http: any }) {
     if (!value) return null;
     if (verified) {
       return (
-        <div className="flex items-center gap-1 text-green-600 text-[10px] font-bold uppercase tracking-wider">
+        <div className="flex items-center gap-1 text-green-600 text-xs font-medium">
           <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
           Verified
         </div>
       );
     }
-    return <span className="text-[10px] font-bold uppercase text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Pending Review</span>;
+    return <span className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Pending</span>;
   };
 
   if (isLoading) return <SettingsSkeleton />;
@@ -377,10 +404,10 @@ function KycTab({ http }: { http: any }) {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-2xl border-none bg-muted/20 shadow-sm overflow-hidden">
+      <Card>
         <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-background rounded-xl text-primary shadow-sm">
+            <div className="p-3.5 bg-secondary rounded-lg text-primary">
               <HugeiconsIcon icon={Shield01Icon} size={28} />
             </div>
             <div>
@@ -394,8 +421,8 @@ function KycTab({ http }: { http: any }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="rounded-2xl border-none bg-muted/20 shadow-sm overflow-hidden">
-            <CardHeader className="pb-4 border-b bg-background/50">
+          <Card>
+            <CardHeader className="pb-4 border-b">
               <div className="flex items-center gap-2">
                 <HugeiconsIcon icon={UserSquareIcon} size={20} className="text-primary" />
                 <CardTitle className="text-lg font-bold">Identity Details</CardTitle>
@@ -414,9 +441,13 @@ function KycTab({ http }: { http: any }) {
                       placeholder="ABCDE1234F"
                       maxLength={10}
                       value={formData.pan_number}
-                      onChange={(e) => setFormData({ ...formData, pan_number: e.target.value.toUpperCase() })}
-                      className="uppercase h-11 rounded-xl bg-background border-none ring-1 ring-border font-mono font-bold tracking-widest"
+                      onChange={(e) => handlePanChange(e.target.value)}
+                      className={cn(
+                        "uppercase font-mono tracking-widest",
+                        panError && "border-destructive focus-visible:ring-destructive"
+                      )}
                     />
+                    {panError && <p className="text-xs text-destructive">{panError}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -426,11 +457,11 @@ function KycTab({ http }: { http: any }) {
                     </div>
                     <Input
                       id="aadhaar_number"
-                      placeholder="1234 5678 9012"
+                      placeholder="123456789012"
                       maxLength={12}
                       value={formData.aadhaar_number}
                       onChange={(e) => setFormData({ ...formData, aadhaar_number: e.target.value.replace(/\D/g, "") })}
-                      className="h-11 rounded-xl bg-background border-none ring-1 ring-border font-mono font-bold tracking-widest"
+                      className="font-mono"
                     />
                   </div>
 
@@ -445,13 +476,13 @@ function KycTab({ http }: { http: any }) {
                       maxLength={15}
                       value={formData.gst_number}
                       onChange={(e) => setFormData({ ...formData, gst_number: e.target.value.toUpperCase() })}
-                      className="uppercase h-11 rounded-xl bg-background border-none ring-1 ring-border font-mono font-bold tracking-widest"
+                      className="uppercase font-mono"
                     />
                   </div>
                 </div>
 
                 <div className="flex justify-end pt-2">
-                  <Button type="submit" disabled={isUpdating} className="rounded-xl font-bold gap-2 shadow-sm">
+                  <Button type="submit" disabled={isUpdating}>
                     {isUpdating ? <HugeiconsIcon icon={Loading03Icon} className="animate-spin" size={16} /> : <HugeiconsIcon icon={Shield01Icon} size={16} />}
                     Update KYC
                   </Button>
@@ -460,27 +491,27 @@ function KycTab({ http }: { http: any }) {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl border-none bg-muted/20 shadow-sm overflow-hidden">
-            <CardHeader className="pb-4 border-b bg-background/50">
+          <Card>
+            <CardHeader className="pb-4 border-b">
               <div className="flex items-center gap-2">
                 <HugeiconsIcon icon={Settings02Icon} size={20} className="text-primary" />
                 <CardTitle className="text-lg font-bold">Permissions</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-border/50">
+              <div className="divide-y">
                 {permissions.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 sm:p-5 hover:bg-background/50 transition-colors">
+                  <div key={i} className="flex items-center justify-between p-4 sm:p-5 hover:bg-secondary/50 transition-colors">
                     <div className="flex items-center gap-4">
-                      <div className={cn("p-2 rounded-lg", p.status === "Active" ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground/50")}>
+                      <div className={cn("p-2 rounded-md", p.status === "Active" ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground/50")}>
                         <HugeiconsIcon icon={p.icon} size={18} />
                       </div>
                       <div>
                         <p className="text-sm font-bold">{p.name}</p>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">{p.description}</p>
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase">{p.description}</p>
                       </div>
                     </div>
-                    <Badge variant={p.status === "Active" ? "default" : "outline"} className={cn("text-[10px] font-bold px-2 rounded-md", p.status === "Active" ? "bg-green-600 border-none" : "text-muted-foreground opacity-50 uppercase")}>
+                    <Badge variant={p.status === "Active" ? "default" : "outline"} className={cn("text-[10px] font-bold", p.status === "Active" ? "bg-green-600" : "text-muted-foreground opacity-50 uppercase")}>
                       {p.status}
                     </Badge>
                   </div>
@@ -497,13 +528,13 @@ function KycTab({ http }: { http: any }) {
 
 function AppearanceTab({ theme, setTheme }: any) {
   return (
-    <Card className="rounded-2xl shadow-sm border-none bg-muted/20">
+    <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-xl font-bold font-sans">Appearance</CardTitle>
+        <CardTitle className="text-xl font-bold">Appearance</CardTitle>
         <CardDescription>Personalize your workspace with a theme that suits you.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 font-sans">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <ThemeCard 
             active={theme === "light"} 
             onClick={() => setTheme("light")} 
@@ -539,9 +570,9 @@ function ThemeCard({ active, onClick, icon, label, description, colorClass }: an
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center gap-4 p-6 rounded-xl border-2 transition-all duration-200 relative group",
+        "flex flex-col items-center gap-4 p-6 border-2 transition-all duration-200 relative group",
         active 
-          ? "border-primary bg-background ring-2 ring-primary/5 shadow-sm" 
+          ? "border-primary bg-background ring-2 ring-primary/5" 
           : "border-transparent bg-background hover:border-muted-foreground/20"
       )}
     >
@@ -566,7 +597,7 @@ function SecurityTab() {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-2xl shadow-sm border-none bg-muted/20">
+      <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-xl font-bold">Security & Sessions</CardTitle>
           <CardDescription>Monitor your account activity and manage active sessions.</CardDescription>
@@ -580,12 +611,12 @@ function SecurityTab() {
             
             {isLoading ? (
               <div className="space-y-3">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
               </div>
             ) : sessions && sessions.length > 0 ? (
               <div className="space-y-2">
                 {sessions.map((session: LoginSession) => (
-                  <div key={session.id} className="group p-4 rounded-xl bg-background border border-border/50 hover:border-primary/20 transition-all flex items-center justify-between">
+                  <div key={session.id} className="group p-4 rounded-lg bg-background border hover:border-primary/20 transition-all flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className={cn(
                         "p-2.5 rounded-lg transition-colors",
@@ -596,7 +627,7 @@ function SecurityTab() {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-bold">{session.device_info || 'Unknown Device'}</p>
-                          <Badge variant={session.login_status === 'SUCCESS' ? 'default' : 'destructive'} className={cn("text-[8px] font-bold uppercase px-1.5 h-3.5 rounded-sm border-none", session.login_status === 'SUCCESS' ? "bg-green-500" : "bg-red-500")}>
+                          <Badge variant={session.login_status === 'SUCCESS' ? 'default' : 'destructive'} className={cn("text-[8px] font-bold uppercase px-1.5 h-3.5 rounded-sm", session.login_status === 'SUCCESS' ? "bg-green-500" : "bg-red-500")}>
                             {session.login_status}
                           </Badge>
                         </div>
@@ -629,10 +660,10 @@ function SecurityTab() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl shadow-sm border-none bg-primary/5">
+      <Card className="bg-secondary">
         <CardContent className="p-6">
           <div className="flex gap-4">
-            <div className="p-2.5 bg-background rounded-xl text-primary shadow-sm h-fit">
+            <div className="p-2.5 bg-background rounded-lg text-primary">
               <HugeiconsIcon icon={Shield01Icon} size={20} />
             </div>
             <div className="space-y-1">
@@ -650,16 +681,16 @@ function SecurityTab() {
 
 function PlaceholderTab({ title, description }: { title: string; description: string }) {
   return (
-    <Card className="rounded-2xl shadow-sm border-none bg-muted/20 min-h-[400px] flex items-center justify-center">
+    <Card className="min-h-[400px] flex items-center justify-center">
       <CardContent className="flex flex-col items-center justify-center text-center space-y-6 max-w-sm">
-        <div className="size-20 rounded-2xl bg-background flex items-center justify-center text-muted-foreground/30 shadow-sm">
+        <div className="size-20 rounded-xl bg-secondary flex items-center justify-center text-muted-foreground/30">
           <HugeiconsIcon icon={Settings02Icon} size={40} />
         </div>
         <div className="space-y-2">
           <h3 className="text-xl font-bold">{title}</h3>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
-        <Badge variant="secondary" className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest">
+        <Badge variant="secondary" className="px-3 py-1 text-[10px] font-bold uppercase">
           Coming Soon
         </Badge>
       </CardContent>
@@ -669,16 +700,16 @@ function PlaceholderTab({ title, description }: { title: string; description: st
 
 function SettingsSkeleton() {
   return (
-    <Card className="rounded-2xl shadow-sm border-none bg-muted/20 p-6 sm:p-8 space-y-8 animate-pulse">
+    <Card className="p-6 sm:p-8 space-y-8 animate-pulse">
       <div className="space-y-3">
         <div className="h-7 w-1/4 bg-muted rounded-lg" />
         <div className="h-4 w-1/2 bg-muted rounded-md" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="h-20 bg-muted rounded-xl" />
-        <div className="h-20 bg-muted rounded-xl" />
+        <div className="h-20 bg-muted rounded-lg" />
+        <div className="h-20 bg-muted rounded-lg" />
       </div>
-      <div className="h-48 bg-muted rounded-xl" />
+      <div className="h-48 bg-muted rounded-lg" />
     </Card>
   );
 }
