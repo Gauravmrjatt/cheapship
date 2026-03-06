@@ -726,7 +726,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
                         className="gap-2 px-8  shadow-sm  min-w-[160px] disabled:bg-muted"
                         disabled={isSubmitting || (currentStep === 4 && (
                           (() => {
-                            const user = queryClient.getQueryData<any>(["me"]);
+                            const user = queryClient.getQueryData<any>(["user-profile"]);
                             const isKycVerified = user?.kyc_status === 'VERIFIED';
                             // Only KYC is required now
                             return !isKycVerified;
@@ -998,7 +998,6 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
                   {...form.register("receiver_address.pincode")}
                   aria-invalid={!!errors.receiver_address?.pincode}
                   placeholder="000000"
-                  
                   className={cn("h-10", !isDeliveryValid && formValues.receiver_address.pincode?.length === 6 && "border-destructive")}
                 />
                 {isLoadingDelivery ? <p className="text-[10px] text-muted-foreground mt-1 animate-pulse">Verifying...</p> : isDeliveryValid ? <p className="text-[10px] text-green-600 font-bold mt-1 uppercase tracking-tight">{deliveryLocality?.data?.postcode_details?.city || deliveryLocality?.postcode_details?.city}</p> : formValues.receiver_address.pincode?.length === 6 && <p className="text-[10px] text-destructive font-bold mt-1 uppercase tracking-tight">Invalid</p>}
@@ -1428,7 +1427,7 @@ function VerificationCard({
 
 function StepFour({ formValues, isShipped, createdOrderId, router, http, shiprocketPickups }: any) {
   const { data: user } = useQuery<any>(
-    http.get(["me"], "/auth/me", true)
+    http.get(["user-profile"], "/auth/me", true)
   );
   const sel = shiprocketPickups?.find((l: any) => l.pickup_location === formValues.pickup_location);
   const { data: orderCountData } = useQuery<any>(

@@ -9,8 +9,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { MoreHorizontalCircle01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon  } from "@hugeicons/react"
+import { MoreHorizontalCircle01Icon , Settings05Icon } from "@hugeicons/core-free-icons"
 
 export function NavDocuments({
   items,
@@ -43,8 +43,8 @@ export function NavDocuments({
         })}
         <SidebarMenuItem>
           <SidebarMenuButton className="text-sidebar-foreground/70" render={<Link href="/dashboard/settings" />}>
-            <HugeiconsIcon icon={MoreHorizontalCircle01Icon} strokeWidth={2} className="text-sidebar-foreground/70" />
-            <span>More</span>
+            <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} className="text-sidebar-foreground/70" />
+            <span>Settings</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

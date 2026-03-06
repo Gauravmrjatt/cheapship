@@ -14,13 +14,16 @@ import {
 
 export function NavSecondary({
   items,
+  onItemClick,
   ...props
 }: {
   items: {
     title: string
     url: string
     icon: React.ReactNode
+    onClick?: () => void
   }[]
+  onItemClick?: (title: string) => void
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
   const pathname = usePathname()
   
@@ -36,6 +39,13 @@ export function NavSecondary({
                 <SidebarMenuButton 
                   isActive={isActive}
                   render={item.url !== "#" ? <Link href={item.url} /> : undefined}
+                  onClick={() => {
+                    if (item.url === "#" && item.onClick) {
+                      item.onClick();
+                    } else if (onItemClick && item.url === "#") {
+                      onItemClick(item.title);
+                    }
+                  }}
                 >
                   {item.icon}
                   <span>{item.title}</span>

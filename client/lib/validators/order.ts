@@ -38,7 +38,8 @@ export const createOrderSchema = z.object({
   width: z.number().min(1, "Width is required"),
   height: z.number().min(1, "Height is required"),
   total_amount: z.number().min(1, "Total amount is required"),
-  cod_amount: z.number().min(1, "COD amount is required").max(100000, "COD amount cannot exceed 1 lakh"),
+  // COD amount is only required when payment_mode is COD
+  cod_amount: z.number().optional(),
   pickup_location: z.string().min(1, "Pickup location is required"),
   pickup_address: addressSchema,
   receiver_address: addressSchema,
@@ -55,6 +56,23 @@ export const createOrderSchema = z.object({
   new_pickup_gst: z.string().optional(),
   new_pickup_registered_name: z.string().optional(),
   is_insured: z.boolean().optional().default(false),
+}).superRefine((data, ctx) => {
+  // Custom validation: cod_amount is required when payment_mode is COD
+  if (data.payment_mode === "COD") {
+    if (!data.cod_amount || data.cod_amount < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "COD amount is required",
+        path: ["cod_amount"],
+      });
+    } else if (data.cod_amount > 100000) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "COD amount cannot exceed 1 lakh",
+        path: ["cod_amount"],
+      });
+    }
+  }
 });
 
 export const shiprocketPickupSchema = z.object({

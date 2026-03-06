@@ -38,7 +38,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { useRouter } from "next/navigation";
 import { useRateCalculatorStore } from "@/lib/store/rate-calculator";
 import { CourierCard, CalculationGuidelines } from "@/components/calculator-components";
-
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 interface LocationInfo {
   city: string;
   state: string;
@@ -133,7 +133,7 @@ export default function RateCalculatorPage() {
     const actualWeight = formValues.actualWeight || 0;
     const isFlyer = actualWeight <= 1000; // 1kg or less
     const volumetric = volumetricWeight;
-    
+
     // For flyers (1kg or less), use actual weight even if volumetric is higher
     // For all other packages, use the higher of actual or volumetric weight
     return isFlyer ? actualWeight : Math.max(actualWeight, volumetric);
@@ -217,9 +217,9 @@ export default function RateCalculatorPage() {
   const filteredPartners = partners
     .sort((a, b) => a.rate - b.rate)
     .filter(p => {
-    if (activeTab === "all") return true;
-    return p.mode.toLowerCase() === activeTab.toLowerCase();
-  });
+      if (activeTab === "all") return true;
+      return p.mode.toLowerCase() === activeTab.toLowerCase();
+    });
 
   const isPickupValid = pickupLocality && (pickupLocality?.success !== false) && (pickupLocality?.data?.postcode_details || pickupLocality?.postcode_details);
   const isDeliveryValid = deliveryLocality && (deliveryLocality?.success !== false) && (deliveryLocality?.data?.postcode_details || deliveryLocality?.postcode_details);
@@ -381,7 +381,7 @@ export default function RateCalculatorPage() {
                     />
                   </Field> */}
 
-                  <div className="flex items-center space-x-2 rounded-lg border p-4 bg-muted/30">
+                  <div className="flex items-center space-x-2 rounded-lg border p-4 bg-muted/30 ">
                     <Controller
                       control={form.control}
                       name="dangerousGoods"
@@ -405,6 +405,26 @@ export default function RateCalculatorPage() {
                       </p>
                     </div>
                   </div>
+                  {formValues.shipmentValue >= 2500 && (<>
+                    <div className="flex items-center space-x-2 bg-primary/5 p-3 rounded-lg border border-primary/20 w-full animate-in fade-in slide-in-from-top-2">
+                      <Controller
+                        control={form.control}
+                        name="is_insured"
+                        render={({ field }) => (
+                          <Checkbox
+                            id="is_insured"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                          />
+                        )}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label htmlFor="is_insured" className="text-sm font-bold cursor-pointer">Secured Shipment</Label>
+                        <p className="text-[10px] text-muted-foreground font-semibold">Protect against damage/loss</p>
+                      </div>
+                    </div>
+                  </>)}
                 </div>
 
                 <Button
@@ -442,7 +462,7 @@ export default function RateCalculatorPage() {
                 <Separator className="bg-primary/10" />
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">Chargeable Weight</span>
-                  <span className="text-lg font-black text-primary">{(Math.max(volumetricWeight * 1000, formValues.actualWeight || 0) ).toFixed(0)} g</span>
+                  <span className="text-lg font-black text-primary">{(Math.max(volumetricWeight * 1000, formValues.actualWeight || 0)).toFixed(0)} g</span>
                 </div>
               </div>
             </CardContent>

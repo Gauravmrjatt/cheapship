@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Figtree } from "next/font/google";
 import "./globals.css";
 
-const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans' });
 
+const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans' });
+import CommandPalette from "@/components/command-palette";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -43,11 +44,14 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Providers>
-            <Toaster options={{
-              fill: "#171717",
-              styles: { description: "text-white/75!"  },
-            }} position="top-center" />
-            {children}
+          
+              <Toaster options={{
+                fill: "#171717",
+                styles: { description: "text-white/75!" },
+              }} position="top-center" />
+              {children}
+              <CommandPalette />
+         
           </Providers>
         </ThemeProvider>
       </body>

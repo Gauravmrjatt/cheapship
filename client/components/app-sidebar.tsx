@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 
 import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
@@ -38,8 +39,16 @@ import {
   Comment01Icon
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/hooks/use-auth"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
-const adminNav = [
+export const adminNav = [
   {
     title: "Overview",
     url: "/admin",
@@ -82,7 +91,7 @@ const adminNav = [
   },
 ];
 
-const data = {
+export const data = {
   navMain: [
     {
       title: "Dashboard",
@@ -150,10 +159,10 @@ const data = {
   ],
   navSecondary: [
     {
-      title: "Settings",
-      url: "/dashboard/settings",
+      title: "Search Orders",
+      url: "/dashboard/orders?search=1",
       icon: (
-        <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />
+        <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />
       ),
     },
     {
@@ -170,13 +179,7 @@ const data = {
         <HugeiconsIcon icon={Comment01Icon} strokeWidth={2} />
       ),
     },
-    {
-      title: "Search",
-      url: "#",
-      icon: (
-        <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />
-      ),
-    },
+
   ],
   documents: [
     {
@@ -202,12 +205,30 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
   const { user } = useAuth();
+  const router = useRouter();
+  const [showSearchDialog, setShowSearchDialog] = React.useState(false);
+  const [sidebarSearch, setSidebarSearch] = React.useState("");
+
   const displayUser = {
     name: user?.name || "User",
     email: user?.email || "",
   }
 
   const mainNavItems = user?.user_type === "ADMIN" ? [...adminNav, ...data.navMain] : data.navMain;
+
+  const handleSearchSubmit = () => {
+    if (sidebarSearch.trim()) {
+      router.push(`/dashboard/orders?search=1&q=${encodeURIComponent(sidebarSearch.trim())}`);
+      setShowSearchDialog(false);
+      setSidebarSearch("");
+    }
+  };
+
+  const modifiedNavSecondary = data.navSecondary.map(item =>
+    item.title === "Search Orders"
+      ? { ...item, url: "#", onClick: () => setShowSearchDialog(true) }
+      : item
+  );
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -226,12 +247,54 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={mainNavItems} />
-        {!isAdmin && <NavDocuments items={data.documents} />}
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavDocuments items={data.documents} />
+
+        <NavSecondary
+          items={modifiedNavSecondary}
+          className="mt-auto"
+          onItemClick={(title: string) => {
+            if (title === "Search Orders") {
+              setShowSearchDialog(true);
+            }
+          }}
+        />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={displayUser} />
       </SidebarFooter>
+
+      <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Search Orders</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            <div className="relative">
+              <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by order ID, shipment ID, tracking number..."
+                className="pl-10"
+                value={sidebarSearch}
+                onChange={(e) => setSidebarSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearchSubmit();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowSearchDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSearchSubmit}>
+                Search
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Sidebar>
   )
 }
