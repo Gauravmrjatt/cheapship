@@ -151,3 +151,134 @@ export const useCreateAdminWeightDispute = () => {
     }
   });
 };
+
+// RTO Types
+export interface AdminRTODispute {
+  id: string;
+  order_id: string;
+  user_id: string;
+  reason: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  action_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  order?: {
+    id: string;
+    tracking_number: string;
+    courier_name: string;
+    shipment_status: string;
+    rto_charges: number | null;
+  };
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    mobile: string;
+    wallet_balance: number;
+    security_deposit: number;
+  };
+}
+
+export interface AdminOrderForRTO {
+  id: string;
+  tracking_number: string | null;
+  shipment_status: string;
+  courier_name: string | null;
+  rto_charges: number | null;
+  created_at: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    mobile: string;
+    wallet_balance: number;
+    security_deposit: number;
+  };
+  rto_dispute: {
+    id: string;
+    status: string;
+  } | null;
+}
+
+export interface CreateRTOPayload {
+  order_id: string;
+  amount: number;
+  reason: string;
+}
+
+export interface RTOResponse {
+  message: string;
+  data: {
+    rtoDispute: AdminRTODispute;
+    walletChanges: {
+      previousWalletBalance: number;
+      newWalletBalance: number;
+      previousSecurityDeposit: number;
+      newSecurityDeposit: number;
+      securityDeducted: number;
+      walletDeducted: number;
+    };
+  };
+}
+
+export const useAdminRTODisputes = (page: number = 1, pageSize: number = 10, status?: string, search?: string) => {
+  const http = useHttp();
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+  });
+  if (status && status !== 'ALL') queryParams.append("status", status);
+  if (search) queryParams.append("search", search);
+
+  return useQuery(http.get<{
+    data: AdminRTODispute[];
+    pagination: {
+      total: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    }
+  }>(["admin-rto-disputes", page, pageSize, status, search], `/disputes/rto/admin/all?${queryParams.toString()}`));
+};
+
+export const useSearchOrdersForRTO = (search: string) => {
+  const http = useHttp();
+  return useQuery(
+    http.get<{ data: AdminOrderForRTO[] }>(
+      ["search-orders-rto", search],
+      `/disputes/rto/admin/orders?search=${encodeURIComponent(search)}`,
+      search.length >= 2
+    )
+  );
+};
+
+export const useCreateAdminRTODispute = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateRTOPayload) => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1/disputes/rto/admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create RTO');
+      }
+      
+      return response.json() as Promise<RTOResponse>;
+    },
+    onSuccess: (data) => {
+      sileo.success({ title: "RTO Created", description: data.message });
+      queryClient.invalidateQueries({ queryKey: ["admin-rto-disputes"] });
+    },
+    onError: (error: Error) => {
+      sileo.error({ title: "Failed to create RTO", description: error.message });
+    }
+  });
+};

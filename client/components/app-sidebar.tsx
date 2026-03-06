@@ -36,7 +36,8 @@ import {
   MoneyReceiveCircleIcon,
   Globe02Icon,
   Wallet01Icon,
-  Comment01Icon
+  Comment01Icon,
+  DeliveryReturnIcon
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/hooks/use-auth"
 import {
@@ -83,6 +84,11 @@ export const adminNav = [
     title: "Weight Disputes",
     url: "/admin/weight-disputes",
     icon: <HugeiconsIcon icon={WeightScale01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "RTO",
+    url: "/admin/rto",
+    icon: <HugeiconsIcon icon={DeliveryReturnIcon} strokeWidth={2} />,
   },
   {
     title: "Finance & Withdrawals",

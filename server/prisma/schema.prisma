@@ -393,6 +393,7 @@ enum TransactionCategory {
   COMMISSION
   SECURITY_DEPOSIT
   WEIGHT_DISPUTE
+  RTO_CHARGE
 }
 
 enum TransactionStatus {

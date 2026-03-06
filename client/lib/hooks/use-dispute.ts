@@ -68,3 +68,38 @@ export const useRaiseWeightDispute = () => {
     })
   });
 };
+
+export interface RTODispute {
+  id: string;
+  order_id: string;
+  user_id: string;
+  reason: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  action_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  order?: {
+    id: string;
+    tracking_number: string;
+    courier_name: string;
+  };
+}
+
+export const useRTODisputes = (page: number = 1, pageSize: number = 10, status?: string) => {
+  const http = useHttp();
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+  });
+  if (status && status !== 'ALL') queryParams.append("status", status);
+
+  return useQuery(http.get<{
+    data: RTODispute[];
+    pagination: {
+      total: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    }
+  }>(["rto-disputes", page, pageSize, status], `/disputes/rto?${queryParams.toString()}`));
+};

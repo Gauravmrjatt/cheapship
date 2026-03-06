@@ -168,6 +168,7 @@ function OrdersContent() {
   }, []);
 
   React.useEffect(() => {
+    if (!isMounted) return;
     const userIdFromQuery = searchParams.get("userId") || "";
     const statusFromQuery = searchParams.get("shipment_status") || "";
     
@@ -178,7 +179,7 @@ function OrdersContent() {
     if (statusFromQuery) {
       setFilters(prev => ({ ...prev, shipment_status: statusFromQuery }));
     }
-  }, [searchParams]);
+  }, [searchParams, isMounted]);
 
   const { data, isLoading } = useAdminOrders(
     page,
@@ -333,12 +334,12 @@ function OrdersContent() {
         return (
           <React.Fragment>
             <Popover>
-              <PopoverTrigger render={
-                <div className="flex flex-col items-start cursor-help hover:text-primary transition-colors">
+              <PopoverTrigger>
+                <button className="flex flex-col items-start cursor-help hover:text-primary transition-colors">
                   <span className="font-semibold text-foreground text-xs">{pickup.city}, {pickup.state}</span>
                   <span className="text-[10px] text-muted-foreground">to {receiver.city}, {receiver.state}</span>
-                </div>
-            } />
+                </button>
+              </PopoverTrigger>
             <PopoverContent className="w-72 p-3" side="left">
               <div className="space-y-3">
                 <div>
@@ -523,11 +524,11 @@ function OrdersContent() {
 
         return (
           <DropdownMenu>
-            <DropdownMenuTrigger render={
-              <Button variant="ghost" size="icon" className="size-8">
+            <DropdownMenuTrigger>
+              <button className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8">
                 <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
-              </Button>
-            } />
+              </button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem>
                 <Link href={`/dashboard/orders/${order.id}`} className="w-full">
@@ -680,9 +681,9 @@ function OrdersContent() {
                   <SelectItem value="DISPATCHED">Dispatched</SelectItem>
                   <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
                   <SelectItem value="DELIVERED">Delivered</SelectItem>
-                  <SelectItem value="NOT_PICKED">Not Picked</SelectItem>
-                  <SelectItem value="RTO">RTO</SelectItem>
-                  <SelectItem value="DRAFT">Drafts</SelectItem>
+                  {/* <SelectItem value="NOT_PICKED">Not Picked</SelectItem> */}
+                  {/* <SelectItem value="RTO">RTO</SelectItem> */}
+                  {/* <SelectItem value="DRAFT">Drafts</SelectItem> */}
                   <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectGroup>
               </SelectContent>
@@ -695,9 +696,9 @@ function OrdersContent() {
               <TabsTrigger value="DISPATCHED">Dispatched</TabsTrigger>
               <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
               <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
-              <TabsTrigger value="NOT_PICKED">Not Picked</TabsTrigger>
-              <TabsTrigger value="RTO">RTO</TabsTrigger>
-              <TabsTrigger value="DRAFT">Drafts</TabsTrigger>
+              {/* <TabsTrigger value="NOT_PICKED">Not Picked</TabsTrigger> */}
+              {/* <TabsTrigger value="RTO">RTO</TabsTrigger> */}
+              {/* <TabsTrigger value="DRAFT">Drafts</TabsTrigger> */}
               <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
             </TabsList>
           </div>
@@ -714,12 +715,12 @@ function OrdersContent() {
             </div>
 
             <Popover>
-              <PopoverTrigger render={
-                <Button variant="outline" size="sm">
+              <PopoverTrigger>
+                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-2">
                   <HugeiconsIcon icon={Calendar01Icon} className="size-4" />
                   <span className="hidden lg:inline">Date Range</span>
-                </Button>
-              } />
+                </button>
+              </PopoverTrigger>
               <PopoverContent className="w-80 p-4" align="end">
                 <div className="space-y-4">
                   <h4 className="font-medium text-sm">Select Date Range</h4>
@@ -759,8 +760,8 @@ function OrdersContent() {
             </Popover>
 
             <Popover>
-              <PopoverTrigger render={
-                <Button variant="outline" size="sm">
+              <PopoverTrigger>
+                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-2">
                   <HugeiconsIcon icon={FilterIcon} className="size-4" />
                   <span className="hidden lg:inline">Filters</span>
                   {activeFiltersCount > 0 && (
@@ -768,8 +769,8 @@ function OrdersContent() {
                       {activeFiltersCount}
                     </Badge>
                   )}
-                </Button>
-              } />
+                </button>
+              </PopoverTrigger>
               <PopoverContent className="w-64 p-4 space-y-4" align="end">
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -822,13 +823,13 @@ function OrdersContent() {
             </Popover>
 
             <DropdownMenu>
-              <DropdownMenuTrigger render={
-                <Button variant="outline" size="sm">
+              <DropdownMenuTrigger>
+                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-2">
                   <HugeiconsIcon icon={LayoutIcon} strokeWidth={2} data-icon="inline-start" />
                   <span className="hidden lg:inline">Columns</span>
                   <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
-                </Button>
-              } />
+                </button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
                 {table.getAllColumns().filter(c => c.getCanHide()).map((column) => (
                   <DropdownMenuCheckboxItem
@@ -932,13 +933,13 @@ function OrdersContent() {
               </div>
               {table.getFilteredSelectedRowModel().rows.length > 0 && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger render={
-                    <Button size="sm" variant="secondary" className="gap-2 border shadow-sm">
+                  <DropdownMenuTrigger>
+                    <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 h-8 px-3 py-2 border shadow-sm">
                       <HugeiconsIcon icon={LayoutIcon} className="size-4" />
                       <span className="hidden lg:inline">Bulk Actions</span>
                       <Badge className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full p-0 text-[10px]">{table.getFilteredSelectedRowModel().rows.length}</Badge>
-                    </Button>
-                  } />
+                    </button>
+                  </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={handleExportCSV}>Export CSV</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleBulkLabels}>Download Labels</DropdownMenuItem>

@@ -17,4 +17,9 @@ router.post('/weight/admin', admin, disputeController.adminCreateWeightDispute);
 router.post('/weight', admin, disputeController.createWeightDispute);
 router.patch('/weight/:id/resolve', admin, disputeController.resolveWeightDispute);
 
+// RTO Admin routes
+router.get('/rto/admin/all', admin, disputeController.getAllRTODisputes);
+router.get('/rto/admin/orders', admin, disputeController.searchOrdersForRTO);
+router.post('/rto/admin', admin, disputeController.adminCreateRTODispute);
+
 module.exports = router;

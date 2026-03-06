@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import { Button } from "@/components/ui/button";
+import { WorldMap } from "@/components/ui/map";
+import { motion } from "framer-motion";
 
 export const metadata: Metadata = {
   title: "Home",
@@ -235,8 +237,14 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="min-h-dvh flex flex-col justify-around">
-        <section className="relative py-20 md:py-32 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/20 pointer-events-none" />
+         <div className="absolute inset-0 mt-15">
+            <WorldMap
+            />
+          </div>
+           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/20 pointer-events-none" />
+        <section className="relative pb-20 md:p-32 w-full h-full ">
+         
+         
           <div className="container mx-auto px-4 relative">
             <div className="max-w-3xl mx-auto text-center">
               <Badge variant="secondary" className="mb-6">
@@ -278,7 +286,7 @@ export default function LandingPage() {
         </section>
 
         {/* Stats Section */}
-        <section className="py-12 border-y bg-muted/30">
+        <section className="py-12 border-y bg-muted/30 z-4">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               {stats.map((stat, index) => (

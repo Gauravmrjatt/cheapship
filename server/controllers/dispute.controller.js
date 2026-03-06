@@ -221,20 +221,20 @@ const resolveWeightDispute = async (req, res) => {
 const userRaiseWeightDispute = async (req, res) => {
     const prisma = req.app.locals.prisma;
     const userId = req.user.id;
-    const { 
-        awb_number, 
-        declared_weight, 
-        charged_weight, 
-        product_category, 
-        description, 
-        weight_scale_image, 
-        packed_box_image 
+    const {
+        awb_number,
+        declared_weight,
+        charged_weight,
+        product_category,
+        description,
+        weight_scale_image,
+        packed_box_image
     } = req.body;
 
     try {
         // Find the order by AWB (tracking_number)
         const order = await prisma.order.findFirst({
-            where: { 
+            where: {
                 tracking_number: awb_number,
                 user_id: userId
             },
@@ -247,7 +247,7 @@ const userRaiseWeightDispute = async (req, res) => {
 
         const applied_weight = parseFloat(order.weight || 0);
         const applied_amount = parseFloat(order.shipping_charge || 0);
-        
+
         // Use provided charged_weight or calculate from system if we had a way, 
         // but here the user says what they were charged.
         // We'll trust the user input for the dispute record creation.
@@ -302,7 +302,7 @@ const getAllWeightDisputes = async (req, res) => {
 
     try {
         const where = {};
-        
+
         if (status) {
             where.status = status;
         }
@@ -310,7 +310,7 @@ const getAllWeightDisputes = async (req, res) => {
         if (search) {
             const isNumeric = /^\d+$/.test(search);
             const orConditions = [];
-            
+
             if (isNumeric) {
                 try {
                     orConditions.push({ order_id: { equals: BigInt(search) } });
@@ -318,13 +318,13 @@ const getAllWeightDisputes = async (req, res) => {
                     // Invalid number
                 }
             }
-            
+
             orConditions.push(
                 { user: { mobile: { contains: search } } },
                 { user: { email: { contains: search } } },
                 { user: { name: { contains: search } } }
             );
-            
+
             where.OR = orConditions;
         }
 
@@ -390,7 +390,7 @@ const searchOrdersForDispute = async (req, res) => {
         const isNumeric = /^\d+$/.test(search);
         let searchNum;
         let orderIdFilter = null;
-        
+
         if (isNumeric) {
             try {
                 searchNum = BigInt(search);
@@ -448,8 +448,8 @@ const searchOrdersForDispute = async (req, res) => {
  */
 const adminCreateWeightDispute = async (req, res) => {
     const prisma = req.app.locals.prisma;
-    const { 
-        order_id, 
+    const {
+        order_id,
         weight_type, // 'LESS' or 'MORE'
         applied_weight, // Weight in grams
         charged_weight, // Weight in grams  
@@ -460,23 +460,23 @@ const adminCreateWeightDispute = async (req, res) => {
 
     try {
         const orderId = BigInt(order_id);
-        
+
         // Check for existing dispute for this order
         const existingDispute = await prisma.weightDispute.findUnique({
             where: { order_id: orderId }
         });
 
         if (existingDispute) {
-            return res.status(400).json({ 
-                message: 'Weight dispute already exists for this order. Please resolve or reject the existing dispute first.' 
+            return res.status(400).json({
+                message: 'Weight dispute already exists for this order. Please resolve or reject the existing dispute first.'
             });
         }
 
         const order = await prisma.order.findUnique({
             where: { id: orderId },
-            select: { 
-                user_id: true, 
-                weight: true, 
+            select: {
+                user_id: true,
+                weight: true,
                 shipping_charge: true,
                 base_shipping_charge: true
             }
@@ -497,9 +497,9 @@ const adminCreateWeightDispute = async (req, res) => {
             // Get current user wallet info
             const user = await tx.user.findUnique({
                 where: { id: order.user_id },
-                select: { 
-                    wallet_balance: true, 
-                    security_deposit: true 
+                select: {
+                    wallet_balance: true,
+                    security_deposit: true
                 }
             });
 
@@ -616,12 +616,298 @@ const adminCreateWeightDispute = async (req, res) => {
             };
         });
 
-        res.status(201).json({ 
-            message: 'Weight dispute created successfully', 
-            data: result 
+        res.status(201).json({
+            message: 'Weight dispute created successfully',
+            data: result
         });
     } catch (error) {
         console.error('Error creating weight dispute:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+/**
+ * Get all RTO disputes (Admin view)
+ */
+const getAllRTODisputes = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const { page = 1, pageSize = 10, status, search } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const pageSizeNum = parseInt(pageSize, 10);
+    const offset = (pageNum - 1) * pageSizeNum;
+
+    try {
+        const where = {};
+
+        if (status) {
+            where.status = status;
+        }
+
+        if (search) {
+            const isNumeric = /^\d+$/.test(search);
+            const orConditions = [];
+
+            if (isNumeric) {
+                try {
+                    orConditions.push({ order_id: { equals: BigInt(search) } });
+                } catch (e) {
+                    // Invalid number
+                }
+            }
+
+            orConditions.push(
+                { user: { mobile: { contains: search } } },
+                { user: { email: { contains: search } } },
+                { user: { name: { contains: search } } }
+            );
+
+            where.OR = orConditions;
+        }
+
+        const [disputes, total] = await prisma.$transaction([
+            prisma.rTODispute.findMany({
+                where,
+                include: {
+                    order: {
+                        select: {
+                            id: true,
+                            tracking_number: true,
+                            courier_name: true,
+                            shipment_status: true,
+                            rto_charges: true
+                        }
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            mobile: true,
+                            wallet_balance: true,
+                            security_deposit: true
+                        }
+                    }
+                },
+                skip: offset,
+                take: pageSizeNum,
+                orderBy: { created_at: 'desc' }
+            }),
+            prisma.rTODispute.count({ where })
+        ]);
+
+        res.json({
+            data: disputes,
+            pagination: {
+                total,
+                totalPages: Math.ceil(total / pageSizeNum),
+                currentPage: pageNum,
+                pageSize: pageSizeNum
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching all RTO disputes:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+/**
+ * Search orders for RTO (Admin)
+ */
+const searchOrdersForRTO = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const { search } = req.query;
+
+    if (!search || search.length < 2) {
+        return res.json({ data: [] });
+    }
+
+    try {
+        const isNumeric = /^\d+$/.test(search);
+        let orderIdFilter = null;
+
+        if (isNumeric) {
+            try {
+                orderIdFilter = { id: BigInt(search) };
+            } catch (e) {
+                // Invalid number
+            }
+        }
+
+        const orders = await prisma.order.findMany({
+            where: {
+                OR: [
+                    ...(orderIdFilter ? [orderIdFilter] : []),
+                    { shiprocket_order_id: { contains: search, mode: 'insensitive' } },
+                    { shiprocket_shipment_id: { contains: search, mode: 'insensitive' } },
+                    { tracking_number: { contains: search, mode: 'insensitive' } },
+                    { user: { mobile: { contains: search } } },
+                    { user: { email: { contains: search, mode: 'insensitive' } } }
+                ]
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        mobile: true,
+                        wallet_balance: true,
+                        security_deposit: true
+                    }
+                },
+                rto_dispute: {
+                    select: {
+                        id: true,
+                        status: true
+                    }
+                }
+            },
+            take: 20,
+            orderBy: { created_at: 'desc' }
+        });
+
+        res.json({ data: orders });
+    } catch (error) {
+        console.error('Error searching orders for RTO:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+/**
+ * Admin creates RTO dispute with wallet deduction
+ * Security: No duplicate RTO per order
+ * Wallet: Deduct from security_deposit first, then wallet_balance (allow negative)
+ */
+const adminCreateRTODispute = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const {
+        order_id,
+        amount,
+        reason
+    } = req.body;
+
+    try {
+        const orderId = BigInt(order_id);
+
+        // Check for existing RTO dispute for this order
+        const existingRTO = await prisma.rTODispute.findUnique({
+            where: { order_id: orderId }
+        });
+
+        if (existingRTO) {
+            return res.status(400).json({
+                message: 'RTO already exists for this order. Please resolve or reject the existing RTO first.'
+            });
+        }
+
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            select: {
+                user_id: true,
+                rto_charges: true
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const amountValue = parseFloat(amount);
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Get current user wallet info
+            const user = await tx.user.findUnique({
+                where: { id: order.user_id },
+                select: {
+                    wallet_balance: true,
+                    security_deposit: true
+                }
+            });
+
+            let newWalletBalance = Number(user.wallet_balance);
+            let newSecurityDeposit = Number(user.security_deposit);
+            let securityDeducted = 0;
+            let walletDeducted = 0;
+
+            // Deduct from security_deposit first, then wallet_balance
+            if (amountValue > 0) {
+                let remainingAmount = amountValue;
+
+                // First deduct from security_deposit
+                if (newSecurityDeposit > 0) {
+                    if (newSecurityDeposit >= remainingAmount) {
+                        securityDeducted = remainingAmount;
+                        newSecurityDeposit -= remainingAmount;
+                        remainingAmount = 0;
+                    } else {
+                        securityDeducted = newSecurityDeposit;
+                        remainingAmount -= newSecurityDeposit;
+                        newSecurityDeposit = 0;
+                    }
+                }
+
+                // Then deduct from wallet_balance if needed
+                if (remainingAmount > 0) {
+                    walletDeducted = remainingAmount;
+                    newWalletBalance -= remainingAmount;
+                    // Allow negative balance
+                }
+
+                // Update user wallets
+                await tx.user.update({
+                    where: { id: order.user_id },
+                    data: {
+                        wallet_balance: newWalletBalance,
+                        security_deposit: newSecurityDeposit
+                    }
+                });
+
+                // Create transaction record
+                await tx.transaction.create({
+                    data: {
+                        user_id: order.user_id,
+                        amount: amountValue,
+                        closing_balance: newWalletBalance,
+                        type: 'DEBIT',
+                        category: 'RTO_CHARGE',
+                        status: 'SUCCESS',
+                        description: `RTO charge for Order #${order_id}. Security: ₹${securityDeducted}, Wallet: ₹${walletDeducted}`,
+                        reference_id: order_id.toString()
+                    }
+                });
+            }
+
+            // Create RTO dispute record (auto ACCEPTED)
+            const rtoDispute = await tx.rTODispute.create({
+                data: {
+                    order_id: orderId,
+                    user_id: order.user_id,
+                    reason: reason || 'RTO charge',
+                    status: 'ACCEPTED',
+                    action_reason: `RTO processed. Amount: ₹${amountValue}`
+                }
+            });
+
+            return {
+                rtoDispute,
+                walletChanges: {
+                    previousWalletBalance: Number(user.wallet_balance),
+                    newWalletBalance,
+                    previousSecurityDeposit: Number(user.security_deposit),
+                    newSecurityDeposit,
+                    securityDeducted,
+                    walletDeducted
+                }
+            };
+        });
+
+        res.status(201).json({
+            message: 'RTO created successfully',
+            data: result
+        });
+    } catch (error) {
+        console.error('Error creating RTO dispute:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
@@ -634,5 +920,8 @@ module.exports = {
     userRaiseWeightDispute,
     getAllWeightDisputes,
     searchOrdersForDispute,
-    adminCreateWeightDispute
+    adminCreateWeightDispute,
+    getAllRTODisputes,
+    searchOrdersForRTO,
+    adminCreateRTODispute
 };
