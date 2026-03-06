@@ -234,62 +234,63 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 md:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/20 pointer-events-none" />
-        <div className="container mx-auto px-4 relative">
-          <div className="max-w-3xl mx-auto text-center">
-            <Badge variant="secondary" className="mb-6">
-            {/* <FlashIcon className="w-3 h-3 mr-1" /> */}
-              Now serving 27,000+ pin codes
-            </Badge>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
-              Ship Smarter,
-              <span className="text-primary"> Save Bigger</span>
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Compare shipping rates from 25+ carriers in seconds. Save up to 40% on every shipment with India&apos;s smartest logistics platform.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/dashboard">
-                <Button size="lg" className="h-12 px-8">
-                  Start Shipping Free
-                  <HugeiconsIcon icon={ArrowRight01Icon} className="ml-2" size={18} />
-                </Button>
-              </Link>
-              <Link href="/dashboard/calculator">
-                <Button size="lg" variant="outline" className="h-12 px-8">
-                  Calculate Rates
-                </Button>
-              </Link>
-            </div>
-            <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
-              <span className="flex items-center gap-2">
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="text-green-500" />
-                No credit card required
-              </span>
-              <span className="flex items-center gap-2">
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="text-green-500" />
-                Free forever plan
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-12 border-y bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-primary">{stat.value}</div>
-                <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+      <section className="min-h-dvh flex flex-col justify-around">
+        <section className="relative py-20 md:py-32 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/20 pointer-events-none" />
+          <div className="container mx-auto px-4 relative">
+            <div className="max-w-3xl mx-auto text-center">
+              <Badge variant="secondary" className="mb-6">
+                {/* <FlashIcon className="w-3 h-3 mr-1" /> */}
+                Now serving 27,000+ pin codes
+              </Badge>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
+                Ship Smarter,
+                <span className="text-primary"> Save Bigger</span>
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+                Compare shipping rates from 25+ carriers in seconds. Save up to 40% on every shipment with India&apos;s smartest logistics platform.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/dashboard">
+                  <Button size="lg" className="h-12 px-8">
+                    Start Shipping Free
+                    <HugeiconsIcon icon={ArrowRight01Icon} className="ml-2" size={18} />
+                  </Button>
+                </Link>
+                <Link href="/dashboard/calculator">
+                  <Button size="lg" variant="outline" className="h-12 px-8">
+                    Calculate Rates
+                  </Button>
+                </Link>
               </div>
-            ))}
+              <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="text-green-500" />
+                  No credit card required
+                </span>
+                <span className="flex items-center gap-2">
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="text-green-500" />
+                  Free forever plan
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
+        {/* Stats Section */}
+        <section className="py-12 border-y bg-muted/30">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-3xl md:text-4xl font-bold text-primary">{stat.value}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </section>
       {/* Features Section */}
       <section id="features" className="py-20">
         <div className="container mx-auto px-4">

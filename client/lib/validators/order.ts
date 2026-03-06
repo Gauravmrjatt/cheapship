@@ -27,6 +27,7 @@ export const calculateRateSchema = z.object({
   shipmentValue: z.number().min(1, "Value is required"),
   dangerousGoods: z.boolean(),
   order_type: z.enum(["SURFACE", "EXPRESS", "CARGO"]),
+  is_insured: z.boolean().optional(),
 });
 
 export const createOrderSchema = z.object({

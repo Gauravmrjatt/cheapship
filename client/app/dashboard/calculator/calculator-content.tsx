@@ -96,6 +96,7 @@ export default function RateCalculatorPage() {
       shipmentValue: 0,
       dangerousGoods: false,
       order_type: "SURFACE",
+      is_insured: false,
     },
   });
 

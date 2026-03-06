@@ -36,9 +36,9 @@ export default function CommandPalette() {
                   }`}
                 >
                   {item.icon && (
-                    <span className="text-muted-foreground">
-                      {item.icon}
-                    </span>
+                  <span className="text-muted-foreground h-4 w-4 flex items-center justify-center">
+                    {item.icon}
+                  </span>
                   )}
                   {item.name}
                 </div>

@@ -577,7 +577,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
 
   const getFieldsForStep = (step: number) => {
     switch (step) {
-      case 1: return ["pickup_location", "order_type", "payment_mode", "weight", "length", "width", "height", "products", "pickup_address.pincode", "receiver_address.pincode"];
+      case 1: return ["pickup_location", "order_type", "payment_mode", "weight", "length", "width", "height", "products", "pickup_address.pincode", "receiver_address.pincode", "cod_amount"];
       case 2: return ["courier_id"];
       case 3: return ["pickup_location", "pickup_address", "receiver_address"];
       default: return [];
@@ -747,7 +747,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
 
       {/* Sheets & Dialogs */}
       <Sheet open={openAddPickupSheet} onOpenChange={setOpenAddPickupSheet}>
-        <SheetContent className="min-w-full  md:min-w-[600px]">
+        <SheetContent className="flex flex-col min-w-full  md:min-w-[600px] p-0">
           <SheetHeader className="pb-6 border-b">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-muted rounded-md">
@@ -1031,7 +1031,23 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount (Max ₹1,00,000)</FieldLabel>
                 <div className="relative">
                   <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-                  <Input type="number" max={100000} {...form.register("cod_amount", { valueAsNumber: true })} aria-invalid={!!errors.cod_amount} className="pl-9" />
+                  <Input 
+                    type="number" 
+                    max={100000} 
+                    {...form.register("cod_amount", { 
+                      valueAsNumber: true,
+                      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                        const value = parseInt(e.target.value) || 0;
+                        if (value > 100000) {
+                          form.setValue("cod_amount", 100000);
+                        } else {
+                          form.setValue("cod_amount", value);
+                        }
+                      }
+                    })} 
+                    aria-invalid={!!errors.cod_amount} 
+                    className="pl-9" 
+                  />
                 </div>
                 <FieldError errors={[errors.cod_amount]} className="text-[10px] font-bold uppercase" />
               </Field>

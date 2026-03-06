@@ -80,6 +80,11 @@ export const adminNav = [
     icon: <HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} />,
   },
   {
+    title: "Weight Disputes",
+    url: "/admin/weight-disputes",
+    icon: <HugeiconsIcon icon={WeightScale01Icon} strokeWidth={2} />,
+  },
+  {
     title: "Finance & Withdrawals",
     url: "/admin/withdrawals",
     icon: <HugeiconsIcon icon={MoneyReceiveCircleIcon} strokeWidth={2} />,

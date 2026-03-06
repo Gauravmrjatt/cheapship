@@ -63,7 +63,7 @@ export function CommissionBoundsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="min-w-dvw md:min-w-[400px] flex flex-col h-full p-0">
+      <SheetContent side="right" className="flex flex-col min-w-full  md:min-w-[600px] p-0">
         <SheetHeader className="p-6 border-b">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
