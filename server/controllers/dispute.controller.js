@@ -289,10 +289,350 @@ const userRaiseWeightDispute = async (req, res) => {
     }
 };
 
+/**
+ * Get all weight disputes (Admin view)
+ */
+const getAllWeightDisputes = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const { page = 1, pageSize = 10, status, search } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const pageSizeNum = parseInt(pageSize, 10);
+    const offset = (pageNum - 1) * pageSizeNum;
+
+    try {
+        const where = {};
+        
+        if (status) {
+            where.status = status;
+        }
+
+        if (search) {
+            const isNumeric = /^\d+$/.test(search);
+            const orConditions = [];
+            
+            if (isNumeric) {
+                try {
+                    orConditions.push({ order_id: { equals: BigInt(search) } });
+                } catch (e) {
+                    // Invalid number
+                }
+            }
+            
+            orConditions.push(
+                { user: { mobile: { contains: search } } },
+                { user: { email: { contains: search } } },
+                { user: { name: { contains: search } } }
+            );
+            
+            where.OR = orConditions;
+        }
+
+        const [disputes, total] = await prisma.$transaction([
+            prisma.weightDispute.findMany({
+                where,
+                include: {
+                    order: {
+                        select: {
+                            id: true,
+                            tracking_number: true,
+                            courier_name: true,
+                            weight: true,
+                            shipping_charge: true,
+                            shipment_status: true
+                        }
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            mobile: true,
+                            wallet_balance: true,
+                            security_deposit: true
+                        }
+                    }
+                },
+                skip: offset,
+                take: pageSizeNum,
+                orderBy: { created_at: 'desc' }
+            }),
+            prisma.weightDispute.count({ where })
+        ]);
+
+        res.json({
+            data: disputes,
+            pagination: {
+                total,
+                totalPages: Math.ceil(total / pageSizeNum),
+                currentPage: pageNum,
+                pageSize: pageSizeNum
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching all weight disputes:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+/**
+ * Search orders for dispute creation (Admin)
+ */
+const searchOrdersForDispute = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const { search } = req.query;
+
+    if (!search || search.length < 2) {
+        return res.json({ data: [] });
+    }
+
+    try {
+        const isNumeric = /^\d+$/.test(search);
+        let searchNum;
+        let orderIdFilter = null;
+        
+        if (isNumeric) {
+            try {
+                searchNum = BigInt(search);
+                orderIdFilter = { id: searchNum };
+            } catch (e) {
+                // Invalid number, ignore
+            }
+        }
+
+        const orders = await prisma.order.findMany({
+            where: {
+                OR: [
+                    ...(orderIdFilter ? [orderIdFilter] : []),
+                    { shiprocket_order_id: { contains: search, mode: 'insensitive' } },
+                    { shiprocket_shipment_id: { contains: search, mode: 'insensitive' } },
+                    { tracking_number: { contains: search, mode: 'insensitive' } },
+                    { user: { mobile: { contains: search } } },
+                    { user: { email: { contains: search, mode: 'insensitive' } } }
+                ]
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        mobile: true,
+                        wallet_balance: true,
+                        security_deposit: true
+                    }
+                },
+                weight_dispute: {
+                    select: {
+                        id: true,
+                        status: true,
+                        difference_amount: true
+                    }
+                }
+            },
+            take: 20,
+            orderBy: { created_at: 'desc' }
+        });
+
+        res.json({ data: orders });
+    } catch (error) {
+        console.error('Error searching orders:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+/**
+ * Admin creates weight dispute with wallet deduction/addition
+ * Security: No duplicate disputes for same order allowed
+ * Wallet logic: Deduct from security_deposit first, then wallet_balance (allow negative)
+ */
+const adminCreateWeightDispute = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const { 
+        order_id, 
+        weight_type, // 'LESS' or 'MORE'
+        applied_weight, // Weight in grams
+        charged_weight, // Weight in grams  
+        amount, // Amount to deduct (positive) or add (negative)
+        action_reason,
+        discrepancy_description
+    } = req.body;
+
+    try {
+        const orderId = BigInt(order_id);
+        
+        // Check for existing dispute for this order
+        const existingDispute = await prisma.weightDispute.findUnique({
+            where: { order_id: orderId }
+        });
+
+        if (existingDispute) {
+            return res.status(400).json({ 
+                message: 'Weight dispute already exists for this order. Please resolve or reject the existing dispute first.' 
+            });
+        }
+
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            select: { 
+                user_id: true, 
+                weight: true, 
+                shipping_charge: true,
+                base_shipping_charge: true
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const appliedWeight = parseFloat(applied_weight) / 1000; // Convert grams to kg
+        const chargedWeight = parseFloat(charged_weight) / 1000;
+        const amountValue = parseFloat(amount);
+
+        // Determine status based on amount: Positive = ACCEPTED (deduct), Negative = ACCEPTED (refund)
+        const status = 'ACCEPTED';
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Get current user wallet info
+            const user = await tx.user.findUnique({
+                where: { id: order.user_id },
+                select: { 
+                    wallet_balance: true, 
+                    security_deposit: true 
+                }
+            });
+
+            let newWalletBalance = Number(user.wallet_balance);
+            let newSecurityDeposit = Number(user.security_deposit);
+            let securityDeducted = 0;
+            let walletDeducted = 0;
+            let walletAdded = 0;
+
+            if (amountValue > 0) {
+                // Deduction case - take from security_deposit first, then wallet_balance
+                const amountToDeduct = amountValue;
+                let remainingAmount = amountToDeduct;
+
+                // First deduct from security_deposit
+                if (newSecurityDeposit > 0) {
+                    if (newSecurityDeposit >= remainingAmount) {
+                        securityDeducted = remainingAmount;
+                        newSecurityDeposit -= remainingAmount;
+                        remainingAmount = 0;
+                    } else {
+                        securityDeducted = newSecurityDeposit;
+                        remainingAmount -= newSecurityDeposit;
+                        newSecurityDeposit = 0;
+                    }
+                }
+
+                // Then deduct from wallet_balance if needed
+                if (remainingAmount > 0) {
+                    walletDeducted = remainingAmount;
+                    newWalletBalance -= remainingAmount;
+                    // Allow negative balance as per requirement
+                }
+
+                // Update user wallets
+                await tx.user.update({
+                    where: { id: order.user_id },
+                    data: {
+                        wallet_balance: newWalletBalance,
+                        security_deposit: newSecurityDeposit
+                    }
+                });
+
+                // Create DEBIT transaction for deduction
+                await tx.transaction.create({
+                    data: {
+                        user_id: order.user_id,
+                        amount: amountToDeduct,
+                        closing_balance: newWalletBalance,
+                        type: 'DEBIT',
+                        category: 'WEIGHT_DISPUTE',
+                        status: 'SUCCESS',
+                        description: `Weight dispute deduction - ${weight_type} weight. Order #${order_id}. Security: ${securityDeducted}, Wallet: ${walletDeducted}`,
+                        reference_id: order_id.toString()
+                    }
+                });
+
+            } else if (amountValue < 0) {
+                // Addition case - add to wallet_balance
+                const amountToAdd = Math.abs(amountValue);
+                walletAdded = amountToAdd;
+                newWalletBalance += amountToAdd;
+
+                // Update user wallet
+                await tx.user.update({
+                    where: { id: order.user_id },
+                    data: {
+                        wallet_balance: newWalletBalance
+                    }
+                });
+
+                // Create CREDIT transaction for addition
+                await tx.transaction.create({
+                    data: {
+                        user_id: order.user_id,
+                        amount: amountToAdd,
+                        closing_balance: newWalletBalance,
+                        type: 'CREDIT',
+                        category: 'WEIGHT_DISPUTE',
+                        status: 'SUCCESS',
+                        description: `Weight dispute refund - ${weight_type} weight. Order #${order_id}`,
+                        reference_id: order_id.toString()
+                    }
+                });
+            }
+
+            // Create the weight dispute record
+            const dispute = await tx.weightDispute.create({
+                data: {
+                    order_id: orderId,
+                    user_id: order.user_id,
+                    applied_weight: appliedWeight,
+                    charged_weight: chargedWeight,
+                    applied_amount: parseFloat(order.shipping_charge || 0),
+                    charged_amount: amountValue > 0 ? parseFloat(order.shipping_charge || 0) + amountValue : parseFloat(order.shipping_charge || 0),
+                    difference_amount: amountValue,
+                    status: status,
+                    action_reason: action_reason,
+                    discrepancy_description: discrepancy_description || `Admin created: ${weight_type} weight (${appliedWeight}kg -> ${chargedWeight}kg)`
+                }
+            });
+
+            return {
+                dispute,
+                walletChanges: {
+                    previousWalletBalance: Number(user.wallet_balance),
+                    newWalletBalance,
+                    previousSecurityDeposit: Number(user.security_deposit),
+                    newSecurityDeposit,
+                    securityDeducted,
+                    walletDeducted,
+                    walletAdded
+                }
+            };
+        });
+
+        res.status(201).json({ 
+            message: 'Weight dispute created successfully', 
+            data: result 
+        });
+    } catch (error) {
+        console.error('Error creating weight dispute:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     getWeightDisputes,
     getRTODisputes,
     createWeightDispute,
     resolveWeightDispute,
-    userRaiseWeightDispute
+    userRaiseWeightDispute,
+    getAllWeightDisputes,
+    searchOrdersForDispute,
+    adminCreateWeightDispute
 };

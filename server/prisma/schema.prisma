@@ -392,6 +392,7 @@ enum TransactionCategory {
   COD_REMITTANCE
   COMMISSION
   SECURITY_DEPOSIT
+  WEIGHT_DISPUTE
 }
 
 enum TransactionStatus {

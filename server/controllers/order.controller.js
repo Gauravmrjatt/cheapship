@@ -169,7 +169,7 @@ const calculateRates = async (req, res) => {
       getServiceability({
         pickup_postcode,
         delivery_postcode,
-        weight,
+        weight : weight / 1000,
         cod,
         declared_value,
         is_return,
@@ -408,7 +408,7 @@ const createOrder = async (req, res) => {
     const serviceabilityData = await getServiceability({
       pickup_postcode: pickup_address.pincode,
       delivery_postcode: receiver_address.pincode,
-      weight,
+      weight: weight / 1000,
       cod: payment_mode === 'COD' ? 1 : 0,
       declared_value: total_amount,
       length,
@@ -826,6 +826,7 @@ const getOrders = async (req, res) => {
     payment_mode,
     from,
     to,
+    search,
     sortBy = 'created_at', 
     sortOrder = 'desc' 
   } = req.query;
@@ -859,6 +860,26 @@ const getOrders = async (req, res) => {
 
   if (payment_mode && payment_mode !== 'ALL') {
     where.payment_mode = payment_mode;
+  }
+
+  if (search) {
+    const searchTerm = search.trim();
+    const searchNum = parseInt(searchTerm, 10);
+    
+    where.OR = [
+      { id: isNaN(searchNum) ? undefined : BigInt(searchNum) },
+      { shiprocket_order_id: { contains: searchTerm, mode: 'insensitive' } },
+      { shiprocket_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
+      { tracking_number: { contains: searchTerm, mode: 'insensitive' } },
+      { label_url: { contains: searchTerm, mode: 'insensitive' } },
+      { manifest_url: { contains: searchTerm, mode: 'insensitive' } },
+      { vyom_order_id: { contains: searchTerm, mode: 'insensitive' } },
+      { vyom_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
+      { courier_name: { contains: searchTerm, mode: 'insensitive' } },
+    ].filter(condition => {
+      const keys = Object.keys(condition);
+      return keys.length > 0 && condition[keys[0]] !== undefined;
+    });
   }
 
   if (from || to) {

@@ -113,7 +113,7 @@ const createQuickOrder = async (orderData) => {
     length: parseFloat(orderData.length),
     breadth: parseFloat(orderData.breadth || orderData.width),
     height: parseFloat(orderData.height),
-    weight: parseFloat(orderData.weight),
+    weight: parseFloat(orderData.weight) / 1000,
   };
 
   if (payload.shipping_is_billing === false || payload.shipping_is_billing === 'false') {
