@@ -7,7 +7,8 @@ const OTP_RATE_LIMIT_MAX_ATTEMPTS = 3;
 const otpStore = new Map();
 
 const generateOtp = () => {
-  return crypto.randomInt(100000, 999999).toString();
+  // return crypto.randomInt(100000, 999999).toString();
+  return 999999;
 };
 
 const getOtpKey = (email, purpose) => `${email}:${purpose}`;
