@@ -42,6 +42,7 @@ router.post(
 
 router.post('/verify-phone', addressController.sendVerificationOtp);
 router.post('/verify-otp', addressController.verifyPhoneOtp);
+router.post('/pickup/verify-and-save', addressController.verifyAndSavePickupLocation);
 
 router.put('/:id', addressController.updateAddress);
 

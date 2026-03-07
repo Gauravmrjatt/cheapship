@@ -110,6 +110,7 @@ model Address {
   phone                String   @db.VarChar(15)
   is_shiprocket_pickup Boolean? @default(false)
   pickup_nickname      String?  @db.VarChar(50)
+  phone_verified       Boolean? @default(false)
   user                 User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("addresses")

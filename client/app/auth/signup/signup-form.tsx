@@ -287,14 +287,14 @@ export default function SignUpForm() {
           <CardContent className="space-y-4">
             <Field>
               <FieldLabel htmlFor="signup-name">Full Name</FieldLabel>
-              <Input id="signup-name" placeholder="John Doe" {...detailsForm.register("name")} />
+              <Input id="signup-name" placeholder="Gaurav Chaudhary" {...detailsForm.register("name")} />
               {detailsForm.formState.errors.name && (
                 <FieldError>{detailsForm.formState.errors.name.message}</FieldError>
               )}
             </Field>
             <Field>
               <FieldLabel htmlFor="signup-email">Email Address</FieldLabel>
-              <Input id="signup-email" placeholder="john@example.com" type="email" {...detailsForm.register("email")} />
+              <Input id="signup-email" placeholder="hello@example.com" type="email" {...detailsForm.register("email")} />
               <p className="text-[10px] text-muted-foreground mt-1">
                 Your email will be linked to +91 {state.mobile}
               </p>

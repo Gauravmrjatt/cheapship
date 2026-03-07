@@ -144,7 +144,7 @@ const deleteAddress = async (req, res) => {
   }
 };
 
-const addShiprocketPickupLocation = async (req, res) => {
+const registerShiprocketPickupLocation = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -175,30 +175,86 @@ const addShiprocketPickupLocation = async (req, res) => {
     const data = await addPickupLocation(pickupData);
 
     if (data.success) {
-      await prisma.address.create({
-        data: {
+      const isVerified = await isNumberVerified(phone);
+      if (isVerified) {
+        await prisma.address.create({
+          data: {
+            user_id: userId,
+            name: req.body.name,
+            phone: req.body.phone,
+            email: req.body.email,
+            complete_address: req.body.address,
+            city: req.body.city,
+            state: req.body.state,
+            pincode: req.body.pin_code.toString(),
+            country: req.body.country || 'India',
+            is_shiprocket_pickup: true,
+            pickup_nickname: req.body.pickup_location,
+            address_label: req.body.pickup_location,
+            phone_verified: true,
+          }
+        });
+        return res.status(200).json({ success: true, message: 'Pickup location registered and verified', phone_verified: true });
+      } else {
+        req.app.locals.pendingPickupLocations = req.app.locals.pendingPickupLocations || {};
+        req.app.locals.pendingPickupLocations[userId] = {
+          ...req.body,
           user_id: userId,
-          name: req.body.name,
-          phone: req.body.phone,
-          email: req.body.email,
           complete_address: req.body.address,
-          city: req.body.city,
-          state: req.body.state,
           pincode: req.body.pin_code.toString(),
-          country: req.body.country || 'India',
           is_shiprocket_pickup: true,
           pickup_nickname: req.body.pickup_location,
           address_label: req.body.pickup_location,
-        }
-      });
+          country: req.body.country || 'India',
+        };
+        return res.status(200).json({ success: true, message: 'Pickup location registered. Phone verification required.', phone_verified: false, needs_verification: true });
+      }
     }
 
-    res.status(data.success ? 200 : 400).json({ ...data, msg: "Pickup address successfully added" });
+    res.status(data.success ? 200 : 400).json({ ...data, msg: "Failed to register pickup location" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
+
+const verifyAndSavePickupLocation = async (req, res) => {
+  const { otp, phone } = req.body;
+  const userId = req.user.id;
+
+  if (!otp) {
+    return res.status(400).json({ success: false, message: 'OTP is required' });
+  }
+
+  try {
+    const verifyResult = await verifyOtp(otp, phone);
+    
+    if (verifyResult.success) {
+      const prisma = req.app.locals.prisma;
+      const pendingData = req.app.locals.pendingPickupLocations?.[userId];
+      
+      if (pendingData) {
+        await prisma.address.create({
+          data: {
+            ...pendingData,
+            phone_verified: true,
+          }
+        });
+        delete req.app.locals.pendingPickupLocations[userId];
+        return res.status(200).json({ success: true, message: 'Pickup location verified and saved' });
+      }
+      
+      return res.status(400).json({ success: false, message: 'No pending pickup location found' });
+    }
+    
+    res.status(400).json({ success: false, message: verifyResult.message || 'Invalid OTP' });
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to verify OTP' });
+  }
+};
+
+const addShiprocketPickupLocation = registerShiprocketPickupLocation;
 
 const getShiprocketPickupLocations = async (req, res) => {
   const prisma = req.app.locals.prisma;
@@ -293,6 +349,8 @@ module.exports = {
   updateAddress,
   deleteAddress,
   addShiprocketPickupLocation,
+  registerShiprocketPickupLocation,
+  verifyAndSavePickupLocation,
   getShiprocketPickupLocations,
   sendVerificationOtp,
   verifyPhoneOtp,

@@ -239,12 +239,7 @@ export default function RemittancesPage() {
   return (
     <div className="w-full space-y-6 animate-in p-5 fade-in duration-500 overflow-hidden">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-sm font-medium text-muted-foreground">Total COD Collected</p>
-          {isLoadingSummary ? <div className="h-7 w-32 bg-muted animate-pulse rounded mt-1" /> : (
-            <p className="text-2xl font-bold text-primary">{formatCurrency(summary?.totalCODCollected || 0)}</p>
-          )}
-        </div>
+        
         <div className="rounded-xl border bg-card p-4">
           <p className="text-sm font-medium text-muted-foreground">Pending Remittance</p>
           {isLoadingSummary ? <div className="h-7 w-32 bg-muted animate-pulse rounded mt-1" /> : (
@@ -262,6 +257,19 @@ export default function RemittancesPage() {
           {isLoadingSummary ? <div className="h-7 w-32 bg-muted animate-pulse rounded mt-1" /> : (
             <p className="text-2xl font-bold text-blue-600">{formatDate(summary?.estimatedNextRemittanceDate || null)}</p>
           )}
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-sm font-medium text-muted-foreground mb-2">Date range</p>
+          {/* {isLoadingSummary ? <div className="h-7 w-32 bg-muted animate-pulse rounded mt-1" /> : (
+            <p className="text-2xl font-bold text-primary">{formatCurrency(summary?.totalCODCollected || 0)}</p>
+          )} */}
+             <DateRangePicker 
+            fromDate={fromDate}
+            toDate={toDate}
+            onFromDateChange={setFromDate}
+            onToDateChange={setToDate}
+          />
+
         </div>
       </div>
 
@@ -288,13 +296,7 @@ export default function RemittancesPage() {
             />
           </div>
 
-          <DateRangePicker 
-            fromDate={fromDate}
-            toDate={toDate}
-            onFromDateChange={setFromDate}
-            onToDateChange={setToDate}
-          />
-
+       
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
               <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} data-icon="inline-start" />

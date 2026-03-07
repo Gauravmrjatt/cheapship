@@ -307,27 +307,43 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
 
   useEffect(() => {
     if (rateCalculatorData) {
+      const currentPickupPincode = form.getValues("pickup_address.pincode");
       form.reset({
-        ...formValues,
         order_type: rateCalculatorData.order_type,
         payment_mode: rateCalculatorData.paymentType,
         total_amount: rateCalculatorData.shipmentValue,
         weight: rateCalculatorData.weight,
         length: rateCalculatorData.length, width: rateCalculatorData.width, height: rateCalculatorData.height,
-        pickup_address: { ...formValues.pickup_address, pincode: rateCalculatorData.pickupPincode },
-        receiver_address: { ...formValues.receiver_address, pincode: rateCalculatorData.deliveryPincode },
+        pickup_address: { 
+          name: form.getValues("pickup_address.name"),
+          phone: form.getValues("pickup_address.phone"),
+          email: form.getValues("pickup_address.email"),
+          address: form.getValues("pickup_address.address"),
+          city: form.getValues("pickup_address.city"),
+          state: form.getValues("pickup_address.state"),
+          pincode: rateCalculatorData.pickupPincode || currentPickupPincode || "",
+        },
+        receiver_address: {
+          name: form.getValues("receiver_address.name"),
+          phone: form.getValues("receiver_address.phone"),
+          email: form.getValues("receiver_address.email"),
+          address: form.getValues("receiver_address.address"),
+          city: form.getValues("receiver_address.city"),
+          state: form.getValues("receiver_address.state"),
+          pincode: rateCalculatorData.deliveryPincode || form.getValues("receiver_address.pincode") || "",
+        },
         products: [{ name: "", quantity: 1, price: rateCalculatorData.shipmentValue }],
         courier_id: rateCalculatorData.selectedCourier?.courier_company_id,
         courier_name: rateCalculatorData.selectedCourier?.courier_name,
         shipping_charge: rateCalculatorData.selectedCourier?.rate,
+        pickup_location: form.getValues("pickup_location"),
       });
-      // Skip the Package step (Step 1) only if no pre-selected courier from URL params
       if (!preSelectedCourier) {
         setCurrentStep(2);
       }
       clearRateData();
     }
-  }, [rateCalculatorData, clearRateData, form, formValues, preSelectedCourier]);
+  }, [rateCalculatorData, clearRateData, form, preSelectedCourier]);
 
   useEffect(() => {
     if (preSelectedCourier) {
@@ -1181,10 +1197,13 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
     }
   }, [deliveryLocality, formValues.receiver_address.pincode, isLoadingDelivery, form]);
 
-  // Keep sender empty by default - only fill when "Same as pickup" is checked
+  const prevSameAsPickup = React.useRef(formValues.same_as_pickup);
+  
   React.useEffect(() => {
-    if (!formValues.same_as_pickup) {
-      // Clear sender when checkbox is unchecked
+    const wasChecked = prevSameAsPickup.current;
+    const isChecked = formValues.same_as_pickup;
+    
+    if (wasChecked && !isChecked) {
       form.setValue("pickup_address.name", "");
       form.setValue("pickup_address.phone", "");
       form.setValue("pickup_address.email", "");
@@ -1193,7 +1212,9 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
       form.setValue("pickup_address.city", "");
       form.setValue("pickup_address.state", "");
     }
-  }, [formValues.same_as_pickup]);
+    
+    prevSameAsPickup.current = isChecked;
+  }, [formValues.same_as_pickup, form]);
 
   const handleSameAsPickupChange = (checked: boolean) => {
     form.setValue("same_as_pickup", !!checked);
@@ -1865,7 +1886,7 @@ function AddressFormCard({ prefix, title, icon: Icon, savedAddresses, onSelect, 
               <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Name</FieldLabel>
               <div className="relative">
                 <HugeiconsIcon icon={UserCircle02Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-                <Input placeholder="John Doe" {...form.register(`${prefix}.name`)} aria-invalid={!!fieldErrors?.name} className="pl-9" />
+                <Input placeholder="Deepak" {...form.register(`${prefix}.name`)} aria-invalid={!!fieldErrors?.name} className="pl-9" />
               </div>
               <FieldError errors={[fieldErrors?.name]} className="text-[10px] font-bold uppercase ml-1" />
             </Field>

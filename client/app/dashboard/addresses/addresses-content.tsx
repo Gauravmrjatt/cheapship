@@ -5,6 +5,7 @@ import { useHttp } from "@/lib/hooks/use-http";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Location01Icon,
@@ -29,6 +30,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   AddressFormDialog,
   PickupAddressFormDialog,
@@ -75,6 +84,9 @@ export default function AddressesPage() {
     editingAddress: null as SavedAddress | null,
     deleteConfirmOpen: false,
     addressToDelete: null as string | null,
+    otpDialogOpen: false,
+    pendingPhone: "",
+    otp: "",
   });
 
   const { data: addresses, isLoading } = useQuery<SavedAddress[]>(
@@ -123,10 +135,20 @@ export default function AddressesPage() {
   const { mutate: savePickupLocation, isPending: isSavingPickup } = useMutation(
     http.post("/addresses/pickup", {
       onSuccess: (data: any) => {
-        if (data.success) {
+        if (data.success && data.phone_verified) {
           sileo.success({ title: "Pickup location registered successfully" });
           queryClient.invalidateQueries({ queryKey: ["shiprocket-pickup-locations"] });
           setState(prev => ({ ...prev, pickupDialogOpen: false }));
+        } else if (data.success && data.needs_verification) {
+          setState(prev => ({ ...prev, pendingPhone: data.phone || "", otpDialogOpen: true }));
+          sendOtpMutation({ phone: data.phone }, {
+            onSuccess: () => {
+              sileo.info({ title: "OTP Sent", description: "Please verify your phone number" });
+            },
+            onError: (error: Error) => {
+              sileo.error({ title: "Error", description: error.message || "Failed to send OTP" });
+            }
+          } as any);
         } else {
           let errorMsg = data.message || "Failed to register pickup location";
           try {
@@ -140,6 +162,27 @@ export default function AddressesPage() {
       },
       onError: (error: Error) => {
         sileo.error({ title: "Error", description: error.message || "Failed to register pickup location" });
+      },
+    })
+  );
+
+  const { mutate: sendOtpMutation, isPending: isSendingOtp } = useMutation(
+    http.post("/addresses/verify-phone")
+  );
+
+  const { mutate: verifyOtpMutation, isPending: isVerifyingOtp } = useMutation(
+    http.post("/addresses/pickup/verify-and-save", {
+      onSuccess: (data: any) => {
+        if (data.success) {
+          sileo.success({ title: "Phone verified successfully" });
+          queryClient.invalidateQueries({ queryKey: ["shiprocket-pickup-locations"] });
+          setState(prev => ({ ...prev, pickupDialogOpen: false, otpDialogOpen: false, otp: "" }));
+        } else {
+          sileo.error({ title: "Error", description: data.message || "Invalid OTP" });
+        }
+      },
+      onError: (error: Error) => {
+        sileo.error({ title: "Error", description: error.message || "Failed to verify OTP" });
       },
     })
   );
@@ -162,6 +205,18 @@ export default function AddressesPage() {
 
   const handlePickupSubmit = (data: PickupAddressFormData) => {
     savePickupLocation(data as any);
+  };
+
+  const handleVerifyOtp = () => {
+    if (!state.otp || state.otp.length < 4) {
+      sileo.error({ title: "Error", description: "Invalid OTP" });
+      return;
+    }
+    verifyOtpMutation({ otp: state.otp, phone: state.pendingPhone } as any);
+  };
+
+  const handleResendOtp = () => {
+    sendOtpMutation({ phone: state.pendingPhone } as any);
   };
 
   const handleDeleteClick = (id: string) => {
@@ -202,7 +257,7 @@ export default function AddressesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          <Button
+          {/* <Button
             variant="outline"
             className="rounded-2xl gap-2 font-bold shadow-sm flex-1 sm:flex-none"
             onClick={() => setState(prev => ({ ...prev, pickupDialogOpen: true }))}
@@ -210,7 +265,7 @@ export default function AddressesPage() {
             <HugeiconsIcon icon={RocketIcon} size={18} />
             <span className="hidden sm:inline">Add Pickup Location</span>
             <span className="sm:hidden">Pickup</span>
-          </Button>
+          </Button> */}
           <Button
             className="rounded-2xl gap-2 font-bold shadow-sm flex-1 sm:flex-none"
             onClick={() => handleOpenAddressDialog()}
@@ -336,6 +391,44 @@ export default function AddressesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={state.otpDialogOpen} onOpenChange={(open) => setState(prev => ({ ...prev, otpDialogOpen: open, otp: "" }))}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Phone Verification Required</DialogTitle>
+            <DialogDescription>
+              Enter the 6-digit code sent to {state.pendingPhone}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-6 space-y-4">
+            <Input
+              value={state.otp}
+              onChange={(e) => setState(prev => ({ ...prev, otp: e.target.value }))}
+              className="text-center text-2xl tracking-[0.5em] h-14 font-mono"
+              placeholder="000000"
+              maxLength={6}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResendOtp}
+              disabled={isSendingOtp}
+              className="w-full text-xs text-muted-foreground"
+            >
+              {isSendingOtp ? "Sending..." : "Didn\'t receive code? Resend"}
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleVerifyOtp}
+              className="w-full"
+              disabled={isVerifyingOtp || state.otp.length < 6}
+            >
+              {isVerifyingOtp ? "Verifying..." : "Verify & Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -236,7 +236,7 @@ function ProfileTab({ http }: { http: any }) {
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   className="pl-10" 
-                  placeholder="John Doe" 
+                  placeholder="Deepak" 
                 />
               </div>
             </div>
@@ -262,7 +262,7 @@ function ProfileTab({ http }: { http: any }) {
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className="pl-10" 
-                  placeholder="john@example.com" 
+                  placeholder="hello@example.com" 
                 />
               </div>
             </div>
