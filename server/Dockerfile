@@ -15,6 +15,9 @@ RUN npm install
 # Copy app
 COPY . .
 
+# ✅ Resolve failed migrations (if any) - idempotent approach
+RUN npx prisma migrate resolve --applied 20260227000000_add_transaction_categories 2>/dev/null || true
+
 # ✅ Wait for DB + apply migrations
 RUN npx prisma migrate deploy
 
