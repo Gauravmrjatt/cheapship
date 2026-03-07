@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const app = express();
 const prisma = require('./utils/prisma');
-
+// this is a text file
 // Make Prisma client available throughout the application
 app.locals.prisma = prisma;
 
