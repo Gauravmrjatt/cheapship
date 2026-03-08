@@ -402,16 +402,27 @@ export function OrdersDataTable({
       header: "Status",
       cell: ({ row }) => {
         const status = row.original.shipment_status.toLowerCase();
+        const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
+          delivered: { label: 'Delivered', icon: CheckmarkCircle01Icon, color: 'text-green-500' },
+          pending: { label: 'Pending', icon: Loading03Icon, color: 'text-yellow-500' },
+          processing: { label: 'Processing', icon: Loading03Icon, color: 'text-blue-500' },
+          manifested: { label: 'Manifested', icon: DeliveryTruck01Icon, color: 'text-orange-500' },
+          out_for_pickup: { label: 'Out for Pickup', icon: DeliveryTruck01Icon, color: 'text-purple-500' },
+          picked_up: { label: 'Picked Up', icon: DeliveryTruck01Icon, color: 'text-purple-600' },
+          in_transit: { label: 'In Transit', icon: DeliveryTruck01Icon, color: 'text-blue-500' },
+          out_for_delivery: { label: 'Out for Delivery', icon: DeliveryTruck01Icon, color: 'text-indigo-500' },
+          dispatched: { label: 'Dispatched', icon: DeliveryTruck01Icon, color: 'text-indigo-600' },
+          cancelled: { label: 'Cancelled', icon: Cancel01Icon, color: 'text-red-500' },
+          rto: { label: 'RTO', icon: MapPinIcon, color: 'text-red-600' },
+          not_picked: { label: 'Not Picked', icon: Cancel01Icon, color: 'text-red-400' }
+        };
+        
+        const config = statusConfig[status] || { label: status.replace(/_/g, ' '), icon: DeliveryTruck01Icon, color: 'text-gray-500' };
+        
         return (
           <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
-            {status === "delivered" ? (
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="fill-green-500 dark:fill-green-400 size-3" />
-            ) : status === "pending" || status === "processing" ? (
-              <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="animate-spin size-3" />
-            ) : (
-              <HugeiconsIcon icon={DeliveryTruck01Icon} strokeWidth={2} className="size-3" />
-            )}
-            {status.replace(/_/g, " ")}
+            <HugeiconsIcon icon={config.icon} strokeWidth={2} className={`${config.color} size-3`} />
+            {config.label}
           </Badge>
         );
       },
@@ -604,11 +615,16 @@ export function OrdersDataTable({
               <SelectGroup>
                 <SelectItem value="ALL">All Orders</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>
-                {/* <SelectItem value="PROCESSING">Processing</SelectItem> */}
+                <SelectItem value="PROCESSING">Processing</SelectItem>
                 <SelectItem value="MANIFESTED">Manifested</SelectItem>
+                <SelectItem value="OUT_FOR_PICKUP">Out for Pickup</SelectItem>
+                <SelectItem value="PICKED_UP">Picked Up</SelectItem>
                 <SelectItem value="IN_TRANSIT">In Transit</SelectItem>
+                <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
+                <SelectItem value="DISPATCHED">Dispatched</SelectItem>
                 <SelectItem value="DELIVERED">Delivered</SelectItem>
                 <SelectItem value="RTO">RTO</SelectItem>
+                <SelectItem value="NOT_PICKED">Not Picked</SelectItem>
                 <SelectItem value="DRAFT">Drafts</SelectItem>
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectGroup>
@@ -618,9 +634,12 @@ export function OrdersDataTable({
           <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
             <TabsTrigger value="ALL">All Orders</TabsTrigger>
             <TabsTrigger value="PENDING">Pending</TabsTrigger>
-            {/* <TabsTrigger value="PROCESSING">Processing</TabsTrigger> */}
+            <TabsTrigger value="PROCESSING">Processing</TabsTrigger>
             <TabsTrigger value="MANIFESTED">Manifested</TabsTrigger>
+            <TabsTrigger value="OUT_FOR_PICKUP">Out for Pickup</TabsTrigger>
+            <TabsTrigger value="PICKED_UP">Picked Up</TabsTrigger>
             <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
+            <TabsTrigger value="OUT_FOR_DELIVERY">Out for Delivery</TabsTrigger>
             <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
             <TabsTrigger value="RTO">RTO</TabsTrigger>
             <TabsTrigger value="DRAFT">Drafts</TabsTrigger>

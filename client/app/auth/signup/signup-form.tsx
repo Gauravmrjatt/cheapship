@@ -31,6 +31,7 @@ import { User } from "@/lib/store/auth";
 import { sileo } from "sileo";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Loading03Icon, Edit03Icon } from "@hugeicons/core-free-icons";
+import { useFirebaseOtp } from "@/lib/hooks/use-firebase-otp";
 
 type MobileRegFormData = z.infer<typeof mobileRegSchema>;
 type OtpRegFormData = z.infer<typeof otpRegSchema>;
@@ -57,11 +58,13 @@ export default function SignUpForm() {
   const searchParams = useSearchParams();
   const http = useHttp();
   const { setToken, setUser } = useAuth();
+  const firebaseOtp = useFirebaseOtp();
   
   const [state, setState] = useState({
     step: 1 as 1 | 2 | 3,
     mobile: "",
     verificationToken: "",
+    firebaseIdToken: "",
     countdown: 0,
   });
 
@@ -147,27 +150,68 @@ export default function SignUpForm() {
   }, [state.countdown]);
 
   // Handlers
-  const onMobileSubmit = (values: MobileRegFormData) => {
+  const onMobileSubmit = async (values: MobileRegFormData) => {
     setState(prev => ({ ...prev, mobile: values.mobile }));
-    initMobileMutation.mutate(values);
+    
+    if (firebaseOtp.isConfigValid) {
+      const result = await firebaseOtp.sendOtp(values.mobile);
+      if (result.success) {
+        setState(prev => ({ ...prev, step: 2, countdown: 60 }));
+        sileo.success({ title: "OTP Sent", description: `OTP sent to +91 ${values.mobile}` });
+      } else {
+        sileo.error({ title: "Error", description: result.error || "Failed to send OTP" });
+      }
+    } else {
+      initMobileMutation.mutate(values);
+    }
   };
 
-  const onOtpSubmit = (values: OtpRegFormData) => {
-    verifyMobileMutation.mutate({ mobile: state.mobile, otp: values.otp });
+  const onOtpSubmit = async (values: OtpRegFormData) => {
+    if (firebaseOtp.isConfigValid && firebaseOtp.verificationId) {
+      const result = await firebaseOtp.verifyOtp(values.otp);
+      if (result.success) {
+        setState(prev => ({ 
+          ...prev, 
+          verificationToken: result.verificationId!, 
+          firebaseIdToken: result.idToken!,
+          step: 3 
+        }));
+        sileo.success({ title: "Verified", description: "Mobile number verified successfully" });
+      } else {
+        sileo.error({ title: "Verification Failed", description: result.error || "Invalid OTP" });
+      }
+    } else {
+      verifyMobileMutation.mutate({ mobile: state.mobile, otp: values.otp });
+    }
   };
 
   const onDetailsSubmit = (values: DetailsRegFormData) => {
+    const token = firebaseOtp.isConfigValid && state.firebaseIdToken 
+      ? state.firebaseIdToken 
+      : (state.verificationToken || "skipped_verification");
+    
     completeRegMutation.mutate({
-      verificationToken: state.verificationToken || "skipped_verification",
+      verificationToken: token,
       mobile: state.mobile,
       ...values,
-      terms_accepted: 'true' // sending as string for simplicity if backend expects it, or boolean
+      terms_accepted: 'true'
     });
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (state.countdown > 0) return;
-    initMobileMutation.mutate({ mobile: state.mobile });
+    
+    if (firebaseOtp.isConfigValid) {
+      const result = await firebaseOtp.sendOtp(state.mobile);
+      if (result.success) {
+        setState(prev => ({ ...prev, countdown: 60 }));
+        sileo.success({ title: "OTP Sent", description: `OTP resent to +91 ${state.mobile}` });
+      } else {
+        sileo.error({ title: "Error", description: result.error || "Failed to send OTP" });
+      }
+    } else {
+      initMobileMutation.mutate({ mobile: state.mobile });
+    }
   };
 
   const stepTitles = {
@@ -187,6 +231,11 @@ export default function SignUpForm() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl  tracking-tight">{stepTitles[state.step]}</CardTitle>
         <CardDescription>{stepDescriptions[state.step]}</CardDescription>
+        {!firebaseOtp.isConfigValid && state.step === 1 && (
+          <p className="text-xs text-amber-500 mt-2">
+            Firebase not configured. Using fallback OTP.
+          </p>
+        )}
       </CardHeader>
 
       {state.step === 1 && (
@@ -216,11 +265,11 @@ export default function SignUpForm() {
             </Field>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={initMobileMutation.isPending}>
-              {initMobileMutation.isPending ? (
+            <Button type="submit" className="w-full" disabled={initMobileMutation.isPending || firebaseOtp.loading}>
+              {(initMobileMutation.isPending || firebaseOtp.loading) ? (
                 <HugeiconsIcon icon={Loading03Icon} className="animate-spin mr-2" />
               ) : null}
-              {initMobileMutation.isPending ? "Sending OTP..." : "Get OTP"}
+              {initMobileMutation.isPending || firebaseOtp.loading ? "Sending OTP..." : "Get OTP"}
             </Button>
             <div className="text-center text-sm">
               Already have an account?{" "}
@@ -261,6 +310,9 @@ export default function SignUpForm() {
               {otpForm.formState.errors.otp && (
                 <FieldError>{otpForm.formState.errors.otp.message}</FieldError>
               )}
+              {firebaseOtp.error && firebaseOtp.isConfigValid && (
+                <FieldError>{firebaseOtp.error}</FieldError>
+              )}
             </Field>
             <div className="text-center mb-4">
               <Button
@@ -268,15 +320,15 @@ export default function SignUpForm() {
                 variant="link"
                 className="p-0 h-auto text-xs"
                 onClick={handleResendOtp}
-                disabled={state.countdown > 0 || initMobileMutation.isPending}
+                disabled={state.countdown > 0 || initMobileMutation.isPending || firebaseOtp.loading}
               >
                 {state.countdown > 0 ? `Resend OTP in ${state.countdown}s` : "Resend OTP"}
               </Button>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
-            <Button type="submit" className="w-full" disabled={verifyMobileMutation.isPending}>
-              {verifyMobileMutation.isPending ? "Verifying..." : "Verify OTP"}
+            <Button type="submit" className="w-full" disabled={verifyMobileMutation.isPending || firebaseOtp.loading}>
+              {verifyMobileMutation.isPending || firebaseOtp.loading ? "Verifying..." : "Verify OTP"}
             </Button>
           </CardFooter>
         </form>
@@ -348,6 +400,8 @@ export default function SignUpForm() {
           </CardFooter>
         </form>
       )}
+      
+      <div id="recaptcha-container" />
     </Card>
   );
 }

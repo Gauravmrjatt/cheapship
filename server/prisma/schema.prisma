@@ -177,6 +177,7 @@ model Order {
   vyom_shipment_id            String?                   @db.VarChar(50)
   pickup_scheduled_date       DateTime?                 @db.Timestamp(6)
   pickup_location             String?                   @db.VarChar(255)
+  etd                         String?                   @db.VarChar(50)
   order_pickup_address        OrderPickupAddress?
   order_receiver_address      OrderReceiverAddress?
   referral_commissions        OrderReferralCommission[]
@@ -426,14 +427,19 @@ enum OrderType {
 }
 
 enum ShipmentStatus {
+  PENDING
+  PROCESSING
   MANIFESTED
+  OUT_FOR_PICKUP
+  PICKED_UP
   IN_TRANSIT
+  OUT_FOR_DELIVERY
   DISPATCHED
   DELIVERED
   NOT_PICKED
-  PENDING
   CANCELLED
   RTO
+  RTO_DELIVERED
 }
 
 enum ShipmentType {

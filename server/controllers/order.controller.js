@@ -1141,26 +1141,53 @@ const cancelOrder = async (req, res) => {
   }
 };
 
-const mapShiprocketStatus = (shiprocketStatus) => {
+const mapShiprocketStatus = (shiprocketStatus, srStatusId = null) => {
   if (!shiprocketStatus) return 'PENDING';
   
   const status = shiprocketStatus.toString().toLowerCase().trim();
+  
+  // Map by status ID if provided
+  if (srStatusId !== null) {
+    const idStatusMap = {
+      19: 'OUT_FOR_PICKUP',
+      42: 'PICKED_UP',
+      6: 'IN_TRANSIT',
+      17: 'OUT_FOR_DELIVERY',
+      7: 'DELIVERED',
+      51: 'PICKED_UP',
+      34: 'OUT_FOR_PICKUP'
+    };
+    if (idStatusMap[srStatusId]) {
+      return idStatusMap[srStatusId];
+    }
+  }
+
   const statusMap = {
     'pending': 'PENDING',
     'processing': 'PROCESSING',
     'manifested': 'MANIFESTED',
-    'in_transit': 'IN_TRANSIT',
-    'out_for_delivery': 'IN_TRANSIT',
+    'manifested - pickup scheduled': 'MANIFESTED',
+    'manifested - out for pickup': 'OUT_FOR_PICKUP',
+    'in transit': 'IN_TRANSIT',
+    'shipped': 'IN_TRANSIT',
+    'in transit - shipment picked up': 'PICKED_UP',
+    'pending - shipment received at origin center': 'IN_TRANSIT',
+    'out for delivery': 'OUT_FOR_DELIVERY',
+    'dispatched - out for delivery': 'OUT_FOR_DELIVERY',
+    'dispatched': 'DISPATCHED',
     'delivered': 'DELIVERED',
+    'delivered - delivered to consignee': 'DELIVERED',
     'cancelled': 'CANCELLED',
     'canceled': 'CANCELLED',
     'rto': 'RTO',
-    'rto_delivered': 'RTO',
+    'rto_delivered': 'RTO_DELIVERED',
     'lost': 'CANCELLED',
     'damaged': 'CANCELLED',
     'not_picked': 'NOT_PICKED',
     'pickup_exception': 'PENDING',
-    'pickup_error': 'PENDING'
+    'pickup_error': 'PENDING',
+    'out for pickup': 'OUT_FOR_PICKUP',
+    'picked up': 'PICKED_UP'
   };
   return statusMap[status] || 'PENDING';
 };
@@ -1231,7 +1258,10 @@ const handleWebhook = async (req, res) => {
 
 // Internal helper to process the validated order update
 const processOrderUpdate = async (prisma, order, payload, res) => {
-  const newStatus = mapShiprocketStatus(payload.shipment_status || payload.status || payload.current_status);
+  // Use shipment_status_id if provided for more accurate mapping
+  const srStatusId = payload.shipment_status_id || payload.current_status_id;
+  const newStatus = mapShiprocketStatus(payload.shipment_status || payload.status || payload.current_status, srStatusId);
+  
   const updateData = {
     shipment_status: newStatus
   };
@@ -1241,58 +1271,239 @@ const processOrderUpdate = async (prisma, order, payload, res) => {
   }
 
   if (payload.pickup_scheduled_date) {
-    // Shiprocket date format can be "YYYY-MM-DD HH:mm:ss" or similar
     updateData.pickup_scheduled_date = new Date(payload.pickup_scheduled_date);
   }
 
-    // Handle security deposit release on delivery
-    if (newStatus === 'DELIVERED') {
-      updateData.delivered_at = new Date();
-      
-      // Get the shipping charge (security deposit amount held for this order)
-      const securityAmount = Number(order.shipping_charge || 0);
-      
-      if (securityAmount > 0) {
-        // Use transaction to ensure atomicity
-        await prisma.$transaction(async (tx) => {
-          // Release security deposit back to wallet
-          await tx.user.update({
-            where: { id: order.user_id },
-            data: {
-              security_deposit: { decrement: securityAmount },
-              wallet_balance: { increment: securityAmount }
-            }
-          });
+  if (payload.etd) {
+    updateData.etd = payload.etd;
+  }
 
-          // Get updated wallet balance
-          const updatedUser = await tx.user.findUnique({
-            where: { id: order.user_id },
-            select: { wallet_balance: true }
-          });
-
-          // Create transaction record for security release
-          await tx.transaction.create({
-            data: {
-              user_id: order.user_id,
-              amount: securityAmount,
-              closing_balance: Number(updatedUser.wallet_balance),
-              type: 'CREDIT',
-              category: 'REFUND',
-              status: 'SUCCESS',
-              description: `Security deposit released for Order #${order.id} (Delivered)`,
-              reference_id: String(order.id)
-            }
-          });
+  // Handle security deposit release on delivery
+  if (newStatus === 'DELIVERED') {
+    updateData.delivered_at = new Date();
+    
+    const securityAmount = Number(order.shipping_charge || 0);
+    
+    if (securityAmount > 0) {
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: order.user_id },
+          data: {
+            security_deposit: { decrement: securityAmount },
+            wallet_balance: { increment: securityAmount }
+          }
         });
-      }
+
+        const updatedUser = await tx.user.findUnique({
+          where: { id: order.user_id },
+          select: { wallet_balance: true }
+        });
+
+        await tx.transaction.create({
+          data: {
+            user_id: order.user_id,
+            amount: securityAmount,
+            closing_balance: Number(updatedUser.wallet_balance),
+            type: 'CREDIT',
+            category: 'REFUND',
+            status: 'SUCCESS',
+            description: `Security deposit released for Order #${order.id} (Delivered)`,
+            reference_id: String(order.id)
+          }
+        });
+      });
     }
+  }
+
+  // Handle CANCELLED status - release security deposit and refund to wallet
+  if (newStatus === 'CANCELLED' && order.shipment_status !== 'CANCELLED') {
+    const securityAmount = Number(order.shipping_charge || 0);
+    
+    if (securityAmount > 0) {
+      await prisma.$transaction(async (tx) => {
+        // Release security deposit
+        await tx.user.update({
+          where: { id: order.user_id },
+          data: {
+            security_deposit: { decrement: securityAmount }
+          }
+        });
+
+        // Get updated security deposit
+        const updatedUser = await tx.user.findUnique({
+          where: { id: order.user_id },
+          select: { wallet_balance: true, security_deposit: true }
+        });
+
+        // Create transaction record for security release
+        await tx.transaction.create({
+          data: {
+            user_id: order.user_id,
+            amount: securityAmount,
+            closing_balance: Number(updatedUser.wallet_balance),
+            type: 'CREDIT',
+            category: 'REFUND',
+            status: 'SUCCESS',
+            description: `Security deposit released for cancelled Order #${order.id}`,
+            reference_id: String(order.id)
+          }
+        });
+
+        // Refund shipping charge to wallet
+        await tx.user.update({
+          where: { id: order.user_id },
+          data: {
+            wallet_balance: { increment: securityAmount }
+          }
+        });
+
+        const finalUser = await tx.user.findUnique({
+          where: { id: order.user_id },
+          select: { wallet_balance: true }
+        });
+
+        // Create transaction record for shipping refund
+        await tx.transaction.create({
+          data: {
+            user_id: order.user_id,
+            amount: securityAmount,
+            closing_balance: Number(finalUser.wallet_balance),
+            type: 'CREDIT',
+            category: 'REFUND',
+            status: 'SUCCESS',
+            description: `Shipping charge refunded for cancelled Order #${order.id}`,
+            reference_id: String(order.id)
+          }
+        });
+      });
+    }
+  }
+
+  // Handle RTO status - release security deposit (no refund since it's RTO)
+  if ((newStatus === 'RTO' || newStatus === 'RTO_DELIVERED') && 
+      order.shipment_status !== 'RTO' && order.shipment_status !== 'RTO_DELIVERED') {
+    const securityAmount = Number(order.shipping_charge || 0);
+    
+    if (securityAmount > 0) {
+      await prisma.$transaction(async (tx) => {
+        // Release security deposit (but don't refund - RTO charges may apply)
+        await tx.user.update({
+          where: { id: order.user_id },
+          data: {
+            security_deposit: { decrement: securityAmount }
+          }
+        });
+
+        const updatedUser = await tx.user.findUnique({
+          where: { id: order.user_id },
+          select: { wallet_balance: true, security_deposit: true }
+        });
+
+        // Create transaction record for security release (RTO)
+        await tx.transaction.create({
+          data: {
+            user_id: order.user_id,
+            amount: securityAmount,
+            closing_balance: Number(updatedUser.wallet_balance),
+            type: 'DEBIT',
+            category: 'RTO_CHARGE',
+            status: 'SUCCESS',
+            description: `Security deposit adjusted for RTO Order #${order.id}`,
+            reference_id: String(order.id)
+          }
+        });
+      });
+    }
+  }
+
+  // Handle NOT_PICKED status - release security deposit and refund shipping charge
+  if (newStatus === 'NOT_PICKED' && order.shipment_status !== 'NOT_PICKED') {
+    const securityAmount = Number(order.shipping_charge || 0);
+    
+    if (securityAmount > 0) {
+      await prisma.$transaction(async (tx) => {
+        // Release security deposit
+        await tx.user.update({
+          where: { id: order.user_id },
+          data: {
+            security_deposit: { decrement: securityAmount }
+          }
+        });
+
+        // Refund shipping charge to wallet
+        await tx.user.update({
+          where: { id: order.user_id },
+          data: {
+            wallet_balance: { increment: securityAmount }
+          }
+        });
+
+        const updatedUser = await tx.user.findUnique({
+          where: { id: order.user_id },
+          select: { wallet_balance: true }
+        });
+
+        // Create transaction records
+        await tx.transaction.create({
+          data: {
+            user_id: order.user_id,
+            amount: securityAmount,
+            closing_balance: Number(updatedUser.wallet_balance),
+            type: 'CREDIT',
+            category: 'REFUND',
+            status: 'SUCCESS',
+            description: `Security deposit & shipping refund for NOT_PICKED Order #${order.id}`,
+            reference_id: String(order.id)
+          }
+        });
+      });
+    }
+  }
+
+  // Handle COD remittance status for delivered orders
+  if (newStatus === 'DELIVERED' && order.payment_mode === 'COD') {
+    updateData.remittance_status = 'PENDING';
+  }
+
+  // Handle COD remittance failure - return COD amount to user if remittance fails
+  if (payload.remittance_failed || payload.cod_refund) {
+    const codAmount = Number(order.cod_amount || 0);
+    if (codAmount > 0) {
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: order.user_id },
+          data: {
+            wallet_balance: { increment: codAmount }
+          }
+        });
+
+        const updatedUser = await tx.user.findUnique({
+          where: { id: order.user_id },
+          select: { wallet_balance: true }
+        });
+
+        await tx.transaction.create({
+          data: {
+            user_id: order.user_id,
+            amount: codAmount,
+            closing_balance: Number(updatedUser.wallet_balance),
+            type: 'CREDIT',
+            category: 'COD_REFUND',
+            status: 'SUCCESS',
+            description: `COD refund for Order #${order.id} (Remittance Failed)`,
+            reference_id: String(order.id)
+          }
+        });
+      });
+    }
+  }
 
   const updatedOrder = await prisma.order.update({
     where: { id: order.id },
     data: updateData
   });
 
-  // Log history
+  // Log main history entry
   await prisma.shipmentHistory.create({
     data: {
       order_id: order.id,
@@ -1303,6 +1514,52 @@ const processOrderUpdate = async (prisma, order, payload, res) => {
       activity: payload.current_status || payload.shipment_status
     }
   });
+
+  // Process scans array for detailed history if provided
+  if (payload.scans && Array.isArray(payload.scans) && payload.scans.length > 0) {
+    // Get existing history count to avoid duplicates
+    const existingHistoryCount = await prisma.shipmentHistory.count({
+      where: { order_id: order.id }
+    });
+
+    // Only add new scan entries if this is not a replay of old data
+    // Check if scans are new by comparing with existing history
+    const existingHistory = await prisma.shipmentHistory.findMany({
+      where: { order_id: order.id },
+      orderBy: { status_date: 'asc' },
+      take: payload.scans.length
+    });
+
+    // Create history entries for each scan
+    const scanHistoryEntries = [];
+    for (const scan of payload.scans) {
+      // Check if this scan already exists in history
+      const scanDate = new Date(scan.date);
+      const exists = existingHistory.some(h => 
+        h.activity === scan.activity && 
+        Math.abs(new Date(h.status_date).getTime() - scanDate.getTime()) < 60000 // within 1 minute
+      );
+
+      if (!exists) {
+        scanHistoryEntries.push({
+          order_id: order.id,
+          status: scan.status || scan['sr-status'] || 'UPDATED',
+          status_date: scanDate,
+          location: scan.location || '',
+          shipment_status: mapShiprocketStatus(scan['sr-status-label'] || scan.activity, scan['sr-status'] ? parseInt(scan['sr-status']) : null),
+          activity: scan.activity || scan['sr-status-label'] || ''
+        });
+      }
+    }
+
+    // Bulk create new scan history entries
+    if (scanHistoryEntries.length > 0) {
+      await prisma.shipmentHistory.createMany({
+        data: scanHistoryEntries,
+        skipDuplicates: true
+      });
+    }
+  }
 
   return res.json({ success: true, message: 'Webhook processed successfully' });
 };

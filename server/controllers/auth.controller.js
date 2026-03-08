@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const otpService = require('../services/otp.service');
 const emailService = require('../services/email.service');
+const firebaseService = require('../services/firebase.service');
 
 // Helper to get referrer details including custom settings
 const getReferrerDetails = async (prisma, refererCode) => {
@@ -726,7 +727,18 @@ const completeRegistration = async (req, res) => {
   try {
     // Verify the mobile token
     let decoded;
-    if (verificationToken === "skipped_verification") {
+    let firebaseVerified = false;
+    
+    // Check if it's a Firebase idToken (starts with "eyJ")
+    if (verificationToken && verificationToken.startsWith('eyJ')) {
+      const firebaseResult = await firebaseService.verifyPhoneNumber(verificationToken);
+      if (firebaseResult.valid) {
+        decoded = { mobile: firebaseResult.phoneNumber, verified: true };
+        firebaseVerified = true;
+      } else {
+        return res.status(400).json({ message: 'Invalid Firebase token.' });
+      }
+    } else if (verificationToken === "skipped_verification") {
       // Find if this mobile was verified in the last 30 minutes
       const recentlyVerified = await prisma.otpVerification.findFirst({
         where: {

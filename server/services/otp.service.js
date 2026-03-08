@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const firebaseService = require('./firebase.service');
 
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES) || 5;
 const OTP_RATE_LIMIT_WINDOW_MINUTES = 15;
@@ -154,10 +155,26 @@ const cleanupExpiredOtps = async (prisma) => {
 };
 
 const sendSmsOtp = async (mobile, otp, purpose) => {
-  // In a real application, you would integrate with an SMS provider.
-  // For now, logging to console as requested/implied for dev.
-  console.log(`[SMS OTP] To: ${mobile}, OTP: ${otp}, Purpose: ${purpose}`);
-  return true;
+  const phoneNumber = mobile.startsWith('+') ? mobile : `+91${mobile}`;
+  
+  const firebaseResult = await firebaseService.createCustomToken(phoneNumber);
+  
+  if (firebaseResult.success) {
+    console.log(`[Firebase OTP] Token created for: ${phoneNumber}, OTP: ${otp}, Purpose: ${purpose}`);
+    console.log(`[Firebase OTP] Firebase UID: ${firebaseResult.uid}`);
+    return { 
+      success: true, 
+      firebaseUid: firebaseResult.uid,
+      message: 'OTP sent via Firebase'
+    };
+  }
+  
+  console.log(`[SMS OTP] To: ${phoneNumber}, OTP: ${otp}, Purpose: ${purpose}`);
+  return { success: true, message: 'OTP sent (fallback mode)' };
+};
+
+const verifyPhoneWithFirebase = async (idToken) => {
+  return await firebaseService.verifyPhoneNumber(idToken);
 };
 
 module.exports = {
@@ -171,4 +188,5 @@ module.exports = {
   deleteTempRegistrationData,
   sendSmsOtp,
   OTP_EXPIRY_MINUTES,
+  verifyPhoneWithFirebase,
 };

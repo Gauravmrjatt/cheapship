@@ -4,6 +4,9 @@ const { check } = require('express-validator');
 const authMiddleware = require('../middleware/auth.middleware');
 const orderController = require('../controllers/order.controller');
 
+// Public webhook endpoint - must be before auth middleware
+router.post('/webhook', orderController.handleWebhook);
+
 // All routes in this file are protected
 router.use(authMiddleware);
 
