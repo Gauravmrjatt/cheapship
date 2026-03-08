@@ -340,3 +340,11 @@ BEGIN
         ALTER TABLE "feedbacks" ADD CONSTRAINT "feedbacks_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
     END IF;
 END $$;
+
+-- Add phone_verified column to addresses if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'addresses' AND column_name = 'phone_verified') THEN
+        ALTER TABLE "addresses" ADD COLUMN "phone_verified" BOOLEAN DEFAULT false;
+    END IF;
+END $$;
