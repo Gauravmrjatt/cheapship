@@ -13,7 +13,7 @@ export const addressSchema = z.object({
 export const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   quantity: z.number().min(1, "Quantity must be at least 1"),
-  price: z.number().min(1, "Price must be at least 1"),
+  price: z.number().min(1, "Price must be at least 1").max(475000, "Price cannot exceed ₹4,75,000"),
 });
 
 export const calculateRateSchema = z.object({
@@ -58,6 +58,14 @@ export const createOrderSchema = z.object({
   new_pickup_registered_name: z.string().optional(),
   is_insured: z.boolean().optional().default(false),
 }).superRefine((data, ctx) => {
+  // Validate total_amount max limit
+  if (data.total_amount > 475000) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Total amount cannot exceed ₹4,75,000",
+      path: ["total_amount"],
+    });
+  }
   // Custom validation: cod_amount is required when payment_mode is COD
   if (data.payment_mode === "COD") {
     if (!data.cod_amount || data.cod_amount < 1) {

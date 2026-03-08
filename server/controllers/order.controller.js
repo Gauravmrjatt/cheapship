@@ -271,6 +271,21 @@ const createOrder = async (req, res) => {
     }
   }
 
+  // Product value validation - max ₹4,75,000 per product
+  if (products && products.length > 0) {
+    for (const product of products) {
+      const productPrice = parseFloat(product.price) || 0;
+      if (productPrice > 475000) {
+        return res.status(400).json({ error: 'Product value cannot exceed ₹4,75,000' });
+      }
+    }
+  }
+
+  // Total amount validation - max ₹4,75,000
+  if (total_amount && parseFloat(total_amount) > 475000) {
+    return res.status(400).json({ error: 'Total amount cannot exceed ₹4,75,000' });
+  }
+
   try {
     // KYC Check for ALL orders (not just first order)
     const user = await prisma.user.findUnique({

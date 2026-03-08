@@ -194,6 +194,35 @@ BEGIN
     END IF;
 END $$;
 
+-- Add missing columns to existing weight_disputes table (for production DBs that have the table but missing columns)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'weight_disputes' AND column_name = 'discrepancy_description') THEN
+        ALTER TABLE "weight_disputes" ADD COLUMN "discrepancy_description" TEXT;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'weight_disputes' AND column_name = 'packed_box_image') THEN
+        ALTER TABLE "weight_disputes" ADD COLUMN "packed_box_image" TEXT;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'weight_disputes' AND column_name = 'product_category') THEN
+        ALTER TABLE "weight_disputes" ADD COLUMN "product_category" VARCHAR(100);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'weight_disputes' AND column_name = 'weight_scale_image') THEN
+        ALTER TABLE "weight_disputes" ADD COLUMN "weight_scale_image" TEXT;
+    END IF;
+END $$;
+
 -- Create rto_disputes table if not exists
 DO $$
 BEGIN
