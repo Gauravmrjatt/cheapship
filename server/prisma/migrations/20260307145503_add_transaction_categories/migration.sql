@@ -1,5 +1,27 @@
 -- Idempotent migration: handles both fresh DB and already-applied cases
 
+-- Add TransactionCategory enum values if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'SECURITY_DEPOSIT') THEN
+        ALTER TYPE "TransactionCategory" ADD VALUE 'SECURITY_DEPOSIT';
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'WEIGHT_DISPUTE') THEN
+        ALTER TYPE "TransactionCategory" ADD VALUE 'WEIGHT_DISPUTE';
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'RTO_CHARGE') THEN
+        ALTER TYPE "TransactionCategory" ADD VALUE 'RTO_CHARGE';
+    END IF;
+END $$;
+
 -- Create enums if not exists (using DO block for idempotency)
 DO $$
 BEGIN

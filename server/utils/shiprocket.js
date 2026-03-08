@@ -50,7 +50,7 @@ const getServiceability = async (params) => {
   if (process.env.NODE_ENV === 'development') {
     console.log('[Shiprocket] Serviceability API params:', restParams);
   }
-
+  console.log('[Shiprocket] Serviceability API params:', queryParams);
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/serviceability/?${queryParams}`, {
       method: 'GET',
