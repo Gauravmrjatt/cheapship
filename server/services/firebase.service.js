@@ -19,7 +19,7 @@ const initializeFirebase = () => {
       .replace(/\\\\n/g, '\n')
       .replace(/\\n/g, '\n'),
   };
-  console.log(serviceAccount);
+  // console.log(serviceAccount);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });

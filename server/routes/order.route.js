@@ -17,7 +17,6 @@ router.use(authMiddleware);
  *   description: Order management endpoints
  */
 
-router.post('/webhook', orderController.handleWebhook);
 
 /**
  * @swagger
