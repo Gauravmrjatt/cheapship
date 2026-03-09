@@ -205,10 +205,7 @@ export const useAdminUsers = (page: number = 1, pageSize: number = 10, search: s
     search,
     status
   });
-  return useQuery({
-    ...http.get<AdminUsersResponse>(["admin-users", page, pageSize, search, status], `/admin/users?${queryParams.toString()}`),
-    gcTime: 0,
-  });
+  return useQuery(http.get<AdminUsersResponse>(["admin-users", page, pageSize, search, status], `/admin/users?${queryParams.toString()}`));
 };
 
 export const useToggleUserStatus = (isMounted?: React.MutableRefObject<boolean>) => {
@@ -264,10 +261,8 @@ export const useAdminOrders = (
   if (from) queryParams.append("from", from);
   if (to) queryParams.append("to", to);
   
-  return useQuery({
-    ...http.get<AdminOrdersResponse>(["admin-orders", page, pageSize, status, search, userId, shipmentType, paymentMode, orderType, from, to], `/admin/orders?${queryParams.toString()}`),
-    gcTime: 0,
-  });
+  const queryOptions = http.get<AdminOrdersResponse>(["admin-orders", page, pageSize, status, search, userId, shipmentType, paymentMode, orderType, from, to], `/admin/orders?${queryParams.toString()}`);
+  return useQuery(queryOptions);
 };
 
 export const useAdminOrder = (orderId: string) => {
@@ -296,10 +291,7 @@ export const useAdminTransactions = (page: number = 1, pageSize: number = 10, ty
   });
   if (fromDate) queryParams.append("fromDate", fromDate);
   if (toDate) queryParams.append("toDate", toDate);
-  return useQuery({
-    ...http.get<AdminTransactionsResponse>(["admin-transactions", page, pageSize, type, category, search, userId, fromDate, toDate], `/admin/transactions?${queryParams.toString()}`),
-    gcTime: 0,
-  });
+  return useQuery(http.get<AdminTransactionsResponse>(["admin-transactions", page, pageSize, type, category, search, userId, fromDate, toDate], `/admin/transactions?${queryParams.toString()}`));
 };
 
 export const useAdminWithdrawals = (page: number = 1, pageSize: number = 10, status: string = "ALL") => {
@@ -309,10 +301,7 @@ export const useAdminWithdrawals = (page: number = 1, pageSize: number = 10, sta
     pageSize: pageSize.toString(),
     status
   });
-  return useQuery({
-    ...http.get<AdminWithdrawalResponse>(["admin-withdrawals", page, pageSize, status], `/admin/withdrawals?${queryParams.toString()}`),
-    gcTime: 0,
-  });
+  return useQuery(http.get<AdminWithdrawalResponse>(["admin-withdrawals", page, pageSize, status], `/admin/withdrawals?${queryParams.toString()}`));
 };
 
 export const useProcessWithdrawal = () => {
@@ -476,10 +465,7 @@ export const useAdminKyc = (page: number = 1, pageSize: number = 10, status: str
     status,
     search
   });
-  return useQuery({
-    ...http.get<AdminKycResponse>(["admin-kyc", page, pageSize, status, search], `/admin/kyc?${queryParams.toString()}`),
-    gcTime: 0,
-  });
+  return useQuery<AdminKycResponse>(http.get<AdminKycResponse>(["admin-kyc", page, pageSize, status, search], `/admin/kyc?${queryParams.toString()}`));
 };
 
 export const useUpdateKycStatus = () => {

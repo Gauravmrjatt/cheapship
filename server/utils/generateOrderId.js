@@ -1,18 +1,15 @@
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 module.exports.generateOrderId = function generateOrderId() {
-  // ORD → 3 digit numeric prefix
-  const prefix = "777"; // ORD replacement (numeric only)
+  const prefix = "777";
 
-  // timestamp (13 digits)
-  const timestamp = Date.now().toString();
+  // last 6 digits of timestamp
+  const timestamp = Date.now().toString().slice(-6);
 
-  // uuid fragment → numeric 3 digits
+  // random 3 digits
   const random = crypto.randomInt(100, 999).toString();
 
-  // combine
-  const idStr = prefix + timestamp + random;
+  const idStr = timestamp + random;
 
-  // convert safely to BigInt
   return BigInt(idStr);
-}
+};

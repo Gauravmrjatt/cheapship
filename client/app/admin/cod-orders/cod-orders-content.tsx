@@ -33,8 +33,7 @@ function CODOrdersContent() {
       ["admin-cod-orders", page, pageSize, filters.status, filters.search, filters.order_source],
       `/admin/cod-orders?page=${page}&pageSize=${pageSize}&remittance_status=${filters.status}${filters.search ? `&search=${filters.search}` : ""}&order_source=${filters.order_source}`,
       true
-    ),
-    { gcTime: 0 }
+    )
   );
 
   const [selectedOrder, setSelectedOrder] = React.useState<CODOrder | null>(null);

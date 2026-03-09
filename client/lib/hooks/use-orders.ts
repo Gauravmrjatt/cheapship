@@ -45,10 +45,8 @@ export const useOrders = (page: number, pageSize: number, filters: OrderFilters 
     params.append("search", filters.search);
   }
 
-  return useQuery({
-    ...get(["orders", page, pageSize, filters], `/orders?${params.toString()}`),
-    gcTime: 0,
-  });
+  const queryOptions = get(["orders", page, pageSize, filters], `/orders?${params.toString()}`);
+  return useQuery(queryOptions);
 };
 
 export const useCancelOrder = () => {

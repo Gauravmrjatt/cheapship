@@ -1797,7 +1797,6 @@ const generateOrderLabel = async (req, res) => {
     }
 
     if (labelUrl) {
-      // Customize the label with CheapShip branding
       labelUrl = await labelCustomizer.customize(labelUrl, order.id.toString());
 
       await prisma.order.update({
