@@ -516,6 +516,12 @@ export function OrdersDataTable({
     getSortedRowModel: getSortedRowModel(),
   })
 
+  React.useEffect(() => {
+    if (pagination?.pageSize) {
+      table.setPageSize(pagination.pageSize)
+    }
+  }, [pagination?.pageSize, table])
+
   const handlePageChange = (newPage: number) => {
     onPageChange?.(newPage);
   };

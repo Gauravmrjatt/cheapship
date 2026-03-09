@@ -1,46 +1,63 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   useGlobalSettings, 
   useUpdateGlobalSettings,
   useReferralLevelSetting,
-  useUpdateReferralLevelSetting
+  useUpdateReferralLevelSetting,
+  useCommissionLimits,
+  useUpdateCommissionLimits
 } from "@/lib/hooks/use-admin";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { 
   Globe02Icon, 
   PercentIcon, 
   Loading03Icon,
   Layers01Icon,
-  MoneyReceiveCircleIcon
+  SlidersHorizontalIcon
 } from "@hugeicons/core-free-icons";
 
 export default function AdminSettingsPage() {
   const { data: settings, isLoading } = useGlobalSettings();
   const { data: levelSetting, isLoading: levelsLoading } = useReferralLevelSetting();
+  const { data: commissionLimits, isLoading: limitsLoading } = useCommissionLimits();
   const updateSettingsMutation = useUpdateGlobalSettings();
   const updateLevelSettingMutation = useUpdateReferralLevelSetting();
+  const updateLimitsMutation = useUpdateCommissionLimits();
 
-  const [rate, setRate] = useState<number>(settings?.rate ?? 0);
+  const [rate, setRate] = useState<number>(0);
   const [maxLevels, setMaxLevels] = useState<number>(3);
+  const [minRate, setMinRate] = useState<number>(0);
+  const [maxRate, setMaxRate] = useState<number>(100);
+
+  const initialized = useRef({ rate: false, levels: false, limits: false });
 
   useEffect(() => {
-    if (settings?.rate !== undefined) {
+    if (settings?.rate !== undefined && !initialized.current.rate) {
       setRate(settings.rate);
+      initialized.current.rate = true;
     }
   }, [settings]);
 
   useEffect(() => {
-    if (levelSetting) {
+    if (levelSetting && !initialized.current.levels) {
       setMaxLevels(levelSetting.max_levels);
+      initialized.current.levels = true;
     }
   }, [levelSetting]);
+
+  useEffect(() => {
+    if (commissionLimits && !initialized.current.limits) {
+      setMinRate(commissionLimits.min_rate);
+      setMaxRate(commissionLimits.max_rate);
+      initialized.current.limits = true;
+    }
+  }, [commissionLimits]);
 
   const handleUpdateGlobal = () => {
     updateSettingsMutation.mutate({ rate });
@@ -48,6 +65,10 @@ export default function AdminSettingsPage() {
 
   const handleUpdateMaxLevels = () => {
     updateLevelSettingMutation.mutate({ max_levels: maxLevels });
+  };
+
+  const handleUpdateLimits = () => {
+    updateLimitsMutation.mutate({ min_rate: minRate, max_rate: maxRate });
   };
 
   return (
@@ -139,6 +160,66 @@ export default function AdminSettingsPage() {
                 </>
               ) : (
                 "Update Levels"
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Commission Limits Card */}
+        <Card className="rounded-2xl border-none shadow-sm bg-card/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={SlidersHorizontalIcon} className="size-5" />
+              Commission Limits
+            </CardTitle>
+            <CardDescription>
+              Default min and max commission rates for new users.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="min-rate">Min Rate (%)</Label>
+                <Input 
+                  id="min-rate"
+                  type="number" 
+                  value={minRate} 
+                  onChange={(e) => setMinRate(parseFloat(e.target.value) || 0)}
+                  className="font-bold text-lg h-12"
+                  placeholder="0"
+                  min={0}
+                  max={100}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="max-rate">Max Rate (%)</Label>
+                <Input 
+                  id="max-rate"
+                  type="number" 
+                  value={maxRate} 
+                  onChange={(e) => setMaxRate(parseFloat(e.target.value) || 100)}
+                  className="font-bold text-lg h-12"
+                  placeholder="100"
+                  min={0}
+                  max={100}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              These values will be used as default min/max commission rates when new users register.
+            </p>
+            <Button 
+              className="w-full h-11 font-bold" 
+              onClick={handleUpdateLimits}
+              disabled={limitsLoading || updateLimitsMutation.isPending}
+            >
+              {updateLimitsMutation.isPending ? (
+                <>
+                  <HugeiconsIcon icon={Loading03Icon} className="mr-2 size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Update Limits"
               )}
             </Button>
           </CardContent>

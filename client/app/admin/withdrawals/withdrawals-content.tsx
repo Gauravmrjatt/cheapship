@@ -208,6 +208,10 @@ export default function AdminWithdrawalsPage() {
     getSortedRowModel: getSortedRowModel(),
   });
 
+  React.useEffect(() => {
+    table.setPageSize(pageSize);
+  }, [pageSize, table]);
+
   const handleStatusChange = (val: string | null) => {
     if (val) {
       setStatus(val);

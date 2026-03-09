@@ -92,7 +92,7 @@ export const ActionsCell = ({
         )}
         {row.original.label_url && (
           <DropdownMenuItem>
-            <a href={row.original.label_url} target="_blank" rel="noopener noreferrer" className="w-full">
+            <a href={BASE_URL + row.original.label_url} target="_blank" rel="noopener noreferrer" className="w-full">
               Download Label
             </a>
           </DropdownMenuItem>

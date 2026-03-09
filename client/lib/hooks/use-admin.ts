@@ -144,6 +144,8 @@ export interface AdminOrder {
     mobile?: string;
   };
   pickup_location?: string;
+  shiprocket_order_id?: string,
+
 }
 
 export interface AdminOrdersResponse {
@@ -235,10 +237,10 @@ export const useToggleUserStatus = (isMounted?: React.MutableRefObject<boolean>)
 };
 
 export const useAdminOrders = (
-  page: number = 1, 
-  pageSize: number = 10, 
-  status: string = "ALL", 
-  search: string = "", 
+  page: number = 1,
+  pageSize: number = 10,
+  status: string = "ALL",
+  search: string = "",
   userId: string = "",
   shipmentType: string = "ALL",
   paymentMode: string = "ALL",
@@ -254,13 +256,13 @@ export const useAdminOrders = (
     search,
     userId
   });
-  
+
   if (shipmentType !== "ALL") queryParams.append("shipmentType", shipmentType);
   if (paymentMode !== "ALL") queryParams.append("paymentMode", paymentMode);
   if (orderType !== "ALL") queryParams.append("orderType", orderType);
   if (from) queryParams.append("from", from);
   if (to) queryParams.append("to", to);
-  
+
   const queryOptions = http.get<AdminOrdersResponse>(["admin-orders", page, pageSize, status, search, userId, shipmentType, paymentMode, orderType, from, to], `/admin/orders?${queryParams.toString()}`);
   return useQuery(queryOptions);
 };
@@ -333,6 +335,30 @@ export const useUpdateGlobalSettings = () => {
       onSuccess: () => {
         sileo.success({ title: "Global commission updated" });
         queryClient.invalidateQueries({ queryKey: ["global-commission"] });
+      }
+    })
+  });
+};
+
+// Global Commission Limits (min/max rates for new users)
+export interface CommissionLimits {
+  min_rate: number;
+  max_rate: number;
+}
+
+export const useCommissionLimits = () => {
+  const http = useHttp();
+  return useQuery(http.get<CommissionLimits>(["commission-limits"], "/admin/settings/commission-limits"));
+};
+
+export const useUpdateCommissionLimits = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    ...http.post<CommissionLimits, { min_rate: number; max_rate: number }>("/admin/settings/commission-limits", {
+      onSuccess: () => {
+        sileo.success({ title: "Commission limits updated" });
+        queryClient.invalidateQueries({ queryKey: ["commission-limits"] });
       }
     })
   });
@@ -472,8 +498,8 @@ export const useUpdateKycStatus = () => {
   const queryClient = useQueryClient();
   const http = useHttp();
   return useMutation({
-    mutationFn: async ({ userId, kyc_status, pan_verified, aadhaar_verified, gst_verified }: { 
-      userId: string; 
+    mutationFn: async ({ userId, kyc_status, pan_verified, aadhaar_verified, gst_verified }: {
+      userId: string;
       kyc_status: string;
       pan_verified?: boolean;
       aadhaar_verified?: boolean;

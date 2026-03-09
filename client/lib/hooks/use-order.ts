@@ -36,8 +36,8 @@ export const useSchedulePickup = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    ...post<any, { orderId: string }>(
-      ({ orderId }) => `/orders/${orderId}/pickup`,
+    ...post<any, { orderId: string; pickup_date?: string }>(
+      ({ orderId, pickup_date }) => `/orders/${orderId}/pickup`,
       {
         onSuccess: (_, { orderId }) => {
           sileo.success({ title: "Pickup Scheduled", description: "Pickup has been successfully scheduled." });

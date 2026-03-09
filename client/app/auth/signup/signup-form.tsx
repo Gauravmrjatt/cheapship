@@ -112,6 +112,21 @@ export default function SignUpForm() {
     })
   );
 
+  const checkMobileExists = async (mobile: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/auth/check-mobile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile }),
+      });
+      const data = await response.json();
+      return data.exists === true;
+    } catch (error) {
+      console.error('Error checking mobile:', error);
+      return false;
+    }
+  };
+
   // Forms
   const mobileForm = useForm<MobileRegFormData>({
     resolver: zodResolver(mobileRegSchema),
@@ -151,6 +166,12 @@ export default function SignUpForm() {
 
   // Handlers
   const onMobileSubmit = async (values: MobileRegFormData) => {
+    const mobileExists = await checkMobileExists(values.mobile);
+    if (mobileExists) {
+      sileo.error({ title: "Mobile Number Exists", description: "A user with this mobile number already exists. Please login instead." });
+      return;
+    }
+
     setState(prev => ({ ...prev, mobile: values.mobile }));
     
     if (firebaseOtp.isConfigValid) {

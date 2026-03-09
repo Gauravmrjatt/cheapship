@@ -171,11 +171,11 @@ function OrdersContent() {
     if (!isMounted) return;
     const userIdFromQuery = searchParams.get("userId") || "";
     const statusFromQuery = searchParams.get("shipment_status") || "";
-    
+
     if (userIdFromQuery) {
       setUserIdFilter(userIdFromQuery);
     }
-    
+
     if (statusFromQuery) {
       setFilters(prev => ({ ...prev, shipment_status: statusFromQuery }));
     }
@@ -279,11 +279,20 @@ function OrdersContent() {
             href={`/dashboard/orders/${row.original.id}`}
             className="text-foreground hover:underline font-medium"
           >
-            #{row.original.id.slice(0, 8)}
+            #{row.original.id}
           </Link>
-          <span className="text-[10px] text-muted-foreground tabular-nums">
+
+          <span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_order_id ? `Shiprocket OID :   ${row.original.shiprocket_order_id}`  : "-"}
+          </span>
+          <span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_shipment_id ? `Shiprocket Ship ID :  ${row.original.shiprocket_shipment_id}`  : "-"}
+          </span>
+        
+          <span className="text-[10px]  tabular-nums">
             {row.original.created_at ? new Date(row.original.created_at).toLocaleString() : "-"}
           </span>
+   
         </div>
       ),
       enableHiding: false,
@@ -340,49 +349,49 @@ function OrdersContent() {
                   <span className="text-[10px] text-muted-foreground">to {receiver.city}, {receiver.state}</span>
                 </button>
               </PopoverTrigger>
-            <PopoverContent className="w-72 p-3" side="left">
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
-                    <HugeiconsIcon icon={MapPinIcon} className="size-3" />
-                    Sender
+              <PopoverContent className="w-72 p-3" side="left">
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                      <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                      Sender
+                    </div>
+                    <div className="text-xs space-y-0.5">
+                      <p className="font-medium">{pickup.name}</p>
+                      {pickup.address && <p>{pickup.address}</p>}
+                      <p>{pickup.city}, {pickup.state} - {pickup.pincode}</p>
+                      {pickup.phone && <p className="text-blue-600 font-medium">{pickup.phone}</p>}
+                    </div>
                   </div>
-                  <div className="text-xs space-y-0.5">
-                    <p className="font-medium">{pickup.name}</p>
-                    {pickup.address && <p>{pickup.address}</p>}
-                    <p>{pickup.city}, {pickup.state} - {pickup.pincode}</p>
-                    {pickup.phone && <p className="text-blue-600 font-medium">{pickup.phone}</p>}
+                  <Separator />
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                      <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                      Receiver
+                    </div>
+                    <div className="text-xs space-y-0.5">
+                      <p className="font-medium">{receiver.name}</p>
+                      {receiver.address && <p>{receiver.address}</p>}
+                      <p>{receiver.city}, {receiver.state} - {receiver.pincode}</p>
+                      {receiver.phone && <p className="text-blue-600 font-medium">{receiver.phone}</p>}
+                    </div>
                   </div>
                 </div>
-                <Separator />
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
-                    <HugeiconsIcon icon={MapPinIcon} className="size-3" />
-                    Receiver
-                  </div>
-                  <div className="text-xs space-y-0.5">
-                    <p className="font-medium">{receiver.name}</p>
-                    {receiver.address && <p>{receiver.address}</p>}
-                    <p>{receiver.city}, {receiver.state} - {receiver.pincode}</p>
-                    {receiver.phone && <p className="text-blue-600 font-medium">{receiver.phone}</p>}
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          {row.original?.pickup_location && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-primary gap-1 h-7 px-2 mt-1"
-              onClick={() => handleOpenPickupDialog(row.original.pickup_location!)}
-            >
-              <HugeiconsIcon icon={Location01Icon} className="h-3 w-3" />
-              <span className="text-xs font-medium truncate max-w-[100px]">{row.original.pickup_location}</span>
-            </Button>
-          )}
-        </React.Fragment>
-      );
+              </PopoverContent>
+            </Popover>
+            {row.original?.pickup_location && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-primary gap-1 h-7 px-2 mt-1"
+                onClick={() => handleOpenPickupDialog(row.original.pickup_location!)}
+              >
+                <HugeiconsIcon icon={Location01Icon} className="h-3 w-3" />
+                <span className="text-xs font-medium truncate max-w-[100px]">{row.original.pickup_location}</span>
+              </Button>
+            )}
+          </React.Fragment>
+        );
       }
     },
     {
@@ -430,9 +439,9 @@ function OrdersContent() {
           rto: { label: 'RTO', icon: MapPinIcon, color: 'text-red-600' },
           not_picked: { label: 'Not Picked', icon: Cancel01Icon, color: 'text-red-400' }
         };
-        
+
         const config = statusConfig[status] || { label: status.replace(/_/g, ' '), icon: DeliveryTruck01Icon, color: 'text-gray-500' };
-        
+
         return (
           <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
             <HugeiconsIcon icon={config.icon} strokeWidth={2} className={`${config.color} size-3`} />
@@ -476,11 +485,11 @@ function OrdersContent() {
             )}
 
             {labelUrl && (
-          <a
-  href={labelUrl}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="
+              <a
+                href={labelUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
     inline-flex items-center
     text-xs font-medium
     text-foreground
@@ -493,13 +502,13 @@ function OrdersContent() {
     rounded-xl
     w-full
   "
->
-  Label
-  <HugeiconsIcon
-    icon={FileDownloadIcon}
-    className="ml-auto size-3 text-muted-foreground"
-  />
-</a>
+              >
+                Label
+                <HugeiconsIcon
+                  icon={FileDownloadIcon}
+                  className="ml-auto size-3 text-muted-foreground"
+                />
+              </a>
             )}
           </div>
         );
@@ -610,6 +619,10 @@ function OrdersContent() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
+
+  React.useEffect(() => {
+    table.setPageSize(pageSize);
+  }, [pageSize, table]);
 
   const handleExportCSV = React.useCallback(() => {
     const selectedRows = table.getFilteredSelectedRowModel().rows.map(r => r.original);
@@ -847,12 +860,12 @@ function OrdersContent() {
 
 
 
-            <Link href="/dashboard/orders/new">
+            {/* <Link href="/dashboard/orders/new">
               <Button size="sm">
                 <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
                 <span className="hidden lg:inline">New Order</span>
               </Button>
-            </Link>
+            </Link> */}
           </div>
         </div>
 
@@ -943,7 +956,7 @@ function OrdersContent() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={handleExportCSV}>Export CSV</DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleBulkLabels}>Download Labels</DropdownMenuItem>
+                    {/* <DropdownMenuItem onClick={handleBulkLabels}>Download Labels</DropdownMenuItem> */}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

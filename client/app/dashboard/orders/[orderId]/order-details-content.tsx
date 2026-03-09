@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   RefreshIcon,
@@ -102,6 +103,8 @@ export default function OrderDetailsPage({
   const [showCancelDialog, setShowCancelDialog] = React.useState(false);
   const [isCancelling, setIsCancelling] = React.useState(false);
   const [showPickupDialog, setShowPickupDialog] = React.useState(false);
+  const [showSchedulePickupDialog, setShowSchedulePickupDialog] = React.useState(false);
+  const [selectedPickupDate, setSelectedPickupDate] = React.useState<Date | undefined>(undefined);
 
   const [lastUpdated, setLastUpdated] = React.useState<Date>(new Date());
 
@@ -153,7 +156,10 @@ export default function OrderDetailsPage({
     };
   
     const handleSchedulePickup = () => {
-      schedulePickupMutation.mutate({ orderId });
+      const pickupDate = selectedPickupDate ? selectedPickupDate.toISOString().split('T')[0] : undefined;
+      schedulePickupMutation.mutate({ orderId, pickup_date: pickupDate });
+      setShowSchedulePickupDialog(false);
+      setSelectedPickupDate(undefined);
     };
   
     const handleGenerateLabel = () => {
@@ -217,7 +223,7 @@ export default function OrderDetailsPage({
 
           {hasAWB && !order.pickup_scheduled_date && (
             <Button 
-              onClick={handleSchedulePickup} 
+              onClick={() => setShowSchedulePickupDialog(true)}
               disabled={schedulePickupMutation.isPending}
               variant="secondary"
               className="rounded-xl font-bold gap-2"
@@ -358,10 +364,10 @@ export default function OrderDetailsPage({
                 <p className="font-semibold">{((order.length * order.width * order.height) / 5000).toFixed(2)} kg</p>
               </div>
             )}
-            <div>
+            {/* <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Base Shipping Charge</p>
               <p className="font-semibold">₹{order.base_shipping_charge || "-"}</p>
-            </div>
+            </div> */}
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Final Charge</p>
               <p className="font-semibold">₹{order.shipping_charge || order.total_amount}</p>
@@ -439,14 +445,14 @@ export default function OrderDetailsPage({
               )}
 
               <div className="flex flex-wrap gap-3">
-                {order.label_url && (
+                {/* {order.label_url && (
                   <a href={order.label_url} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" size="sm">
                       <HugeiconsIcon icon={ExternalLinkIcon} className="h-4 w-4 mr-2" />
                       Print Label
                     </Button>
                   </a>
-                )}
+                )} */}
                 {order.track_url && (
                   <a href={order.track_url} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" size="sm">
@@ -649,6 +655,50 @@ export default function OrderDetailsPage({
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setShowPickupDialog(false)}>
               Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSchedulePickupDialog} onOpenChange={setShowSchedulePickupDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={Calendar01Icon} className="h-5 w-5 text-primary" />
+              Schedule Pickup
+            </DialogTitle>
+            <DialogDescription>
+              Select a date to schedule pickup for this order. You can schedule for today or a future date.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Pickup Date</label>
+              <DatePicker
+                date={selectedPickupDate}
+                onDateChange={setSelectedPickupDate}
+                placeholder="Select pickup date"
+                className="w-full"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Leave empty to schedule pickup for today
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => {
+              setShowSchedulePickupDialog(false);
+              setSelectedPickupDate(undefined);
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSchedulePickup}
+              disabled={schedulePickupMutation.isPending}
+            >
+              {schedulePickupMutation.isPending ? "Scheduling..." : "Schedule Pickup"}
             </Button>
           </div>
         </DialogContent>

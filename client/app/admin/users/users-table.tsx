@@ -256,6 +256,10 @@ export function UsersTable({
     getSortedRowModel: getSortedRowModel(),
   });
 
+  React.useEffect(() => {
+    table.setPageSize(pageSize);
+  }, [pageSize, table]);
+
   return (
     <div className="overflow-x-auto border rounded-2xl">
       <Table className="min-w-[640px]">

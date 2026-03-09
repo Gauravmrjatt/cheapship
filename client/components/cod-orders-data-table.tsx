@@ -66,6 +66,9 @@ export interface CODOrder {
   remitted_at: string | null
   remittance_ref_id: string | null
   created_at: string
+  shiprocket_order_id? : string
+  shiprocket_shipment_id? : string
+  tracking_number? : string
   user: {
     id: string
     name: string
@@ -190,9 +193,22 @@ export function CODOrdersDataTable({
       accessorKey: "id",
       header: "Order ID",
       cell: ({ row }) => (
-        <span className="text-foreground font-medium">
-          #{row.original.id.slice(0, 8)}
-        </span>
+        <>
+          <span className="text-foreground font-medium br">
+            #{row.original.id}
+          </span>
+          <span className="text-foreground font-medium br">
+            #{row.original.shiprocket_order_id}
+          </span>
+          <span className="text-foreground font-medium br">
+            #{row.original.shiprocket_shipment_id}
+          </span>
+          <span className="text-foreground font-medium br">
+            #{row.original.tracking_number}
+          </span>
+
+
+        </>
       ),
       enableHiding: false,
     },
@@ -310,6 +326,12 @@ export function CODOrdersDataTable({
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
+
+  React.useEffect(() => {
+    if (pagination?.pageSize) {
+      table.setPageSize(pagination.pageSize)
+    }
+  }, [pagination?.pageSize, table])
 
   return (
     <Tabs
@@ -436,7 +458,7 @@ export function CODOrdersDataTable({
         />
       </div>
 
-      <RemittanceDialog 
+      <RemittanceDialog
         open={showDialog}
         onOpenChange={setShowDialog}
         selectedOrder={selectedOrder}
