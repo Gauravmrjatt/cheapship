@@ -516,6 +516,15 @@ export function OrdersDataTable({
     getSortedRowModel: getSortedRowModel(),
   })
 
+  const handlePageChange = (newPage: number) => {
+    onPageChange?.(newPage);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    onPageSizeChange?.(newPageSize);
+    onPageChange?.(1);
+  };
+
   const handleFilterUpdate = React.useCallback((key: keyof OrderFilters, value: string) => {
     if (!isMounted) return
     onFilterChange?.({ ...filters, [key]: value })
@@ -861,8 +870,8 @@ export function OrdersDataTable({
 
         <DataTablePagination
           pagination={pagination}
-          onPageChange={onPageChange}
-          onPageSizeChange={onPageSizeChange}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
           filteredCount={table.getFilteredRowModel().rows.length}
         />
       </div>

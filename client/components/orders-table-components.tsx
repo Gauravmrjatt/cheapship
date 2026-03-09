@@ -1,5 +1,5 @@
 "use client";
-
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 import * as React from "react";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -31,7 +31,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { sileo } from "sileo";
 
 const generateManifest = async (orderId: string) => {
-  const res = await fetch(`/api/v1/orders/${orderId}/manifest`, {
+  const res = await fetch(`${BASE_URL}/api/v1/orders/${orderId}/manifest`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('token')}`

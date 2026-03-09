@@ -161,16 +161,16 @@ export function TransactionsDataTable({
       enableSorting: false,
       enableHiding: false,
     },
-    {
-      accessorKey: "id",
-      header: "Transaction ID",
-      cell: ({ row }) => (
-        <span className="text-foreground font-medium uppercase">
-          #{row.original.id.slice(0, 8)}
-        </span>
-      ),
-      enableHiding: false,
-    },
+    // {
+    //   accessorKey: "id",
+    //   header: "Transaction ID",
+    //   cell: ({ row }) => (
+    //     <span className="text-foreground font-medium uppercase">
+    //       #{row.original.id.slice(0, 8)}
+    //     </span>
+    //   ),
+    //   enableHiding: false,
+    // },
     {
       id: "user",
       header: "User",
@@ -329,29 +329,25 @@ export function TransactionsDataTable({
       sorting,
       columnVisibility,
       rowSelection,
-      pagination: {
-        pageIndex: (pagination?.currentPage || 1) - 1,
-        pageSize: pagination?.pageSize || 10,
-      },
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: (updater) => {
-      if (typeof updater === 'function') {
-        const newState = updater({ pageIndex: (pagination?.currentPage || 1) - 1, pageSize: pagination?.pageSize || 10 });
-        onPageChange?.(newState.pageIndex + 1);
-        if (newState.pageSize !== (pagination?.pageSize || 10)) {
-          onPageSizeChange?.(newState.pageSize);
-        }
-      }
-    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
+
+  const handlePageChange = (newPage: number) => {
+    onPageChange?.(newPage);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    onPageSizeChange?.(newPageSize);
+    onPageChange?.(1);
+  };
 
   const handleFilterUpdate = React.useCallback((key: string, value: string | undefined) => {
     onFilterChange?.({ ...(filters as any), [key]: value })
@@ -504,8 +500,8 @@ export function TransactionsDataTable({
 
         <DataTablePagination
           pagination={pagination}
-          onPageChange={onPageChange}
-          onPageSizeChange={onPageSizeChange}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
           filteredCount={table.getFilteredRowModel().rows.length}
         />
       </div>

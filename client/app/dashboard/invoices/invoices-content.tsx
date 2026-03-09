@@ -1,5 +1,5 @@
 "use client";
-
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,7 +86,7 @@ export default function InvoicesPage() {
 
   const downloadInvoice = async (orderId: string) => {
     try {
-      const response = await fetch(`/api/v1/orders/${orderId}/invoice`, {
+      const response = await fetch(`${BASE_URL}/api/v1/orders/${orderId}/invoice`, {
         credentials: 'include',
       });
       const data = await response.json();

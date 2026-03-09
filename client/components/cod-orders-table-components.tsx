@@ -65,6 +65,10 @@ export function RemittanceDialog({
   onUpdate,
   isUpdating,
 }: RemittanceDialogProps) {
+  const upiString = `upi://pay?pa=${selectedOrder?.user?.upi_id}&am=${selectedOrder?.cod_amount}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiString)}`;
+
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -116,7 +120,7 @@ export function RemittanceDialog({
             <div className="p-4 bg-muted/50 rounded-lg flex flex-col items-center justify-center gap-3">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pay via UPI App</p>
               <Image
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=${selectedOrder.user.upi_id}&am=${selectedOrder.cod_amount}`}
+                src={`${qrUrl}`}
                 alt="UPI QR Code"
                 width={150}
                 height={150}

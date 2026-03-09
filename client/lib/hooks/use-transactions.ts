@@ -61,7 +61,7 @@ export const useTransactions = (
   return useQuery({
     ...queryOptions,
     enabled: queryOptions.enabled && enabled,
-    staleTime: 0,
+    gcTime: 0,
   });
 };
 
