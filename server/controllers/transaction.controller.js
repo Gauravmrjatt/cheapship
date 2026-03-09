@@ -32,6 +32,7 @@ const getTransactions = async (req, res) => {
     if (search) {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(search);
       where.OR = [
+        { id: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
         { reference_id: { contains: search, mode: 'insensitive' } }
       ];

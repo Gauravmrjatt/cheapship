@@ -423,7 +423,7 @@ const createOrder = async (req, res) => {
     const serviceabilityData = await getServiceability({
       pickup_postcode: pickup_address.pincode,
       delivery_postcode: receiver_address.pincode,
-      weight: weight / 1000,
+      weight: weight ,
       cod: payment_mode === 'COD' ? 1 : 0,
       declared_value: total_amount,
       length,
@@ -615,7 +615,7 @@ const createOrder = async (req, res) => {
           global_commission_amount: Math.round(parseFloat(chosenCourier.global_commission_amount) * 100) / 100,
           franchise_commission_rate: chosenCourier.franchise_commission_rate,
           franchise_commission_amount: Math.round(parseFloat(chosenCourier.franchise_commission_amount) * 100) / 100,
-          cod_amount: payment_mode === 'COD' ? Math.round(parseFloat(cod_amount || total_amount) * 100) / 100 : null,
+          cod_amount: payment_mode === 'COD' ? Math.round(parseFloat(cod_amount) * 100) / 100 : null,
           remittance_status: payment_mode === 'COD' ? 'PENDING' : 'NOT_APPLICABLE',
           pickup_location: pickup_location || null
         }
@@ -678,7 +678,7 @@ const createOrder = async (req, res) => {
             ],
           payment_method: payment_mode,
           shipping_charges: parseFloat(serverShippingCharge),
-          sub_total: parseFloat(total_amount) + parseFloat(serverShippingCharge),
+          sub_total: payment_mode !== 'COD' ? parseFloat(total_amount) : parseFloat(cod_amount),
           length: parseFloat(length) || 10,
           breadth: parseFloat(width) || 10,
           height: parseFloat(height) || 10,

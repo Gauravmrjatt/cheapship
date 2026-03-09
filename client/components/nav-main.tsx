@@ -9,6 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PlusSignCircleIcon, Mail01Icon } from "@hugeicons/core-free-icons"
@@ -23,6 +24,13 @@ export function NavMain({
   }[]
 }) {
   const pathname = usePathname()
+  const { isMobile, setOpenMobile } = useSidebar()
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
 
   return (
     <SidebarGroup>
@@ -51,7 +59,7 @@ export function NavMain({
           {items.map((item) => {
             const isActive = pathname === item.url
             return (
-              <Link href={item.url} key={item.title}>
+              <Link href={item.url} key={item.title} onClick={handleLinkClick}>
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     tooltip={item.title}

@@ -712,6 +712,7 @@ const getAllTransactions = async (req, res) => {
 
   if (search) {
     where.OR = [
+      { id: { contains: search, mode: 'insensitive' } },
       { reference_id: { contains: search, mode: 'insensitive' } },
       { description: { contains: search, mode: 'insensitive' } },
       { user: { name: { contains: search, mode: 'insensitive' } } }

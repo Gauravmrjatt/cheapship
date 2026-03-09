@@ -681,7 +681,7 @@ function OrdersContent() {
         <div className="flex items-center justify-between ">
           <div className="flex items-center gap-4">
             <Select value={filters.shipment_status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="flex w-fit lg:hidden" size="sm">
+              <SelectTrigger className="flex w-fit" size="sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -702,21 +702,6 @@ function OrdersContent() {
                 </SelectGroup>
               </SelectContent>
             </Select>
-
-            <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 flex-wrap h-auto gap-1">
-              <TabsTrigger value="ALL">All Orders</TabsTrigger>
-              <TabsTrigger value="PENDING">Pending</TabsTrigger>
-              <TabsTrigger value="PROCESSING">Processing</TabsTrigger>
-              <TabsTrigger value="MANIFESTED">Manifested</TabsTrigger>
-              <TabsTrigger value="OUT_FOR_PICKUP">Out for Pickup</TabsTrigger>
-              <TabsTrigger value="PICKED_UP">Picked Up</TabsTrigger>
-              <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
-              <TabsTrigger value="OUT_FOR_DELIVERY">Out for Delivery</TabsTrigger>
-              <TabsTrigger value="DISPATCHED">Dispatched</TabsTrigger>
-              <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
-              <TabsTrigger value="RTO">RTO</TabsTrigger>
-              <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
-            </TabsList>
           </div>
 
           <div className="flex items-center gap-2">

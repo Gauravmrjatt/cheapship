@@ -605,7 +605,7 @@ export function OrdersDataTable({
             onValueChange={(v) => handleFilterUpdate("shipment_status", v ?? "ALL")}
           >
             <SelectTrigger
-              className="flex w-fit @4xl/main:hidden"
+              className="flex w-fit"
               size="sm"
               id="status-selector"
             >
@@ -630,21 +630,6 @@ export function OrdersDataTable({
               </SelectGroup>
             </SelectContent>
           </Select>
-
-          <TabsList className="hidden lg:flex **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
-            <TabsTrigger value="ALL">All Orders</TabsTrigger>
-            <TabsTrigger value="PENDING">Pending</TabsTrigger>
-            <TabsTrigger value="PROCESSING">Processing</TabsTrigger>
-            <TabsTrigger value="MANIFESTED">Manifested</TabsTrigger>
-            <TabsTrigger value="OUT_FOR_PICKUP">Out for Pickup</TabsTrigger>
-            <TabsTrigger value="PICKED_UP">Picked Up</TabsTrigger>
-            <TabsTrigger value="IN_TRANSIT">In Transit</TabsTrigger>
-            <TabsTrigger value="OUT_FOR_DELIVERY">Out for Delivery</TabsTrigger>
-            <TabsTrigger value="DELIVERED">Delivered</TabsTrigger>
-            <TabsTrigger value="RTO">RTO</TabsTrigger>
-            <TabsTrigger value="DRAFT">Drafts</TabsTrigger>
-            <TabsTrigger value="CANCELLED">Cancelled</TabsTrigger>
-          </TabsList>
         </div>
 
         <div className="flex items-center gap-2">

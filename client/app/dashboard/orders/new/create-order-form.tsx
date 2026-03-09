@@ -94,7 +94,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { useRateCalculatorStore } from "@/lib/store/rate-calculator";
-
+import { useWatch } from "react-hook-form";
 const PRODUCT_SUGGESTIONS = [
   "Cotton Shirt", "Denim Jeans", "Silk Saree", "T-Shirt", "Kurta",
   "Electronics Item", "Mobile Phone", "Books", "Cosmetics", "Footwear",
@@ -193,7 +193,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     resolver: zodResolver(shiprocketPickupSchema),
     defaultValues: {
       pickup_location: "", name: "", phone: "", email: "", pin_code: "",
-      address: "", city: "", state: "", country: "India",
+      address: "", city: "", state: "", country: "India", gstin: "",
     },
     mode: "onChange",
   });
@@ -298,12 +298,12 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   const formValues = form.watch();
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "products" });
 
-  useEffect(() => {
-    const productsTotal = formValues.products?.reduce((sum: number, p: any) => sum + ((p.quantity || 0) * (p.price || 0)), 0) || 0;
-    if (productsTotal !== formValues.total_amount) {
-      form.setValue("total_amount", productsTotal, { shouldValidate: false });
-    }
-  }, [formValues.products, form.setValue]);
+  // useEffect(() => {
+  //   const productsTotal = formValues.products?.reduce((sum: number, p: any) => sum + ((p.quantity || 0) * (p.price || 0)), 0) || 0;
+  //   if (productsTotal !== formValues.total_amount) {
+  //     form.setValue("total_amount", productsTotal, { shouldValidate: false });
+  //   }
+  // }, [formValues.products, form.setValue]);
 
   useEffect(() => {
     if (rateCalculatorData) {
@@ -505,7 +505,6 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
       form.setValue("courier_id", undefined);
       form.setValue("courier_name", "");
       form.setValue("shipping_charge", 0);
-      form.setValue("total_amount", 0);
 
       // Show message for receiver pincode change
       sileo.info({
@@ -541,7 +540,6 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
         form.setValue("courier_id", undefined);
         form.setValue("courier_name", "");
         form.setValue("shipping_charge", 0);
-        form.setValue("total_amount", 0);
         sileo.info({
           title: "Courier Unavailable",
           description: `${prevSelectedCourierName.current} is not available for this route. Please select a new courier.`
@@ -860,6 +858,10 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
                 <Input {...pickupForm.register("address")} aria-invalid={!!pickupForm.formState.errors.address} placeholder="Flat No, Road, Area..." />
                 <FieldError errors={[pickupForm.formState.errors.address]} className="text-[10px] font-bold uppercase" />
               </Field>
+              <Field>
+                <FieldLabel className="text-[10px] font-bold uppercase">GSTIN (Optional)</FieldLabel>
+                <Input {...pickupForm.register("gstin")} placeholder="e.g. 09XXXCH7409R1XXX" />
+              </Field>
             </div>
           </div>
 
@@ -936,7 +938,20 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
       form.setValue("pickup_address.state", sel.state || "", { shouldValidate: true });
     }
   };
+ const products = useWatch({
+  control: form.control,
+  name: "products",
+});
 
+useEffect(() => {
+  const total = products?.reduce((sum: number, item: any) => {
+    const price = Number(item?.price) || 0;
+    const qty = Number(item?.quantity) || 0;
+    return sum + price * qty;
+  }, 0);
+
+  form.setValue("total_amount", total);
+}, [products]);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       <div className="lg:col-span-5 space-y-6">
@@ -1031,10 +1046,10 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount (Max ₹1,00,000)</FieldLabel>
                 <div className="relative">
                   <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-                  <Input 
-                    type="number" 
-                    max={100000} 
-                    {...form.register("cod_amount", { 
+                  <Input
+                    type="number"
+                    max={100000}
+                    {...form.register("cod_amount", {
                       valueAsNumber: true,
                       onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
                         const value = parseInt(e.target.value) || 0;
@@ -1044,9 +1059,9 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
                           form.setValue("cod_amount", value);
                         }
                       }
-                    })} 
-                    aria-invalid={!!errors.cod_amount} 
-                    className="pl-9" 
+                    })}
+                    aria-invalid={!!errors.cod_amount}
+                    className="pl-9"
                   />
                 </div>
                 <FieldError errors={[errors.cod_amount]} className="text-[10px] font-bold uppercase" />
@@ -1135,7 +1150,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               <span className="text-sm font-medium text-muted-foreground uppercase tracking-tight">Declared Value</span>
               <div className="text-xl font-bold">₹{formValues.total_amount.toLocaleString("en-IN")}</div>
             </div>
-            {formValues.total_amount >= 2500 && (
+            {/* {formValues.total_amount >= 2500 && (
               <div className="flex items-center space-x-2 bg-primary/5 p-3 rounded-lg border border-primary/20 w-full animate-in fade-in slide-in-from-top-2">
                 <Controller
                   control={form.control}
@@ -1154,7 +1169,7 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
                   <p className="text-[10px] text-muted-foreground font-semibold">Protect against damage/loss</p>
                 </div>
               </div>
-            )}
+            )} */}
           </CardFooter>
         </Card>
       </div>
@@ -1306,7 +1321,6 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates }:
                 form.setValue("courier_id", courier.courier_company_id);
                 form.setValue("courier_name", courier.courier_name);
                 form.setValue("shipping_charge", Math.round(courier.rate * 100) / 100);
-                form.setValue("total_amount", Math.round(courier.rate * 100) / 100);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -1314,7 +1328,6 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates }:
                   form.setValue("courier_id", courier.courier_company_id);
                   form.setValue("courier_name", courier.courier_name);
                   form.setValue("shipping_charge", Math.round(courier.rate * 100) / 100);
-                  form.setValue("total_amount", Math.round(courier.rate * 100) / 100);
                 }
               }}
               className={cn(

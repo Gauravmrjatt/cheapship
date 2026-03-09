@@ -96,6 +96,7 @@ export const shiprocketPickupSchema = z.object({
   state: z.string().min(1, "State is required"),
   pin_code: z.string().min(6, "Pincode must be 6 digits"),
   country: z.string(),
+  gstin: z.string().optional(),
 });
 
 export const courierRateInputSchema = z.object({

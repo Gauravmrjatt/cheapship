@@ -84,8 +84,21 @@ export default function InvoicesPage() {
     return <Badge variant="default">Prepaid</Badge>;
   };
 
-  const downloadInvoice = (orderId: string) => {
-    window.open(`/api/v1/orders/${orderId}/invoice`, "_blank");
+  const downloadInvoice = async (orderId: string) => {
+    try {
+      const response = await fetch(`/api/v1/orders/${orderId}/invoice`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      
+      if (data.invoice_url) {
+        window.open(data.invoice_url, "_blank");
+      } else {
+        console.error('No invoice URL found:', data);
+      }
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+    }
   };
 
   const invoices = data?.data || [];

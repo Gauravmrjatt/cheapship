@@ -285,7 +285,7 @@ export default function RemittancesPage() {
           </TabsList>
         </Tabs>
 
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+        {/* <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
           <div className="relative w-full sm:w-64 min-w-[150px]">
             <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
@@ -316,7 +316,7 @@ export default function RemittancesPage() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </div> */}
       </div>
 
       <div className="overflow-x-auto border rounded-2xl shadow-sm bg-background">

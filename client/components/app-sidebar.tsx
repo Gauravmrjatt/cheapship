@@ -15,6 +15,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -217,6 +218,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
   const { user } = useAuth();
   const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [showSearchDialog, setShowSearchDialog] = React.useState(false);
   const [sidebarSearch, setSidebarSearch] = React.useState("");
 
@@ -248,6 +250,7 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="data-[slot=sidebar-menu-button]:p-1.5!"
+              onClick={() => isMobile && setOpenMobile(false)}
               render={<a href={isAdmin ? "/admin" : "/dashboard"} />}
             >
               <HugeiconsIcon icon={ShippingTruck01Icon} strokeWidth={2} className="size-5!" />

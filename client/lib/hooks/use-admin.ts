@@ -290,7 +290,10 @@ export const useAdminTransactions = (page: number = 1, pageSize: number = 10, ty
   });
   if (fromDate) queryParams.append("fromDate", fromDate);
   if (toDate) queryParams.append("toDate", toDate);
-  return useQuery(http.get<AdminTransactionsResponse>(["admin-transactions", page, pageSize, type, category, search, userId, fromDate, toDate], `/admin/transactions?${queryParams.toString()}`));
+  return useQuery({
+    ...http.get<AdminTransactionsResponse>(["admin-transactions", page, pageSize, type, category, search, userId, fromDate, toDate], `/admin/transactions?${queryParams.toString()}`),
+    staleTime: 0,
+  });
 };
 
 export const useAdminWithdrawals = (page: number = 1, pageSize: number = 10, status: string = "ALL") => {

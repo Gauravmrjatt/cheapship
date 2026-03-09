@@ -352,6 +352,12 @@ export default function OrderDetailsPage({
               <p className="text-xs font-medium text-muted-foreground uppercase">Height</p>
               <p className="font-semibold">{order.height ? `${order.height} cm` : "-"}</p>
             </div>
+            {order.length && order.width && order.height && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase">Volumetric Weight</p>
+                <p className="font-semibold">{((order.length * order.width * order.height) / 5000).toFixed(2)} kg</p>
+              </div>
+            )}
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Base Shipping Charge</p>
               <p className="font-semibold">₹{order.base_shipping_charge || "-"}</p>

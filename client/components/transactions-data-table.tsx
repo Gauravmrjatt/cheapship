@@ -329,11 +329,24 @@ export function TransactionsDataTable({
       sorting,
       columnVisibility,
       rowSelection,
+      pagination: {
+        pageIndex: (pagination?.currentPage || 1) - 1,
+        pageSize: pagination?.pageSize || 10,
+      },
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: (updater) => {
+      if (typeof updater === 'function') {
+        const newState = updater({ pageIndex: (pagination?.currentPage || 1) - 1, pageSize: pagination?.pageSize || 10 });
+        onPageChange?.(newState.pageIndex + 1);
+        if (newState.pageSize !== (pagination?.pageSize || 10)) {
+          onPageSizeChange?.(newState.pageSize);
+        }
+      }
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),

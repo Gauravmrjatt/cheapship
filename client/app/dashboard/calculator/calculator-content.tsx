@@ -224,7 +224,27 @@ export default function RateCalculatorPage() {
 
   const isPickupValid = pickupLocality && (pickupLocality?.success !== false) && (pickupLocality?.data?.postcode_details || pickupLocality?.postcode_details);
   const isDeliveryValid = deliveryLocality && (deliveryLocality?.success !== false) && (deliveryLocality?.data?.postcode_details || deliveryLocality?.postcode_details);
-  const canCalculate = isPickupValid && isDeliveryValid;
+
+  const MAX_WEIGHT_KG = 1000;
+  const MAX_AMOUNT = 475000;
+  const weightInKg = (formValues.actualWeight || 0) / 1000;
+  const isWeightValid = weightInKg <= MAX_WEIGHT_KG;
+  const isAmountValid = (formValues.shipmentValue || 0) <= MAX_AMOUNT;
+  const canCalculate = isPickupValid && isDeliveryValid && isWeightValid && isAmountValid;
+
+  const getWeightError = () => {
+    if (formValues.actualWeight && !isWeightValid) {
+      return `Maximum weight is ${MAX_WEIGHT_KG}kg. Please reduce your weight.`;
+    }
+    return null;
+  };
+
+  const getAmountError = () => {
+    if (formValues.shipmentValue && !isAmountValid) {
+      return `Maximum declared value is ₹${MAX_AMOUNT.toLocaleString('en-IN')}. Please reduce your shipment value.`;
+    }
+    return null;
+  };
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 space-y-10 animate-in fade-in duration-700 pb-32">
@@ -308,8 +328,11 @@ export default function RateCalculatorPage() {
                         max={1000000}
                         {...form.register("actualWeight", { valueAsNumber: true })}
                         placeholder="500"
-                        className="font-medium"
+                        className={cn("font-medium", !isWeightValid && formValues.actualWeight && "border-destructive")}
                       />
+                      {!isWeightValid && formValues.actualWeight && (
+                        <p className="text-[10px] text-destructive font-bold mt-1">{getWeightError()}</p>
+                      )}
                       <FieldError errors={[errors.actualWeight]} />
                     </Field>
                     <Field>
@@ -317,8 +340,11 @@ export default function RateCalculatorPage() {
                       <Input
                         {...form.register("shipmentValue", { valueAsNumber: true })}
                         placeholder="500"
-                        className="font-medium"
+                        className={cn("font-medium", !isAmountValid && formValues.shipmentValue && "border-destructive")}
                       />
+                      {!isAmountValid && formValues.shipmentValue && (
+                        <p className="text-[10px] text-destructive font-bold mt-1">{getAmountError()}</p>
+                      )}
                       <FieldError errors={[errors.shipmentValue]} />
                     </Field>
                   </div>
