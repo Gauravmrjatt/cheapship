@@ -214,8 +214,13 @@ const login = async (req, res) => {
   const prisma = req.app.locals.prisma;
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email }
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: 'insensitive'
+        }
+      }
     });
 
     if (!user) {
@@ -455,8 +460,13 @@ const sendLoginOtp = async (req, res) => {
     let userEmail = email;
 
     if (email) {
-      user = await prisma.user.findUnique({
-        where: { email }
+      user = await prisma.user.findFirst({
+        where: {
+          email: {
+            equals: email,
+            mode: 'insensitive'
+          }
+        }
       });
       userEmail = email;
     } else if (mobile) {
