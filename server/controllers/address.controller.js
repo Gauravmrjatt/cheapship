@@ -210,7 +210,7 @@ const registerShiprocketPickupLocation = async (req, res) => {
         return res.status(200).json({ success: true, message: 'Pickup location registered. Phone verification required.', phone_verified: false, needs_verification: true });
       }
     }
-    if(data.status_code === 422) return res.status(422).json({status : false,  message: "A Pickup Address is already exist in the system with this location name. Please use a different name." });
+    if(data.status_code === 422) return res.status(422).json({status : false,  message: "Please Try with different Pickup Location Name. (nickname)" });
     res.status(data.success ? 200 : 400).json({ ...data, msg: "Failed to register pickup location" });
   } catch (error) {
     console.error(error);

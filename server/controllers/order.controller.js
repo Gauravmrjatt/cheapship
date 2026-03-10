@@ -1890,11 +1890,11 @@ const getRemittanceSummary = async (req, res) => {
         _sum: { cod_amount: true }
       }),
       prisma.order.aggregate({
-        where: { ...where, remittance_status: 'PENDING' },
+        where: { ...where, payout_status: 'PENDING' },
         _sum: { cod_amount: true }
       }),
       prisma.order.findFirst({
-        where: { user_id: userId, remittance_status: 'REMITTED' },
+        where: { user_id: userId, payout_status: 'COMPLETED' },
         orderBy: { remitted_at: 'desc' },
         select: { remitted_amount: true, remitted_at: true }
       })
@@ -1926,7 +1926,7 @@ const getPendingRemittances = async (req, res) => {
     const where = {
       user_id: userId,
       payment_mode: 'COD',
-      remittance_status: 'PENDING'
+      payout_status: 'PENDING'
     };
 
     if (fromDate || toDate) {
@@ -1966,7 +1966,7 @@ const getRemittanceHistory = async (req, res) => {
   try {
     const where = {
       user_id: userId,
-      remittance_status: 'REMITTED'
+      payout_status: 'COMPLETED'
     };
 
     if (fromDate || toDate) {
@@ -2123,6 +2123,7 @@ const assignOrderAWB = async (req, res) => {
 
 const scheduleOrderPickup = async (req, res) => {
   const { id } = req.params;
+  const { pickup_date } = req.body;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
 
@@ -2148,7 +2149,8 @@ const scheduleOrderPickup = async (req, res) => {
       return res.status(400).json({ message: 'No shipment ID found for this order' });
     }
 
-    const pickupResult = await schedulePickup([order.shiprocket_shipment_id]);
+    const pickupDateStr = pickup_date ? pickup_date : null;
+    const pickupResult = await schedulePickup([order.shiprocket_shipment_id], pickupDateStr);
 
     res.json({
       message: 'Pickup scheduled successfully',

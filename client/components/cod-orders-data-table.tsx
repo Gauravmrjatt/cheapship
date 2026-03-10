@@ -53,7 +53,7 @@ import {
 import { cn } from "@/lib/utils"
 import { DataTablePagination } from "./orders-table-components"
 import { CODStatsCards, RemittanceDialog } from "./cod-orders-table-components"
-
+import Link from "next/link"
 export interface CODOrder {
   id: string
   order_type: string
@@ -66,14 +66,15 @@ export interface CODOrder {
   remitted_at: string | null
   remittance_ref_id: string | null
   created_at: string
-  shiprocket_order_id? : string
-  shiprocket_shipment_id? : string
-  tracking_number? : string
+  shiprocket_order_id?: string
+  shiprocket_shipment_id?: string
+  tracking_number?: string
   user: {
     id: string
     name: string
     email: string
     upi_id?: string
+    mobile?: string
   }
   order_receiver_address?: {
     name: string
@@ -193,37 +194,58 @@ export function CODOrdersDataTable({
       accessorKey: "id",
       header: "Order ID",
       cell: ({ row }) => (
-        <>
-          <span className="text-foreground font-medium br">
+        <div className="flex flex-col gap-1">
+          <Link
+            href={`/dashboard/orders/${row.original.id}`}
+            className="text-foreground hover:underline font-medium"
+          >
             #{row.original.id}
+          </Link>
+
+          <span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_order_id ? `Shiprocket OID :   ${row.original.shiprocket_order_id}` : "-"}
           </span>
-          <span className="text-foreground font-medium br">
-            #{row.original.shiprocket_order_id}
-          </span>
-          <span className="text-foreground font-medium br">
-            #{row.original.shiprocket_shipment_id}
-          </span>
-          <span className="text-foreground font-medium br">
-            #{row.original.tracking_number}
+          <span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_shipment_id ? `Shiprocket Ship ID :  ${row.original.shiprocket_shipment_id}` : "-"}
           </span>
 
+          <span className="text-[10px]  tabular-nums">
+            {row.original.created_at ? new Date(row.original.created_at).toLocaleString() : "-"}
+          </span>
 
-        </>
+        </div>
       ),
       enableHiding: false,
+    },
+    {
+      id: "tracking",
+      header: "Tracking",
+      cell: ({ row }) => {
+        const tracking = row.original.tracking_number;
+        return (
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-foreground">{tracking || "-"}</span>
+          </div>
+        );
+      },
     },
     {
       id: "user",
       header: "User",
       cell: ({ row }) => {
-        const user = row.original.user
-        if (!user) return null
+        const user = row.original.user;
         return (
           <div className="flex flex-col">
-            <span className="font-medium text-xs">{user.name}</span>
-            <span className="text-[10px] text-muted-foreground">{user.email}</span>
+            <span className="text-xs font-medium text-foreground">{user?.name}</span>
+            <span className="text-[10px] text-muted-foreground">{user?.email}</span>
+            {user?.mobile && (
+              <span className="text-[10px] text-blue-600 font-medium">{user.mobile}</span>
+            )}
+            {user?.upi_id && (
+              <span className="text-[10px] text-blue-600 font-medium">{user.upi_id}</span>
+            )}
           </div>
-        )
+        );
       },
     },
     {

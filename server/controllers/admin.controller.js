@@ -371,11 +371,11 @@ const toggleUserStatus = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  const { 
-    page = 1, 
-    pageSize = 10, 
-    status, 
-    search, 
+  const {
+    page = 1,
+    pageSize = 10,
+    status,
+    search,
     userId,
     shipmentType,
     paymentMode,
@@ -423,11 +423,23 @@ const getAllOrders = async (req, res) => {
   }
 
   if (search) {
+    const searchTerm = search.trim();
+    const searchNum = parseInt(searchTerm, 10);
+
     where.OR = [
-      { id: { equals: parseInt(search) || undefined } },
-      { courier_name: { contains: search, mode: 'insensitive' } },
-      { user: { name: { contains: search, mode: 'insensitive' } } }
-    ];
+      { id: isNaN(searchNum) ? undefined : BigInt(searchNum) },
+      { shiprocket_order_id: { contains: searchTerm, mode: 'insensitive' } },
+      { shiprocket_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
+      { tracking_number: { contains: searchTerm, mode: 'insensitive' } },
+      { label_url: { contains: searchTerm, mode: 'insensitive' } },
+      { manifest_url: { contains: searchTerm, mode: 'insensitive' } },
+      { vyom_order_id: { contains: searchTerm, mode: 'insensitive' } },
+      { vyom_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
+      { courier_name: { contains: searchTerm, mode: 'insensitive' } },
+    ].filter(condition => {
+      const keys = Object.keys(condition);
+      return keys.length > 0 && condition[keys[0]] !== undefined;
+    });
   }
 
   try {
@@ -1046,11 +1058,23 @@ const getAllCODOrders = async (req, res) => {
   }
 
   if (search) {
+    const searchTerm = search.trim();
+    const searchNum = parseInt(searchTerm, 10);
+
     where.OR = [
-      { id: { equals: parseInt(search) || undefined } },
-      { courier_name: { contains: search, mode: 'insensitive' } },
-      { user: { name: { contains: search, mode: 'insensitive' } } }
-    ];
+      { id: isNaN(searchNum) ? undefined : BigInt(searchNum) },
+      { shiprocket_order_id: { contains: searchTerm, mode: 'insensitive' } },
+      { shiprocket_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
+      { tracking_number: { contains: searchTerm, mode: 'insensitive' } },
+      { label_url: { contains: searchTerm, mode: 'insensitive' } },
+      { manifest_url: { contains: searchTerm, mode: 'insensitive' } },
+      { vyom_order_id: { contains: searchTerm, mode: 'insensitive' } },
+      { vyom_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
+      { courier_name: { contains: searchTerm, mode: 'insensitive' } },
+    ].filter(condition => {
+      const keys = Object.keys(condition);
+      return keys.length > 0 && condition[keys[0]] !== undefined;
+    });
   }
 
   try {
@@ -1208,7 +1232,7 @@ const getKycUsers = async (req, res) => {
   const offset = (pageNum - 1) * pageSizeNum;
 
   const where = {
-    
+
   };
 
   if (status && status !== 'ALL') {
@@ -1353,7 +1377,7 @@ const refundSecurityDeposit = async (req, res) => {
       });
 
       if (!user) throw new Error('User not found');
-      
+
       const depositAmount = Number(user.security_deposit);
       if (depositAmount <= 0) throw new Error('No security deposit to refund');
 

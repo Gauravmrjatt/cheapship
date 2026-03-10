@@ -14,6 +14,18 @@ const getReferrerDetails = async (prisma, refererCode) => {
   });
 };
 
+// Helper to get global commission limits from system settings
+const getGlobalCommissionLimits = async (prisma) => {
+  const [minSetting, maxSetting] = await prisma.$transaction([
+    prisma.systemSetting.findUnique({ where: { key: 'min_commission_rate' } }),
+    prisma.systemSetting.findUnique({ where: { key: 'max_commission_rate' } })
+  ]);
+  return {
+    min_rate: minSetting ? parseFloat(minSetting.value) : 0,
+    max_rate: maxSetting ? parseFloat(maxSetting.value) : 100
+  };
+};
+
 // Helper to auto-assign pickup address from referrer
 const autoAssignPickupAddress = async (prisma, newUserId, referrer) => {
   if (!referrer || !referrer.default_referred_pickup_id) return;
@@ -43,13 +55,39 @@ const autoAssignPickupAddress = async (prisma, newUserId, referrer) => {
   }
 };
 
+const checkMobileExists = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { mobile } = req.body;
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const existingUser = await prisma.user.findUnique({
+      where: { mobile }
+    });
+
+    if (existingUser) {
+      return res.status(200).json({ exists: true, message: 'User with this mobile number already exists.' });
+    }
+
+    return res.status(200).json({ exists: false, message: 'Mobile number is available.' });
+  } catch (error) {
+    console.error('Check mobile error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 const register = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { name, email, password, mobile, referred_by, franchise_type, franchise_address, franchise_pincode, franchise_city, franchise_state } = req.body;
+  const { name, email: rawEmail, password, mobile, referred_by, franchise_type, franchise_address, franchise_pincode, franchise_city, franchise_state } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -91,6 +129,8 @@ const register = async (req, res) => {
       }
     }
 
+    const globalCommissionLimits = await getGlobalCommissionLimits(prisma);
+
     const user = await prisma.user.create({
       data: {
         name,
@@ -105,6 +145,8 @@ const register = async (req, res) => {
         franchise_city: franchise_city || null,
         franchise_state: franchise_state || null,
         commission_rate: referredByUser ? (referredByUser.commission_rate || 5.00) : null,
+        min_commission_rate: globalCommissionLimits.min_rate,
+        max_commission_rate: globalCommissionLimits.max_rate,
       }
     });
 
@@ -138,7 +180,7 @@ const logLoginHistory = async (prisma, userId, req, status = 'SUCCESS') => {
   try {
     const userAgent = req.headers['user-agent'];
     const ipAddress = req.ip || req.connection.remoteAddress;
-    
+
     // Simple device info from user agent
     let deviceInfo = 'Unknown Device';
     if (userAgent) {
@@ -167,7 +209,8 @@ const login = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, password } = req.body;
+  const { email: rawEmail, password } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -177,6 +220,10 @@ const login = async (req, res) => {
 
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials.' });
+    }
+
+    if (!user.is_active) {
+      return res.status(400).json({ message: 'Your account is deactivated. Please contact support.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
@@ -333,6 +380,7 @@ const verifyRegistrationOtp = async (req, res) => {
     }
 
     const referredByUser = await getReferrerDetails(prisma, tempData.referred_by);
+    const globalCommissionLimits = await getGlobalCommissionLimits(prisma);
 
     const user = await prisma.user.create({
       data: {
@@ -348,6 +396,8 @@ const verifyRegistrationOtp = async (req, res) => {
         franchise_city: tempData.franchise_city,
         franchise_state: tempData.franchise_state,
         commission_rate: tempData.commission_rate || (referredByUser ? (referredByUser.commission_rate || 5.00) : null),
+        min_commission_rate: globalCommissionLimits.min_rate,
+        max_commission_rate: globalCommissionLimits.max_rate,
       }
     });
 
@@ -728,7 +778,7 @@ const completeRegistration = async (req, res) => {
     // Verify the mobile token
     let decoded;
     let firebaseVerified = false;
-    
+
     // Check if it's a Firebase idToken (starts with "eyJ")
     if (verificationToken && verificationToken.startsWith('eyJ')) {
       const firebaseResult = await firebaseService.verifyPhoneNumber(verificationToken);
@@ -813,6 +863,8 @@ const completeRegistration = async (req, res) => {
       }
     }
 
+    const globalCommissionLimits = await getGlobalCommissionLimits(prisma);
+
     const user = await prisma.user.create({
       data: {
         name,
@@ -827,6 +879,8 @@ const completeRegistration = async (req, res) => {
         franchise_city: franchise_city || null,
         franchise_state: franchise_state || null,
         commission_rate: referredByUser ? (referredByUser.commission_rate || 5.00) : null,
+        min_commission_rate: globalCommissionLimits.min_rate,
+        max_commission_rate: globalCommissionLimits.max_rate,
       }
     });
 
@@ -1001,5 +1055,6 @@ module.exports = {
   initMobileRegistration,
   verifyMobileRegistration,
   completeRegistration,
-  getLoginHistory
+  getLoginHistory,
+  checkMobileExists
 };

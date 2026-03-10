@@ -55,26 +55,22 @@ router.get('/login-history', authMiddleware, authController.getLoginHistory);
  *     responses:
  *       200:
  *         description: Profile updated successfully
- *       400:
- *         description: Bad request
- */
-router.put(
-  '/profile',
-  authMiddleware,
+  *       400:
+  *         description: Bad request
+  */
+router.post(
+  '/check-mobile',
   [
-    check('name', 'Name cannot be empty').optional().not().isEmpty(),
-    check('email', 'Please include a valid email').optional().isEmail(),
-    check('mobile', 'Mobile number cannot be empty').optional().not().isEmpty(),
-    check('upi_id', 'UPI ID must be valid').optional().isString()
+    check('mobile', 'Mobile number is required').not().isEmpty()
   ],
-  authController.updateProfile
+  authController.checkMobileExists
 );
 
 /**
  * @swagger
- * /auth/register:
+ * /auth/init-mobile-reg:
  *   post:
- *     summary: Register a new user (legacy - without OTP)
+ *     summary: Initialize mobile registration
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -83,24 +79,13 @@ router.put(
  *           schema:
  *             type: object
  *             required:
- *               - name
- *               - email
- *               - password
  *               - mobile
  *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *                 format: password
  *               mobile:
  *                 type: string
  *     responses:
- *       201:
- *         description: User registered successfully
+ *       200:
+ *         description: OTP sent successfully
  *       400:
  *         description: Bad request
  */

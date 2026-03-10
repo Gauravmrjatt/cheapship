@@ -2,6 +2,7 @@ const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
+const { uploadPdfToCloudinary } = require('./cloudinary');
 
 class LabelCustomizer {
     constructor() {
@@ -106,16 +107,23 @@ class LabelCustomizer {
             });
 
             // ===============================
-            // 5. Save Modified PDF
+            // 5. Save Modified PDF and Upload to Cloudinary
             // ===============================
             const pdfBytes = await pdfDoc.save();
 
-            const filename = `label_${orderId}_${Date.now()}.pdf`;
-            const filePath = path.join(this.publicDir, filename);
-
-            fs.writeFileSync(filePath, pdfBytes);
-
-            return `/labels/${filename}`;
+            try {
+                const uploadResult = await uploadPdfToCloudinary(
+                    Buffer.from(pdfBytes),
+                    `cheapship/labels`
+                );
+                return uploadResult.secure_url;
+            } catch (uploadError) {
+                console.error('Cloudinary upload failed, saving locally:', uploadError);
+                const filename = `label_${orderId}_${Date.now()}.pdf`;
+                const filePath = path.join(this.publicDir, filename);
+                fs.writeFileSync(filePath, pdfBytes);
+                return `/labels/${filename}`;
+            }
 
         } catch (error) {
             console.error('Label customization failed:', error);

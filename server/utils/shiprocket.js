@@ -388,10 +388,16 @@ const getShipmentDetails = async (shipmentId) => {
   }
 };
 
-const schedulePickup = async (shipmentIds) => {
+const schedulePickup = async (shipmentIds, pickupDate = null) => {
   const token = await getShiprocketToken();
 
   const ids = Array.isArray(shipmentIds) ? shipmentIds : [shipmentIds];
+
+  const payload = { shipment_id: ids.map(id => parseInt(id)) };
+  
+  if (pickupDate) {
+    payload.pickup_date = pickupDate;
+  }
 
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/generate/pickup`, {
@@ -400,7 +406,7 @@ const schedulePickup = async (shipmentIds) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ shipment_id: ids.map(id => parseInt(id)) }),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
