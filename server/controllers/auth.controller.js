@@ -528,8 +528,13 @@ const verifyLoginOtp = async (req, res) => {
       return res.status(400).json({ message: verifyResult.error });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email }
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: 'insensitive'
+        }
+      }
     });
 
     if (!user) {
@@ -781,7 +786,8 @@ const completeRegistration = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { verificationToken, mobile, name, email, password, referred_by, franchise_type, franchise_address, franchise_pincode, franchise_city, franchise_state, terms_accepted } = req.body;
+  const { verificationToken, mobile, name, email: rawEmail, password, referred_by, franchise_type, franchise_address, franchise_pincode, franchise_city, franchise_state, terms_accepted } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
 
   try {
@@ -976,7 +982,8 @@ const updateProfile = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { name, email, mobile, upi_id } = req.body;
+  const { name, email: rawEmail, mobile, upi_id } = req.body;
+  const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
 
@@ -986,7 +993,12 @@ const updateProfile = async (req, res) => {
       const existingUser = await prisma.user.findFirst({
         where: {
           OR: [
-            ...(email ? [{ email }] : []),
+            ...(email ? [{
+              email: {
+                equals: email,
+                mode: 'insensitive'
+              }
+            }] : []),
             ...(mobile ? [{ mobile }] : [])
           ],
           NOT: { id: userId }
