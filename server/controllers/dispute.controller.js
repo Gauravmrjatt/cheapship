@@ -24,7 +24,10 @@ const getWeightDisputes = async (req, res) => {
                         select: {
                             id: true,
                             tracking_number: true,
-                            courier_name: true
+                            courier_name: true,
+                            length: true,
+                            width: true,
+                            height: true
                         }
                     }
                 },
@@ -339,7 +342,10 @@ const getAllWeightDisputes = async (req, res) => {
                             courier_name: true,
                             weight: true,
                             shipping_charge: true,
-                            shipment_status: true
+                            shipment_status: true,
+                            length: true,
+                            width: true,
+                            height: true
                         }
                     },
                     user: {

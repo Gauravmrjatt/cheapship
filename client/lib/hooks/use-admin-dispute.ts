@@ -28,6 +28,9 @@ export interface AdminWeightDispute {
     weight: number | null;
     shipping_charge: number | null;
     shipment_status: string;
+    length: number | null;
+    width: number | null;
+    height: number | null;
   };
   user?: {
     id: string;

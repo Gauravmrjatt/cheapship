@@ -296,6 +296,7 @@ const getUsers = async (req, res) => {
 
   if (search) {
     where.OR = [
+      { id: search },
       { name: { contains: search, mode: 'insensitive' } },
       { email: { contains: search, mode: 'insensitive' } },
       { mobile: { contains: search, mode: 'insensitive' } }

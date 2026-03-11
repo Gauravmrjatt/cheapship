@@ -46,8 +46,13 @@ import {
   UserIcon,
   Mail01Icon,
   SmartPhone01Icon,
-  MapPinIcon
+  MapPinIcon,
+  CopyIcon
 } from "@hugeicons/core-free-icons";
+
+import copy from "copy-to-clipboard";
+import { sileo } from "sileo";
+import { ShipmentStatus } from "@/components/ui/status-chip";
 
 const statusColors: Record<string, string> = {
   PENDING: "bg-yellow-500",
@@ -93,7 +98,7 @@ export default function OrderDetailsPage({
   const { orderId } = React.use(params);
   const { data: order, isLoading, isError, refetch } = useOrder(orderId);
   const { data: liveStatus, isLoading: liveStatusLoading, refetch: refetchLiveStatus } = useLiveOrderStatus(orderId, !!order?.shiprocket_shipment_id);
-  
+
   const assignAWBMutation = useAssignAWB();
   const schedulePickupMutation = useSchedulePickup();
   const generateLabelMutation = useGenerateLabel();
@@ -151,33 +156,33 @@ export default function OrderDetailsPage({
     refetchLiveStatus();
   };
 
-    const handleAssignAWB = () => {
-      assignAWBMutation.mutate({ orderId });
-    };
-  
-    const handleSchedulePickup = () => {
-      const pickupDate = selectedPickupDate ? selectedPickupDate.toISOString().split('T')[0] : undefined;
-      schedulePickupMutation.mutate({ orderId, pickup_date: pickupDate });
-      setShowSchedulePickupDialog(false);
-      setSelectedPickupDate(undefined);
-    };
-  
-    const handleGenerateLabel = () => {
-      generateLabelMutation.mutate({ orderId });
-    };
+  const handleAssignAWB = () => {
+    assignAWBMutation.mutate({ orderId });
+  };
 
-    const handleCancelOrder = async () => {
-      setIsCancelling(true);
-      try {
-        await cancelOrderMutation(orderId);
-        refetch();
-        setShowCancelDialog(false);
-      } catch (error) {
-        console.error("Failed to cancel order:", error);
-      } finally {
-        setIsCancelling(false);
-      }
-    };
+  const handleSchedulePickup = () => {
+    const pickupDate = selectedPickupDate ? selectedPickupDate.toISOString().split('T')[0] : undefined;
+    schedulePickupMutation.mutate({ orderId, pickup_date: pickupDate });
+    setShowSchedulePickupDialog(false);
+    setSelectedPickupDate(undefined);
+  };
+
+  const handleGenerateLabel = () => {
+    generateLabelMutation.mutate({ orderId });
+  };
+
+  const handleCancelOrder = async () => {
+    setIsCancelling(true);
+    try {
+      await cancelOrderMutation(orderId);
+      refetch();
+      setShowCancelDialog(false);
+    } catch (error) {
+      console.error("Failed to cancel order:", error);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   if (isLoading) return <OrderDetailSkeleton />;
   if (isError) return <div className="max-w-7xl mx-auto py-10 px-4">Error fetching order details</div>;
@@ -199,8 +204,8 @@ export default function OrderDetailsPage({
         </div>
         <div className="flex gap-2">
           {isPending && !hasAWB && (
-            <Button 
-              onClick={handleAssignAWB} 
+            <Button
+              onClick={handleAssignAWB}
               disabled={assignAWBMutation.isPending}
               className="rounded-xl font-bold gap-2"
             >
@@ -208,10 +213,10 @@ export default function OrderDetailsPage({
               Assign AWB
             </Button>
           )}
-          
+
           {hasAWB && !order.label_url && (
-            <Button 
-              onClick={handleGenerateLabel} 
+            <Button
+              onClick={handleGenerateLabel}
               disabled={generateLabelMutation.isPending}
               variant="outline"
               className="rounded-xl font-bold gap-2"
@@ -222,7 +227,7 @@ export default function OrderDetailsPage({
           )}
 
           {hasAWB && !order.pickup_scheduled_date && (
-            <Button 
+            <Button
               onClick={() => setShowSchedulePickupDialog(true)}
               disabled={schedulePickupMutation.isPending}
               variant="secondary"
@@ -234,7 +239,7 @@ export default function OrderDetailsPage({
           )}
 
           {isCancellable && (
-            <Button 
+            <Button
               variant="destructive"
               size="sm"
               onClick={() => setShowCancelDialog(true)}
@@ -257,28 +262,95 @@ export default function OrderDetailsPage({
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Order Information</CardTitle>
-              <Badge className={`${statusColors[order.shipment_status] || "bg-gray-500"} text-white`}>
-                {order.shipment_status}
-              </Badge>
+            
+                <ShipmentStatus status={order.shipment_status} />
+              
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase">Order ID</p>
-              <p className="font-semibold">#{order.id}</p>
+            <div className="flex gap-3">
+              <div >
+                <p className="text-xs font-medium text-muted-foreground uppercase">Order ID</p>
+                <p className="font-semibold">#{order.id}</p>
+              </div>
+
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => {
+                  copy(order.id);
+                  sileo.success({
+                    title: "Copied to clipboard",
+                    description: "Order ID copied to clipboard"
+                  });
+                }}
+              >
+                <HugeiconsIcon icon={CopyIcon} />
+              </Button> {/* <Button size="icon" variant="outline" onClick={() => { copy(order.id, {  onCopy: () => sileo.success({ title: "Copied to clipboard", description: "Order ID copied to clipboard" }) }) }}><HugeiconsIcon icon={CopyIcon} /></Button> */}
             </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase">Order ID</p>
-              <p className="font-mono text-sm">{order.shiprocket_order_id || "-"}</p>
+
+            <div className="flex gap-3">
+              <div >
+                <p className="text-xs font-medium text-muted-foreground uppercase">Courier Order ID</p>
+                <p className="font-mono text-sm">{order.shiprocket_order_id || "-"}</p>
+              </div>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => {
+                  copy(order.shiprocket_order_id);
+                  sileo.success({
+                    title: "Copied to clipboard",
+                    description: "Courier Order ID copied to clipboard"
+                  })
+                }}
+              >
+                <HugeiconsIcon icon={CopyIcon} />
+              </Button>
             </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase">Shipment ID</p>
-              <p className="font-mono text-sm">{order.shiprocket_shipment_id || "-"}</p>
+
+            <div className="flex gap-3">
+              <div >
+                <p className="text-xs font-medium text-muted-foreground uppercase">Shipment ID</p>
+                <p className="font-mono text-sm">{order.shiprocket_shipment_id || "-"}</p>
+              </div>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => {
+                  copy(order.shiprocket_shipment_id || "-");
+                  sileo.success({
+                    title: "Copied to clipboard",
+                    description: "Shipment ID copied to clipboard"
+                  })
+                }}
+              >
+                <HugeiconsIcon icon={CopyIcon} />
+              </Button>
             </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase">Tracking Number</p>
-              <p className="font-mono text-sm">{order.tracking_number || "-"}</p>
+
+            <div className="flex gap-3">
+              <div >
+                <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
+                  Tracking Number
+                </p>
+                <p className="font-mono text-sm">{order.tracking_number || "-"}</p>
+              </div>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => {
+                  copy(order.tracking_number || "-");
+                  sileo.success({
+                    title: "Copied to clipboard",
+                    description: "Tracking Number copied to clipboard"
+                  })
+                }}
+              >
+                <HugeiconsIcon icon={CopyIcon} />
+              </Button>
             </div>
+
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Shipping Amount</p>
               <p className="font-semibold">₹{order.total_amount}</p>
@@ -694,7 +766,7 @@ export default function OrderDetailsPage({
             }}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleSchedulePickup}
               disabled={schedulePickupMutation.isPending}
             >

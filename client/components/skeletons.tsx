@@ -130,10 +130,24 @@ export function AdminTableSkeleton({ rowCount = 10 }: { rowCount?: number }) {
 
 export function OrderDetailSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto py-10 px-4 space-y-8">
+    <div className="max-w-4xl w-full mx-auto py-10 px-4 space-y-8">
       {/* Title skeleton */}
       <Skeleton className="h-10 w-48" />
       
+      {/* Order Info Card */}
+      <Card className="rounded-xl shadow-sm">
+        <div className="p-6 space-y-4">
+          <Skeleton className="h-6 w-32" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
       {/* Order Info Card */}
       <Card className="rounded-xl shadow-sm">
         <div className="p-6 space-y-4">

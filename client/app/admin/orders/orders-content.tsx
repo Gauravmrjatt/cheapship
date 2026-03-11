@@ -81,14 +81,17 @@ import {
   MoreVerticalCircle01Icon,
   LayoutIcon,
   MapPinIcon,
-  FileDownloadIcon,
+  Download02Icon,
   LinkCircle02Icon,
   Location01Icon,
   UserIcon,
   Mail01Icon,
   SmartPhone01Icon,
-  AlertCircleIcon
+  AlertCircleIcon,
+  CopyIcon
 } from "@hugeicons/core-free-icons";
+
+import copy from 'copy-to-clipboard';
 
 interface AdminOrderFilters {
   shipment_status: string;
@@ -100,6 +103,7 @@ interface AdminOrderFilters {
   to: string;
 }
 
+import { ShipmentStatus } from "@/components/ui/status-chip"
 function OrdersContent() {
   const searchParams = useSearchParams();
 
@@ -275,24 +279,26 @@ function OrdersContent() {
       header: "Shipment ID",
       cell: ({ row }) => (
         <div className="flex flex-col gap-1">
-          <Link
-            href={`/dashboard/orders/${row.original.id}`}
-            className="text-foreground hover:underline font-medium"
-          >
-            #{row.original.id}
-          </Link>
+          <div className="flex gap-3 items-center">
+            <Link
+              href={`/dashboard/orders/${row.original.id}`}
+              className="text-foreground hover:underline font-medium"
+            >
+              #{row.original.id}
+            </Link>
+            <Button size="icon" variant="outline" onClick={() => { copy(row.original.id); sileo.success({ title: "Copied to clipboard", description: "Order ID copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
+          </div>
+          <span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_order_id ? `Shiprocket OID :   ${row.original.shiprocket_order_id}` : "-"}
+          </span>
+          <span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_shipment_id ? `Shiprocket Ship ID :  ${row.original.shiprocket_shipment_id}` : "-"}
+          </span>
 
-          <span className="text-[10px]  tabular-nums">
-            {row.original.shiprocket_order_id ? `Shiprocket OID :   ${row.original.shiprocket_order_id}`  : "-"}
-          </span>
-          <span className="text-[10px]  tabular-nums">
-            {row.original.shiprocket_shipment_id ? `Shiprocket Ship ID :  ${row.original.shiprocket_shipment_id}`  : "-"}
-          </span>
-        
           <span className="text-[10px]  tabular-nums">
             {row.original.created_at ? new Date(row.original.created_at).toLocaleString() : "-"}
           </span>
-   
+
         </div>
       ),
       enableHiding: false,
@@ -341,15 +347,15 @@ function OrdersContent() {
         if (!pickup || !receiver) return <span className="text-muted-foreground text-xs">-</span>;
 
         return (
-          <React.Fragment>
+          <div className="flex flex-col-reverse gap-2">
             <Popover>
-              <PopoverTrigger>
-                <button className="flex flex-col items-start cursor-help hover:text-primary transition-colors">
-                  <span className="font-semibold text-foreground text-xs">{pickup.city}, {pickup.state}</span>
-                  <span className="text-[10px] text-muted-foreground">to {receiver.city}, {receiver.state}</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-3" side="left">
+              <PopoverTrigger render={
+                <div className="flex flex-col items-center cursor-help hover:text-primary transition-colors max-w-[150px] text-center">
+                  <span className="font-semibold text-foreground text-xs truncate text-center">{pickup.city}, {pickup.state}</span>
+                  <span className="text-[10px] text-muted-foreground truncate text-center">to {receiver.city}, {receiver.state}</span>
+                </div>
+              } />
+              <PopoverContent className="w-72 p-3" side="right">
                 <div className="space-y-3">
                   <div>
                     <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
@@ -381,7 +387,7 @@ function OrdersContent() {
             </Popover>
             {row.original?.pickup_location && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 className="text-primary gap-1 h-7 px-2 mt-1"
                 onClick={() => handleOpenPickupDialog(row.original.pickup_location!)}
@@ -390,7 +396,7 @@ function OrdersContent() {
                 <span className="text-xs font-medium truncate max-w-[100px]">{row.original.pickup_location}</span>
               </Button>
             )}
-          </React.Fragment>
+          </div>
         );
       }
     },
@@ -425,28 +431,9 @@ function OrdersContent() {
       cell: ({ row }) => {
         const order = row.original;
         const status = order.shipment_status.toLowerCase();
-        const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
-          delivered: { label: 'Delivered', icon: CheckmarkCircle01Icon, color: 'text-green-500' },
-          pending: { label: 'Pending', icon: Loading03Icon, color: 'text-yellow-500' },
-          processing: { label: 'Processing', icon: Loading03Icon, color: 'text-blue-500' },
-          manifested: { label: 'Manifested', icon: DeliveryTruck01Icon, color: 'text-orange-500' },
-          out_for_pickup: { label: 'Out for Pickup', icon: DeliveryTruck01Icon, color: 'text-purple-500' },
-          picked_up: { label: 'Picked Up', icon: DeliveryTruck01Icon, color: 'text-purple-600' },
-          in_transit: { label: 'In Transit', icon: DeliveryTruck01Icon, color: 'text-blue-500' },
-          out_for_delivery: { label: 'Out for Delivery', icon: DeliveryTruck01Icon, color: 'text-indigo-500' },
-          dispatched: { label: 'Dispatched', icon: DeliveryTruck01Icon, color: 'text-indigo-600' },
-          cancelled: { label: 'Cancelled', icon: Cancel01Icon, color: 'text-red-500' },
-          rto: { label: 'RTO', icon: MapPinIcon, color: 'text-red-600' },
-          not_picked: { label: 'Not Picked', icon: Cancel01Icon, color: 'text-red-400' }
-        };
-
-        const config = statusConfig[status] || { label: status.replace(/_/g, ' '), icon: DeliveryTruck01Icon, color: 'text-gray-500' };
 
         return (
-          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
-            <HugeiconsIcon icon={config.icon} strokeWidth={2} className={`${config.color} size-3`} />
-            {config.label}
-          </Badge>
+          <ShipmentStatus status={status} />
         );
       },
     },
@@ -461,25 +448,28 @@ function OrdersContent() {
         return (
           <div className="flex flex-col gap-2">
             {tracking ? (
-              <a
-                href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="
+              <div className="flex items-center gap-1">
+                <a
+                  href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="
             inline-flex items-center
             text-xs font-mono font-medium
             text-primary
-            bg-primary/10
-            hover:bg-primary/20
+            bg-muted
+            hover:bg-primary/10
             hover:text-primary
             transition-colors
-            px-2 py-1
+            px-3 py-2.5
             rounded-md
             w-full
           "
-              >
-                {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
-              </a>
+                >
+                  {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
+                </a>     <Button size="icon" className="bg-muted rounded-md" variant="outline" onClick={() => { copy(tracking); sileo.success({ title: "Copied to clipboard", description: "Tracking number copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
+
+              </div>
             ) : (
               <span className="text-muted-foreground text-center text-xs">-</span>
             )}
@@ -490,24 +480,27 @@ function OrdersContent() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
-    inline-flex items-center
+    
     text-xs font-medium
     text-foreground
-    bg-muted/40
+    bg-muted
     border border-border
     hover:bg-muted
     hover:text-foreground
     transition-colors
     px-2 py-2
-    rounded-xl
+    rounded-md
     w-full
+    text-center gap-4
+    flex items-center
   "
               >
-                Label
+
                 <HugeiconsIcon
-                  icon={FileDownloadIcon}
-                  className="ml-auto size-3 text-muted-foreground"
+                  icon={Download02Icon}
+                  className=" size-5 "
                 />
+                Download Label
               </a>
             )}
           </div>
@@ -522,7 +515,7 @@ function OrdersContent() {
         return (
           <div className="flex flex-col items-center gap-2">
             <span className="text-xs font-medium">{order.courier_name || "N/A"}</span>
-            <div>
+            <div className="flex gap-2">
               <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
                 {row.original.order_type}
               </Badge>
@@ -545,9 +538,12 @@ function OrdersContent() {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <button className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8">
-                <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
-              </button>
+              <Button
+                variant="ghost"
+                className="data-open:bg-muted text-muted-foreground flex size-8"
+                size="icon"
+              > <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
+                <span className="sr-only">Open menu</span></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem>
@@ -730,10 +726,10 @@ function OrdersContent() {
 
             <Popover>
               <PopoverTrigger>
-                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-2">
+                <Button variant="outline" className="">
                   <HugeiconsIcon icon={Calendar01Icon} className="size-4" />
                   <span className="hidden lg:inline">Date Range</span>
-                </button>
+                </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 p-4" align="end">
                 <div className="space-y-4">
@@ -775,15 +771,14 @@ function OrdersContent() {
 
             <Popover>
               <PopoverTrigger>
-                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-2">
-                  <HugeiconsIcon icon={FilterIcon} className="size-4" />
+                <Button variant="outline" size="sm" className="">  <HugeiconsIcon icon={FilterIcon} className="size-4" />
                   <span className="hidden lg:inline">Filters</span>
                   {activeFiltersCount > 0 && (
                     <Badge variant="secondary" className="ml-2 h-5 rounded-full px-1">
                       {activeFiltersCount}
                     </Badge>
                   )}
-                </button>
+                </Button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-4 space-y-4" align="end">
                 <div className="space-y-4">
@@ -838,11 +833,10 @@ function OrdersContent() {
 
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-2">
-                  <HugeiconsIcon icon={LayoutIcon} strokeWidth={2} data-icon="inline-start" />
+                <Button variant="outline" size="sm" className="">  <HugeiconsIcon icon={LayoutIcon} strokeWidth={2} data-icon="inline-start" />
                   <span className="hidden lg:inline">Columns</span>
                   <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
                 {table.getAllColumns().filter(c => c.getCanHide()).map((column) => (
@@ -1115,6 +1109,7 @@ export default function AdminOrdersPage() {
       </div>
     }>
       <OrdersContent />
+
     </Suspense>
   );
 }

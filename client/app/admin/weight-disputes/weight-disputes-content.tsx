@@ -89,6 +89,11 @@ function WeightDisputesContent() {
     ? (parseFloat(chargedWeight) > parseFloat(appliedWeight) ? "DEDUCT" : "REFUND")
     : null;
 
+  const calculateVolumetricWeight = (length: number | null, width: number | null, height: number | null) => {
+    if (!length || !width || !height) return null;
+    return (Number(length) * Number(width) * Number(height)) / 5000;
+  };
+
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(orderSearchQuery);
@@ -432,6 +437,7 @@ function WeightDisputesContent() {
                     <TableRow>
                       <TableHead>Order ID</TableHead>
                       <TableHead>User</TableHead>
+                      <TableHead>Volumetric Wt</TableHead>
                       <TableHead>Weight (kg)</TableHead>
                       <TableHead>Difference</TableHead>
                       <TableHead>Status</TableHead>
@@ -441,12 +447,18 @@ function WeightDisputesContent() {
                   <TableBody>
                     {isLoadingDisputes ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
+                        <TableCell colSpan={7} className="text-center py-8">
                           <HugeiconsIcon icon={Loading03Icon} className="w-6 h-6 mx-auto animate-spin text-muted-foreground" />
                         </TableCell>
                       </TableRow>
                     ) : disputesData?.data && disputesData.data.length > 0 ? (
-                      disputesData.data.map((dispute: AdminWeightDispute) => (
+                      disputesData.data.map((dispute: AdminWeightDispute) => {
+                        const volumetricWeight = calculateVolumetricWeight(
+                          dispute.order?.length ?? null,
+                          dispute.order?.width ?? null,
+                          dispute.order?.height ?? null
+                        );
+                        return (
                         <TableRow key={dispute.id}>
                           <TableCell className="font-medium">{dispute.order_id}</TableCell>
                           <TableCell>
@@ -454,6 +466,9 @@ function WeightDisputesContent() {
                               <div className="font-medium">{dispute.user?.name}</div>
                               <div className="text-xs text-muted-foreground">{dispute.user?.mobile}</div>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            {volumetricWeight ? `${volumetricWeight.toFixed(2)} kg` : "-"}
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
@@ -469,10 +484,10 @@ function WeightDisputesContent() {
                             {new Date(dispute.created_at).toLocaleDateString()}
                           </TableCell>
                         </TableRow>
-                      ))
+                      )})
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           No disputes found
                         </TableCell>
                       </TableRow>

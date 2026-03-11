@@ -25,6 +25,9 @@ export interface WeightDispute {
     id: string;
     tracking_number: string;
     courier_name: string;
+    length: number | null;
+    width: number | null;
+    height: number | null;
   };
 }
 

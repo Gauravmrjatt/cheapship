@@ -64,6 +64,11 @@ const formatAmount = (amount: number) => {
     maximumFractionDigits: 2,
   }).format(amount)
 }
+
+const calculateVolumetricWeight = (length: number | null, width: number | null, height: number | null) => {
+  if (!length || !width || !height) return null;
+  return (Number(length) * Number(width) * Number(height)) / 5000;
+}
 const productCategories = [
   "Electronics",
   "Apparel & Fashion",
@@ -164,6 +169,7 @@ export default function WeightMismatchContent() {
               <TableHeader className="bg-muted/50">
                 <TableRow>
                   <TableHead className="pl-6">Order Details</TableHead>
+                  <TableHead>Volumetric Wt</TableHead>
                   <TableHead>Weight (App/Chg)</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
@@ -174,12 +180,12 @@ export default function WeightMismatchContent() {
                 {isLoadingDisputes ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={4} className="h-16 animate-pulse bg-muted/20" />
+                      <TableCell colSpan={6} className="h-16 animate-pulse bg-muted/20" />
                     </TableRow>
                   ))
                 ) : !disputesData?.data?.length ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <HugeiconsIcon icon={Search01Icon} size={32} className="opacity-20" />
                         <p>No disputes found.</p>
@@ -187,46 +193,58 @@ export default function WeightMismatchContent() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  disputesData.data.map((dispute: WeightDispute) => (
-                    <TableRow key={dispute.id} className="group hover:bg-muted/30 transition-colors">
-                      <TableCell className="pl-6">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-sm">#{dispute.order?.id.toString().slice(-8)}</span>
-                          <span className="text-[10px] font-mono text-muted-foreground uppercase">{dispute.order?.tracking_number}</span>
-                          <span className="text-[10px] text-primary font-bold mt-0.5">{dispute.order?.courier_name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">{dispute.applied_weight}kg</span>
-                          <HugeiconsIcon icon={ArrowRight01Icon} size={10} className="text-muted-foreground" />
-                          <span className="text-xs font-bold text-destructive">{dispute.charged_weight}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {(() => {
-                          const diff = Number(dispute.difference_amount)
-                          return (
-                            <span
-                              className={`text-xs font-semibold ${diff > 0 ? "text-emerald-600" : "text-destructive"
-                                }`}
-                            >
-                              {formatAmount(diff)}
-                            </span>
-                          )
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(dispute.status)}
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <div className="flex flex-col items-end">
-                          <span className="text-xs font-medium">{format(new Date(dispute.created_at), "dd MMM yyyy")}</span>
-                          <span className="text-[10px] text-muted-foreground">{format(new Date(dispute.created_at), "HH:mm")}</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  disputesData.data.map((dispute: WeightDispute) => {
+                    const volumetricWeight = calculateVolumetricWeight(
+                      dispute.order?.length ?? null,
+                      dispute.order?.width ?? null,
+                      dispute.order?.height ?? null
+                    );
+                    return (
+                      <TableRow key={dispute.id} className="group hover:bg-muted/30 transition-colors">
+                        <TableCell className="pl-6">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-sm">#{dispute.order?.id.toString().slice(-8)}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground uppercase">{dispute.order?.tracking_number}</span>
+                            <span className="text-[10px] text-primary font-bold mt-0.5">{dispute.order?.courier_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-medium">
+                            {volumetricWeight ? `${volumetricWeight.toFixed(2)} kg` : "-"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium">{dispute.applied_weight}kg</span>
+                            <HugeiconsIcon icon={ArrowRight01Icon} size={10} className="text-muted-foreground" />
+                            <span className="text-xs font-bold text-destructive">{dispute.charged_weight}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const diff = Number(dispute.applied_amount - dispute.charged_amount)
+                            return (
+                              <span
+                                className={`text-xs font-semibold ${diff > 0 ? "text-emerald-600" : "text-destructive"
+                                  }`}
+                              >
+                                {formatAmount(diff)}
+                              </span>
+                            )
+                          })()}
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(dispute.status)}
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs font-medium">{format(new Date(dispute.created_at), "dd MMM yyyy")}</span>
+                            <span className="text-[10px] text-muted-foreground">{format(new Date(dispute.created_at), "HH:mm")}</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

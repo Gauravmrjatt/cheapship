@@ -15,9 +15,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { 
-  Sun01Icon, 
-  Moon01Icon, 
+import {
+  Sun01Icon,
+  Moon01Icon,
   ComputerIcon,
   UserCircle02Icon,
   Notification03Icon,
@@ -34,7 +34,7 @@ import {
   Wallet01Icon,
   Globe02Icon,
   CreditCardIcon,
-  
+
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { sileo } from "sileo";
@@ -94,10 +94,10 @@ export default function SettingsPage() {
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 px-4 lg:px-6">
-          
-          <Tabs 
-            value={activeTab} 
-            onValueChange={handleTabChange} 
+
+          <Tabs
+            value={activeTab}
+            onValueChange={handleTabChange}
             className="flex flex-col md:flex-row gap-6 items-start"
           >
             {/* Sidebar Navigation */}
@@ -126,7 +126,7 @@ export default function SettingsPage() {
                         <p className="text-sm text-muted-foreground">Unlock higher shipping limits and COD features by completing your KYC.</p>
                       </div>
                     </div>
-                    <Button 
+                    <Button
                       className="hidden sm:flex bg-amber-600 hover:bg-amber-700 text-white"
                       onClick={() => handleTabChange("kyc")}
                     >
@@ -168,8 +168,8 @@ export default function SettingsPage() {
 
 function NavTrigger({ value, icon, label }: { value: string; icon: any; label: string }) {
   return (
-    <TabsTrigger 
-      value={value} 
+    <TabsTrigger
+      value={value}
       className="gap-3 py-2.5 px-4 md:w-full justify-start text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
     >
       <HugeiconsIcon icon={icon} size={18} />
@@ -226,17 +226,30 @@ function ProfileTab({ http }: { http: any }) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-sm font-medium">UUID</Label>
+            <div className="relative group">
+              <HugeiconsIcon icon={UserCircle02Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
+              <Input
+                id="uuid"
+                value={userData?.id}
+                readOnly
+                className="pl-10"
+                placeholder="UUID"
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
               <div className="relative group">
                 <HugeiconsIcon icon={UserCircle02Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-                <Input 
-                  id="name" 
+                <Input
+                  id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="pl-10" 
-                  placeholder="Deepak" 
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="pl-10"
+                  placeholder="Deepak"
                 />
               </div>
             </div>
@@ -244,12 +257,12 @@ function ProfileTab({ http }: { http: any }) {
               <Label htmlFor="mobile" className="text-sm font-medium">Mobile Number</Label>
               <div className="relative group">
                 <HugeiconsIcon icon={SmartPhone01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-                <Input 
-                  id="mobile" 
+                <Input
+                  id="mobile"
                   value={formData.mobile}
-                  onChange={(e) => setFormData({...formData, mobile: e.target.value})}
-                  className="pl-10" 
-                  placeholder="9876543210" 
+                  onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                  className="pl-10"
+                  placeholder="9876543210"
                 />
               </div>
             </div>
@@ -257,12 +270,12 @@ function ProfileTab({ http }: { http: any }) {
               <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
               <div className="relative group">
                 <HugeiconsIcon icon={Mail01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-                <Input 
-                  id="email" 
+                <Input
+                  id="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="pl-10" 
-                  placeholder="hello@example.com" 
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="pl-10"
+                  placeholder="hello@example.com"
                 />
               </div>
             </div>
@@ -270,12 +283,12 @@ function ProfileTab({ http }: { http: any }) {
               <Label htmlFor="upi_id" className="text-sm font-medium">UPI ID (for COD payouts)</Label>
               <div className="relative group">
                 <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-                <Input 
-                  id="upi_id" 
+                <Input
+                  id="upi_id"
                   value={formData.upi_id}
-                  onChange={(e) => setFormData({...formData, upi_id: e.target.value})}
-                  className="pl-10" 
-                  placeholder="yourname@upi" 
+                  onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
+                  className="pl-10"
+                  placeholder="yourname@upi"
                 />
               </div>
             </div>
@@ -328,7 +341,7 @@ function KycTab({ http }: { http: any }) {
   const handlePanChange = (value: string) => {
     const upperValue = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
     setFormData({ ...formData, pan_number: upperValue });
-    
+
     if (upperValue.length === 10) {
       if (validatePanNumber(upperValue)) {
         setPanError("");
@@ -352,12 +365,12 @@ function KycTab({ http }: { http: any }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.pan_number && !validatePanNumber(formData.pan_number)) {
       setPanError("Invalid PAN format. Use: AAAAA1234A");
       return;
     }
-    
+
     const dataToSubmit: Record<string, string> = {};
     if (formData.pan_number) dataToSubmit.pan_number = formData.pan_number.toUpperCase();
     if (formData.aadhaar_number) dataToSubmit.aadhaar_number = formData.aadhaar_number;
@@ -535,27 +548,27 @@ function AppearanceTab({ theme, setTheme }: any) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <ThemeCard 
-            active={theme === "light"} 
-            onClick={() => setTheme("light")} 
-            icon={Sun01Icon} 
-            label="Light" 
+          <ThemeCard
+            active={theme === "light"}
+            onClick={() => setTheme("light")}
+            icon={Sun01Icon}
+            label="Light"
             description="Clean and bright"
             colorClass="bg-orange-50 text-orange-600"
           />
-          <ThemeCard 
-            active={theme === "dark"} 
-            onClick={() => setTheme("dark")} 
-            icon={Moon01Icon} 
-            label="Dark" 
+          <ThemeCard
+            active={theme === "dark"}
+            onClick={() => setTheme("dark")}
+            icon={Moon01Icon}
+            label="Dark"
             description="Easy on the eyes"
             colorClass="bg-slate-900 text-slate-100"
           />
-          <ThemeCard 
-            active={theme === "system"} 
-            onClick={() => setTheme("system")} 
-            icon={ComputerIcon} 
-            label="System" 
+          <ThemeCard
+            active={theme === "system"}
+            onClick={() => setTheme("system")}
+            icon={ComputerIcon}
+            label="System"
             description="Sync with OS"
             colorClass="bg-muted text-muted-foreground"
           />
@@ -571,8 +584,8 @@ function ThemeCard({ active, onClick, icon, label, description, colorClass }: an
       onClick={onClick}
       className={cn(
         "flex flex-col items-center gap-4 p-6 border-2 transition-all duration-200 relative group",
-        active 
-          ? "border-primary bg-background ring-2 ring-primary/5" 
+        active
+          ? "border-primary bg-background ring-2 ring-primary/5"
           : "border-transparent bg-background hover:border-muted-foreground/20"
       )}
     >
@@ -608,7 +621,7 @@ function SecurityTab() {
               <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent Activity</h4>
               <Badge variant="secondary" className="rounded-md px-2 py-0.5 text-[10px] font-bold">Last 20 attempts</Badge>
             </div>
-            
+
             {isLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}

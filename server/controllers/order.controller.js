@@ -17,6 +17,36 @@ const sanitizeErrorMessage = (message) => {
   return message;
 };
 
+const generateLabelAsync = async (orderId, shipmentId) => {
+  const prisma = require('../utils/prisma'); // Get prisma instance
+  const { generateLabel } = require('../utils/shiprocket');
+  const labelCustomizer = require('../utils/label-customizer');
+
+  console.log(`[Async Label] Starting label generation for order ${orderId}, shipment ${shipmentId}`);
+
+  const labelResult = await generateLabel([shipmentId]);
+
+  let labelUrl = null;
+  if (labelResult && labelResult.label_url) {
+    labelUrl = labelResult.label_url;
+  } else if (labelResult && labelResult.data && labelResult.data.label_url) {
+    labelUrl = labelResult.data.label_url;
+  }
+
+  if (labelUrl) {
+    labelUrl = await labelCustomizer.customize(labelUrl, orderId.toString());
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { label_url: labelUrl }
+    });
+
+    console.log(`[Async Label] Label generated successfully for order ${orderId}`);
+  } else {
+    console.warn(`[Async Label] No label URL returned for order ${orderId}`);
+  }
+};
+
 // Helper to calculate final rates with commissions
 const calculateFinalRates = async (prisma, userId, availableCouriers, recommendedId = null) => {
   // Get user's commission settings, Global Settings, and Courier configs
@@ -762,6 +792,10 @@ const createOrder = async (req, res) => {
               }
 
               console.log(`AWB ${awbData.awb_code} assigned automatically for order ${order.id}`);
+
+              generateLabelAsync(order.id, awbData.shipment_id || order.shiprocket_shipment_id).catch(err => {
+                console.warn(`Async label generation failed for order ${order.id}:`, err.message);
+              });
             } else {
               const awbError = awbResult?.message || awbResult?.response?.data?.awb_assign_error || 'Failed to assign AWB';
               console.warn(`Auto AWB assignment failed for order ${order.id}: ${awbError}`);

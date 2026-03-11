@@ -7,6 +7,8 @@ cloudinary.config({
 });
 
 const uploadPdfToCloudinary = async (pdfBuffer, folder = 'cheapship/labels') => {
+  console.log(`[Cloudinary] Starting PDF upload to folder: ${folder}, buffer size: ${pdfBuffer ? pdfBuffer.length : 0} bytes`);
+  
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -16,8 +18,10 @@ const uploadPdfToCloudinary = async (pdfBuffer, folder = 'cheapship/labels') => 
       },
       (error, result) => {
         if (error) {
+          console.error('[Cloudinary] Error uploading label:', error);
           reject(error);
         } else {
+          console.log('[Cloudinary] Label uploaded successfully:', result);
           resolve(result);
         }
       }

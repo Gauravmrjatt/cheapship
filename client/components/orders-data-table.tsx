@@ -80,7 +80,9 @@ import {
   UserIcon,
   Mail01Icon,
   SmartPhone01Icon,
-  AlertCircleIcon
+  AlertCircleIcon,
+  CopyIcon,
+  Download02Icon
 } from "@hugeicons/core-free-icons"
 import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
 import { useAuth } from "@/lib/hooks/use-auth"
@@ -89,7 +91,8 @@ import { Separator } from "@/components/ui/separator"
 import { sileo } from "sileo"
 import { useQueryClient } from "@tanstack/react-query"
 import { ActionsCell, DataTablePagination } from "./orders-table-components"
-
+import copy from 'copy-to-clipboard';
+import { ShipmentStatus } from "@/components/ui/status-chip"
 export type Order = {
   id: string
   order_type: string
@@ -108,6 +111,7 @@ export type Order = {
   manifest_url?: string
   cod_amount?: number
   is_draft?: boolean
+  shiprocket_order_id?: string
   order_pickup_address?: {
     name: string;
     phone?: string;
@@ -254,18 +258,29 @@ export function OrdersDataTable({
     },
     {
       accessorKey: "id",
-      header: "Shipment ID",
+      header: "ORDER ID",
       cell: ({ row }) => (
         <div className="flex flex-col gap-1">
-          <Link
-            href={`/dashboard/orders/${row.original.id}`}
-            className="text-foreground hover:underline font-medium"
-          >
-            #{row.original.id.slice(0, 8)}
-          </Link>
-          <span className="text-[10px] text-muted-foreground tabular-nums">
+          <div className="flex gap-3 items-center">
+            <Link
+              href={`/dashboard/orders/${row.original.id}`}
+              className="text-foreground hover:underline font-medium"
+            >
+              #{row.original.id}
+            </Link>
+            <Button size="icon" variant="outline" onClick={() => { copy(row.original.id); sileo.success({ title: "Copied to clipboard", description: "Order ID copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
+          </div>
+          <span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_order_id ? `Shiprocket OID :   ${row.original.shiprocket_order_id}` : "-"}
+          </span>
+          <span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_shipment_id ? `Shiprocket Ship ID :  ${row.original.shiprocket_shipment_id}` : "-"}
+          </span>
+
+          <span className="text-[10px]  tabular-nums">
             {row.original.created_at ? new Date(row.original.created_at).toLocaleString() : "-"}
           </span>
+
         </div>
       ),
       enableHiding: false,
@@ -296,14 +311,15 @@ export function OrdersDataTable({
       cell: ({ row }) => {
         const pickup = row.original.order_pickup_address;
         const receiver = row.original.order_receiver_address;
-        if (!pickup || !receiver) return <span className="text-muted-foreground text-xs">-</span>;
+        if (!pickup ||
+          !receiver) return <span className="text-muted-foreground text-xs">-</span>;
         return (
-          <>
+          <div className="flex flex-col-reverse gap-2">
             <Popover>
               <PopoverTrigger render={
-                <div className="flex flex-col items-start cursor-help hover:text-primary transition-colors max-w-[150px]">
-                  <span className="font-semibold text-foreground text-xs truncate">{pickup.city}, {pickup.state}</span>
-                  <span className="text-[10px] text-muted-foreground truncate">to {receiver.city}, {receiver.state}</span>
+                <div className="flex flex-col items-center cursor-help hover:text-primary transition-colors max-w-[150px] text-center">
+                  <span className="font-semibold text-foreground text-xs truncate text-center">{pickup.city}, {pickup.state}</span>
+                  <span className="text-[10px] text-muted-foreground truncate text-center">to {receiver.city}, {receiver.state}</span>
                 </div>
               } />
               <PopoverContent className="w-72 p-3" side="right">
@@ -338,7 +354,7 @@ export function OrdersDataTable({
             </Popover>
             {row.original?.pickup_location && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 className="text-primary gap-1 h-7 px-2 mt-1"
                 onClick={() => handleOpenPickupDialog(row.original.pickup_location!)}
@@ -347,7 +363,7 @@ export function OrdersDataTable({
                 <span className="text-xs font-medium truncate max-w-[100px]">{row.original.pickup_location}</span>
               </Button>
             )}
-          </>
+          </div>
         )
       }
     },
@@ -402,28 +418,8 @@ export function OrdersDataTable({
       header: "Status",
       cell: ({ row }) => {
         const status = row.original.shipment_status.toLowerCase();
-        const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
-          delivered: { label: 'Delivered', icon: CheckmarkCircle01Icon, color: 'text-green-500' },
-          pending: { label: 'Pending', icon: Loading03Icon, color: 'text-yellow-500' },
-          processing: { label: 'Processing', icon: Loading03Icon, color: 'text-blue-500' },
-          manifested: { label: 'Manifested', icon: DeliveryTruck01Icon, color: 'text-orange-500' },
-          out_for_pickup: { label: 'Out for Pickup', icon: DeliveryTruck01Icon, color: 'text-purple-500' },
-          picked_up: { label: 'Picked Up', icon: DeliveryTruck01Icon, color: 'text-purple-600' },
-          in_transit: { label: 'In Transit', icon: DeliveryTruck01Icon, color: 'text-blue-500' },
-          out_for_delivery: { label: 'Out for Delivery', icon: DeliveryTruck01Icon, color: 'text-indigo-500' },
-          dispatched: { label: 'Dispatched', icon: DeliveryTruck01Icon, color: 'text-indigo-600' },
-          cancelled: { label: 'Cancelled', icon: Cancel01Icon, color: 'text-red-500' },
-          rto: { label: 'RTO', icon: MapPinIcon, color: 'text-red-600' },
-          not_picked: { label: 'Not Picked', icon: Cancel01Icon, color: 'text-red-400' }
-        };
-        
-        const config = statusConfig[status] || { label: status.replace(/_/g, ' '), icon: DeliveryTruck01Icon, color: 'text-gray-500' };
-        
         return (
-          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5">
-            <HugeiconsIcon icon={config.icon} strokeWidth={2} className={`${config.color} size-3`} />
-            {config.label}
-          </Badge>
+          <ShipmentStatus status={status} />
         );
       },
     },
@@ -438,25 +434,28 @@ export function OrdersDataTable({
         return (
           <div className="flex flex-col gap-2">
             {tracking ? (
-              <a
-                href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="
-              inline-flex items-center
-              text-xs font-mono font-medium
-              text-primary
-              bg-primary/10
-              hover:bg-primary/20
-              hover:text-primary
-              transition-colors
-              px-2 py-1
-              rounded-md
-              w-full
-            "
-              >
-                {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
-              </a>
+              <div className="flex items-center gap-1">
+                <a
+                  href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="
+            inline-flex items-center
+            text-xs font-mono font-medium
+            text-primary
+            bg-muted
+            hover:bg-primary/10
+            hover:text-primary
+            transition-colors
+            px-3 py-2.5
+            rounded-md
+            w-full
+          "
+                >
+                  {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
+                </a>     <Button size="icon" className="bg-muted rounded-md" variant="outline" onClick={() => { copy(tracking); sileo.success({ title: "Copied to clipboard", description: "Tracking number copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
+
+              </div>
             ) : (
               <span className="text-muted-foreground text-center text-xs">-</span>
             )}
@@ -467,24 +466,27 @@ export function OrdersDataTable({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
-      inline-flex items-center
-      text-xs font-medium
-      text-foreground
-      bg-muted/40
-      border border-border
-      hover:bg-muted
-      hover:text-foreground
-      transition-colors
-      px-2 py-2
-      rounded-xl
-      w-full
-    "
+    
+    text-xs font-medium
+    text-foreground
+    bg-muted
+    border border-border
+    hover:bg-muted
+    hover:text-foreground
+    transition-colors
+    px-2 py-2
+    rounded-md
+    w-full
+    text-center gap-4
+    flex items-center
+  "
               >
-                Label
+
                 <HugeiconsIcon
-                  icon={FileDownloadIcon}
-                  className="ml-auto size-3 text-muted-foreground"
+                  icon={Download02Icon}
+                  className=" size-5 "
                 />
+                Download Label
               </a>
             )}
           </div>
