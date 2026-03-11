@@ -63,8 +63,8 @@ const getServiceability = async (params) => {
     const data = await response.json();
   
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[Shiprocket] Serviceability API response:', JSON.stringify(data, null, 2));
-      console.log('[Shiprocket] Couriers returned:', data?.data?.available_courier_companies?.length || 0);
+      // console.log('[Shiprocket] Serviceability API response:', JSON.stringify(data, null, 2));
+      // console.log('[Shiprocket] Couriers returned:', data?.data?.available_courier_companies?.length || 0);
     }
 
     if (!response.ok) {

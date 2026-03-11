@@ -32,7 +32,7 @@ const getReferralChain = async (prisma, userId, maxLevels = 10) => {
 };
 
 // Helper to create network income commissions
-// Logic: Level 1 (Direct Referrer B) gets franchise_commission_amount (markup from the order).
+// Logic: Level 1 (Direct Referrer B) gets baseCommissionAmount (markup from the order).
 // Level 2 (A) gets a percentage of B's profit based on B's commission_rate.
 // Level 3 (X) gets a percentage of A's profit based on A's commission_rate.
 const createReferralCommissions = async (tx, orderId, userId, baseCommissionAmount, maxLevels = 0) => {
@@ -42,30 +42,49 @@ const createReferralCommissions = async (tx, orderId, userId, baseCommissionAmou
 
   // Get the referral chain
   const referralChain = await getReferralChain(tx, userId, maxLevels);
-  if (referralChain.length <= 1) return []; // Skip if no Level 2 exists
+  if (referralChain.length === 0) return []; // No referrers at all
 
   const createdCommissions = [];
-  let currentBaseAmount = baseCommissionAmount; // Start with Level 1's profit
 
-  // We skip Level 1 (index 0) in terms of table entry, but use its rate for Level 2
+  // Level 1: Credit the direct referrer with the full baseCommissionAmount
+  const level1Node = referralChain[0];
+  if (level1Node) {
+    await tx.user.update({
+      where: { id: level1Node.user_id },
+      data: { wallet_balance: { increment: baseCommissionAmount } }
+    });
+
+    const commission = await tx.orderReferralCommission.create({
+      data: {
+        order_id: orderId,
+        level: level1Node.level,
+        referrer_id: level1Node.user_id,
+        amount: baseCommissionAmount,
+        is_withdrawn: false
+      }
+    });
+
+    createdCommissions.push(commission);
+  }
+
+  // Level 2+: Each level gets commission based on the previous level's profit
+  let currentBaseAmount = baseCommissionAmount;
+
   for (let i = 1; i < referralChain.length; i++) {
-    const receiverNode = referralChain[i]; // Level 2, 3...
-    const giverNode = referralChain[i-1]; // Level 1, 2...
+    const receiverNode = referralChain[i];
+    const giverNode = referralChain[i - 1];
 
-    // Use the giver's commission rate to calculate how much the receiver gets from the giver's profit
     const rate = giverNode.commission_rate;
-    
+
     if (rate > 0) {
       const commissionAmount = (currentBaseAmount * rate) / 100;
 
       if (commissionAmount > 0) {
-        // Credit the receiver's wallet
         await tx.user.update({
           where: { id: receiverNode.user_id },
           data: { wallet_balance: { increment: commissionAmount } }
         });
 
-        // Create commission record for the receiver
         const commission = await tx.orderReferralCommission.create({
           data: {
             order_id: orderId,
@@ -77,8 +96,7 @@ const createReferralCommissions = async (tx, orderId, userId, baseCommissionAmou
         });
 
         createdCommissions.push(commission);
-        
-        // The current commission becomes the base for the next level
+
         currentBaseAmount = commissionAmount;
       } else {
         break;

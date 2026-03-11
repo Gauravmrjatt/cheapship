@@ -49,8 +49,9 @@ const generateLabelAsync = async (orderId, shipmentId) => {
 
 // Helper to calculate final rates with commissions
 const calculateFinalRates = async (prisma, userId, availableCouriers, recommendedId = null) => {
-  // Get user's commission settings, Global Settings, and Courier configs
-  const [user, globalSetting, courierConfigs] = await Promise.all([
+  console.log(`[Price Calc] Calculating final rates for user ${userId} with ${availableCouriers.length} couriers`);
+  
+  const [user, globalSetting, courierConfigs, levelSetting] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { commission_rate: true, assigned_rates: true, referred_by: true, active_discount: true }
@@ -58,7 +59,10 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
     prisma.systemSetting.findUnique({
       where: { key: 'global_commission_rate' }
     }),
-    prisma.courierConfiguration.findMany()
+    prisma.courierConfiguration.findMany(),
+    prisma.systemSetting.findUnique({
+      where: { key: 'max_referral_levels' }
+    })
   ]);
 
   const courierConfigMap = courierConfigs.reduce((acc, config) => {
@@ -70,15 +74,19 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
   const franchiseCommissionRate = user?.commission_rate ? parseFloat(user.commission_rate.toString()) : (user?.referred_by ? 5 : 0);
   const activeDiscountRate = user?.active_discount ? parseFloat(user.active_discount.toString()) : 0;
   const assignedRates = user?.assigned_rates || {};
+  const maxReferralLevels = levelSetting ? parseInt(levelSetting.value) : 0;
+
+  const { getReferralChain } = require('../utils/referral.commissions');
+  const referralChain = maxReferralLevels > 0 ? await getReferralChain(prisma, userId, maxReferralLevels) : [];
+
+  console.log(`[Price Calc] User: ${userId}, franchiseRate: ${franchiseCommissionRate}, referredBy: ${user?.referred_by}, maxLevels: ${maxReferralLevels}, referralChain: ${JSON.stringify(referralChain)}`);
 
   return availableCouriers.map(courier => {
-    // Find commission for this courier
     const courierConfig = assignedRates[courier.courier_company_id] || assignedRates[courier.courier_name] || {};
     const markupPercent = courierConfig.rate !== undefined ? parseFloat(courierConfig.rate) : franchiseCommissionRate;
 
     const baseRate = parseFloat(courier.rate);
 
-    // Formula: base_shipment_price + franchise % on base_shipment price + global % on base_shipment price
     let finalGlobalCommRate = globalCommissionRate;
     let finalFranchiseCommRate = markupPercent;
 
@@ -100,16 +108,29 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
     const globalCommissionAmount = (baseRate * finalGlobalCommRate) / 100;
     const franchiseCommissionAmount = (baseRate * finalFranchiseCommRate) / 100;
 
-    const finalRate = parseFloat((baseRate + globalCommissionAmount + franchiseCommissionAmount).toFixed(2));
+    let referralCommissionAmount = 0;
+    let currentBaseAmount = franchiseCommissionAmount;
 
-    // Debug logging in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Price Calc] ${courier.courier_name}:`);
-      console.log(`  Shiprocket Base Rate: ₹${baseRate}`);
-      console.log(`  Global Commission (${globalCommissionRate}%): ₹${globalCommissionAmount}`);
-      console.log(`  Franchise Commission (${markupPercent}%): ₹${franchiseCommissionAmount}`);
-      console.log(`  Final Rate: ₹${finalRate}`);
+    for (let i = 0; i < referralChain.length; i++) {
+      const receiverNode = referralChain[i];
+      const giverRate = receiverNode.commission_rate;
+      
+      if (giverRate > 0 && currentBaseAmount > 0) {
+        const commission = (currentBaseAmount * giverRate) / 100;
+        if (commission > 0.01) {
+          referralCommissionAmount += commission;
+          currentBaseAmount = commission;
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
     }
+
+    const finalRate = parseFloat((baseRate + globalCommissionAmount + franchiseCommissionAmount + referralCommissionAmount).toFixed(2));
+
+    console.log(`[Price Calc] ${courier.courier_name}: base=${baseRate}, global=${globalCommissionAmount}, franchise=${franchiseCommissionAmount}, referral=${referralCommissionAmount}, final=${finalRate}`);
 
     const dbConfig = courierConfigMap[courier.courier_company_id] || {};
 
@@ -126,6 +147,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
       global_commission_amount: globalCommissionAmount,
       franchise_commission_rate: markupPercent,
       franchise_commission_amount: franchiseCommissionAmount,
+      referral_commission_amount: referralCommissionAmount,
       is_surface: courier.is_surface,
       mode: courier.mode === 1 ? 'Air' : 'Surface',
       is_recommended: courier.courier_company_id === recommendedId,
@@ -253,8 +275,12 @@ const calculateRates = async (req, res) => {
         global_commission_amount,
         franchise_commission_rate,
         franchise_commission_amount,
+        referral_commission_amount,
         ...publicData
-      }) => publicData).sort((a, b) => a.rate - b.rate)
+      }) => {
+        const { referral_commission_amount: _, ...rest } = publicData;
+        return rest;
+      }).sort((a, b) => a.rate - b.rate)
     };
 
     res.json(formattedResponse);
@@ -650,6 +676,9 @@ const createOrder = async (req, res) => {
           pickup_location: pickup_location || null
         }
       });
+      
+      console.log(`[Order Create] Commission fields - global_rate: ${chosenCourier.global_commission_rate}, global_amt: ${chosenCourier.global_commission_amount}, franchise_rate: ${chosenCourier.franchise_commission_rate}, franchise_amt: ${chosenCourier.franchise_commission_amount}`);
+      
       // Create multi-level referral commissions with cascading percentages
       const baseCommissionAmount = parseFloat(order.franchise_commission_amount || 0);
       if (baseCommissionAmount > 0) {

@@ -432,7 +432,7 @@ export default function RateCalculatorPage() {
                       </p>
                     </div>
                   </div>
-                  {formValues.shipmentValue >= 2500 && (<>
+                  {/* {formValues.shipmentValue >= 2500 && (<>
                     <div className="flex items-center space-x-2 bg-primary/5 p-3 rounded-lg border border-primary/20 w-full animate-in fade-in slide-in-from-top-2">
                       <Controller
                         control={form.control}
@@ -451,7 +451,7 @@ export default function RateCalculatorPage() {
                         <p className="text-[10px] text-muted-foreground font-semibold">Protect against damage/loss</p>
                       </div>
                     </div>
-                  </>)}
+                  </>)} */}
                 </div>
 
                 <Button
