@@ -29,6 +29,12 @@ const authMiddleware = require('../middleware/auth.middleware');
 router.get('/me', authMiddleware, authController.getMe);
 router.get('/login-history', authMiddleware, authController.getLoginHistory);
 
+router.put('/profile', authMiddleware, [
+  check('name').optional().isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
+  check('email').optional().isEmail().withMessage('Invalid email format'),
+  check('upi_id').optional().matches(/^[\w.-]+@[\w.-]+$/).withMessage('Invalid UPI format')
+], authController.updateProfile);
+
 /**
  * @swagger
  * /auth/profile:
