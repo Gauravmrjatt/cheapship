@@ -149,7 +149,7 @@ const getOtpEmailTemplate = (otp, purpose) => {
 
 const sendOtpEmail = async (email, otp, purpose = 'registration') => {
   const transporter = getTransporter();
-  
+
   const subjectMap = {
     registration: 'CheapShip - Verify Your Email',
     login: 'CheapShip - Login OTP',
@@ -165,16 +165,17 @@ const sendOtpEmail = async (email, otp, purpose = 'registration') => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
+    console.log(info)
     console.log('Email sent:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('Email send error:', error);
-    
+
     if (process.env.NODE_ENV === 'development' || !process.env.SMTP_USER) {
       console.log(`[DEV MODE] OTP for ${email}: ${otp}`);
       return { success: true, messageId: 'dev-mode', devOtp: otp };
     }
-    
+
     throw error;
   }
 };

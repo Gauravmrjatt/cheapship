@@ -32,6 +32,14 @@ import { sileo } from "sileo";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Loading03Icon, Edit03Icon } from "@hugeicons/core-free-icons";
 import { useFirebaseOtp } from "@/lib/hooks/use-firebase-otp";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 
 type MobileRegFormData = z.infer<typeof mobileRegSchema>;
 type OtpRegFormData = z.infer<typeof otpRegSchema>;
@@ -66,6 +74,8 @@ export default function SignUpForm() {
     verificationToken: "",
     firebaseIdToken: "",
     countdown: 0,
+    showAgreementDialog: false,
+    pendingMobile: "",
   });
 
   // Mutations
@@ -172,19 +182,28 @@ export default function SignUpForm() {
       return;
     }
 
-    setState(prev => ({ ...prev, mobile: values.mobile }));
+    setState(prev => ({ ...prev, mobile: values.mobile, showAgreementDialog: true, pendingMobile: values.mobile }));
+  };
+
+  const handleAgreementAccepted = async () => {
+    const mobile = state.pendingMobile;
+    setState(prev => ({ ...prev, showAgreementDialog: false }));
     
     if (firebaseOtp.isConfigValid) {
-      const result = await firebaseOtp.sendOtp(values.mobile);
+      const result = await firebaseOtp.sendOtp(mobile);
       if (result.success) {
         setState(prev => ({ ...prev, step: 2, countdown: 60 }));
-        sileo.success({ title: "OTP Sent", description: `OTP sent to +91 ${values.mobile}` });
+        sileo.success({ title: "OTP Sent", description: `OTP sent to +91 ${mobile}` });
       } else {
         sileo.error({ title: "Error", description: result.error || "Failed to send OTP" });
       }
     } else {
-      initMobileMutation.mutate(values);
+      initMobileMutation.mutate({ mobile });
     }
+  };
+
+  const handleAgreementDeclined = () => {
+    setState(prev => ({ ...prev, showAgreementDialog: false, pendingMobile: "" }));
   };
 
   const onOtpSubmit = async (values: OtpRegFormData) => {
@@ -423,6 +442,42 @@ export default function SignUpForm() {
       )}
       
       <div id="recaptcha-container" />
+
+      {/* Digital Agreement Dialog */}
+      <Dialog open={state.showAgreementDialog} onOpenChange={(open) => !open && handleAgreementDeclined()}>
+        <DialogContent className="sm:max-w-md max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Digital Agreement</DialogTitle>
+            <DialogDescription>
+              By proceeding, you agree to our Terms of Service, Privacy Policy, and Business policies.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 text-sm text-muted-foreground space-y-2 overflow-y-auto max-h-[40vh] pr-2">
+            <p>• You agree to use our platform for legitimate business purposes only.</p>
+            <p>• All shipments must comply with applicable laws and regulations.</p>
+            <p>• You authorize us to share necessary details with courier partners.</p>
+            <p>• Payment and refund policies will apply as per terms.</p>
+            <p>• You agree to maintain accurate account information.</p>
+            <p>• You are responsible for maintaining confidentiality of your account credentials.</p>
+            <p>• We reserve the right to suspend or terminate accounts that violate our policies.</p>
+            <p>• All pricing and rates are subject to change with prior notice.</p>
+            <p>• Dispute resolution will be handled as per our terms of service.</p>
+            <p>• You confirm that you are at least 18 years of age and legally eligible to enter into contracts.</p>
+            <p>• You agree to indemnify us against any claims arising from your use of our services.</p>
+          </div>
+          <DialogFooter className="flex-row gap-2">
+            <Button variant="outline" onClick={handleAgreementDeclined} className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={handleAgreementAccepted} className="flex-1" disabled={initMobileMutation.isPending || firebaseOtp.loading}>
+              {(initMobileMutation.isPending || firebaseOtp.loading) ? (
+                <HugeiconsIcon icon={Loading03Icon} className="animate-spin mr-2 h-4 w-4" />
+              ) : null}
+              I Agree
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
