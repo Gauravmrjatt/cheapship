@@ -50,7 +50,7 @@ const generateLabelAsync = async (orderId, shipmentId) => {
 // Helper to calculate final rates with commissions
 const calculateFinalRates = async (prisma, userId, availableCouriers, recommendedId = null) => {
   console.log(`[Price Calc] Calculating final rates for user ${userId} with ${availableCouriers.length} couriers`);
-  
+
   const [user, globalSetting, courierConfigs, levelSetting] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -114,7 +114,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
     for (let i = 0; i < referralChain.length; i++) {
       const receiverNode = referralChain[i];
       const giverRate = receiverNode.commission_rate;
-      
+
       if (giverRate > 0 && currentBaseAmount > 0) {
         const commission = (currentBaseAmount * giverRate) / 100;
         if (commission > 0.01) {
@@ -133,7 +133,23 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
     console.log(`[Price Calc] ${courier.courier_name}: base=${baseRate}, global=${globalCommissionAmount}, franchise=${franchiseCommissionAmount}, referral=${referralCommissionAmount}, final=${finalRate}`);
 
     const dbConfig = courierConfigMap[courier.courier_company_id] || {};
-
+    
+    let others = {};
+    try {
+      others = courier.others ? JSON.parse(courier.others) : {};
+    } catch (e) {}
+    
+    const defaultLogos = {
+      10: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/10.png',
+      29: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/142.png',
+      32: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/142.png',
+      43: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/43.png',
+      142: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/142.png',
+      217: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/217.png',
+    };
+    
+    const courierLogoUrl = others.courier_logo_url || defaultLogos[courier.courier_company_id] || '';
+    
     return {
       courier_name: courier.courier_name,
       courier_company_id: courier.courier_company_id,
@@ -143,6 +159,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
       chargeable_weight: courier.charge_weight,
       rate: finalRate,
       base_rate: baseRate,
+      courier_logo_url: courierLogoUrl,
       global_commission_rate: globalCommissionRate,
       global_commission_amount: globalCommissionAmount,
       franchise_commission_rate: markupPercent,
@@ -231,7 +248,6 @@ const calculateRates = async (req, res) => {
         mode: mode !== 'undefined' ? mode : undefined
       }),
     ]);
-
     if (!serviceabilityData || serviceabilityData.status !== 200) {
       return res.status(serviceabilityData?.status || 400).json({
         success: false,
@@ -239,8 +255,11 @@ const calculateRates = async (req, res) => {
         data: serviceabilityData
       });
     }
-
+  
     let availableCouriers = serviceabilityData.data.available_courier_companies || [];
+
+    const filteredCourierIds = [217];
+    availableCouriers = availableCouriers.filter(courier => !filteredCourierIds.includes(courier.courier_company_id));
 
 
 
@@ -250,7 +269,7 @@ const calculateRates = async (req, res) => {
       availableCouriers,
       serviceabilityData.data.recommended_courier_company_id
     );
-
+  
     // Format the response and sanitize sensitive fields (exclude internal base rates and commission breakdowns)
     const formattedResponse = {
       pickup_location: {
@@ -479,7 +498,7 @@ const createOrder = async (req, res) => {
     const serviceabilityData = await getServiceability({
       pickup_postcode: pickup_address.pincode,
       delivery_postcode: receiver_address.pincode,
-      weight: weight ,
+      weight: weight,
       cod: payment_mode === 'COD' ? 1 : 0,
       declared_value: total_amount,
       length,
@@ -676,9 +695,9 @@ const createOrder = async (req, res) => {
           pickup_location: pickup_location || null
         }
       });
-      
+
       console.log(`[Order Create] Commission fields - global_rate: ${chosenCourier.global_commission_rate}, global_amt: ${chosenCourier.global_commission_amount}, franchise_rate: ${chosenCourier.franchise_commission_rate}, franchise_amt: ${chosenCourier.franchise_commission_amount}`);
-      
+
       // Create multi-level referral commissions with cascading percentages
       const baseCommissionAmount = parseFloat(order.franchise_commission_amount || 0);
       if (baseCommissionAmount > 0) {

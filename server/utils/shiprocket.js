@@ -1,9 +1,9 @@
 const map = new Map();
 
-const userToken = process.env.SHIP_ROCKET_USER_TOKEN ||  "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vYXBpdjIuc2hpcHJvY2tldC5jby92MS9hdXRoL3JlZ2lzdGVyL21vYmlsZS92YWxpZGF0ZS1vdHAiLCJpYXQiOjE3NzIxOTY1MTUsImV4cCI6MTc3MzA2MDUxNSwibmJmIjoxNzcyMTk2NTE1LCJqdGkiOiJoUkF3Z3hSV3RkV3h6Y2ViIiwic3ViIjo5NTIxODcwLCJwcnYiOiIwNWJiNjYwZjY3Y2FjNzQ1ZjdiM2RhMWVlZjE5NzE5NWEyMTFlNmQ5IiwiY2lkIjo5MjU3ODQ4fQ.RuxSbxAqWZuEdafyh7odP7xbOxJvqvn_Xogn5l8cYUU";
+const userToken = process.env.SHIP_ROCKET_USER_TOKEN || "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vYXBpdjIuc2hpcHJvY2tldC5jby92MS9hdXRoL3JlZ2lzdGVyL21vYmlsZS92YWxpZGF0ZS1vdHAiLCJpYXQiOjE3NzIxOTY1MTUsImV4cCI6MTc3MzA2MDUxNSwibmJmIjoxNzcyMTk2NTE1LCJqdGkiOiJoUkF3Z3hSV3RkV3h6Y2ViIiwic3ViIjo5NTIxODcwLCJwcnYiOiIwNWJiNjYwZjY3Y2FjNzQ1ZjdiM2RhMWVlZjE5NzE5NWEyMTFlNmQ5IiwiY2lkIjo5MjU3ODQ4fQ.RuxSbxAqWZuEdafyh7odP7xbOxJvqvn_Xogn5l8cYUU";
 
 const getShiprocketToken = async () => {
-  if (map.has('token') ) {
+  if (map.has('token')) {
     return map.get('token').value;
   }
   const email = process.env.SHIPROCKET_EMAIL;
@@ -47,10 +47,10 @@ const getServiceability = async (params) => {
   const { mode, ...restParams } = params;
   const queryParams = new URLSearchParams(restParams).toString();
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Shiprocket] Serviceability API params:', restParams);
-  }
-  console.log('[Shiprocket] Serviceability API params:', queryParams);
+  // if (process.env.NODE_ENV === 'development') {
+  //   console.log('[Shiprocket] Serviceability API params:', restParams);
+  // }
+  // console.log('[Shiprocket] Serviceability API params:', queryParams);
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/serviceability/?${queryParams}`, {
       method: 'GET',
@@ -61,10 +61,10 @@ const getServiceability = async (params) => {
     });
 
     const data = await response.json();
-  
+
     if (process.env.NODE_ENV !== 'production') {
-      // console.log('[Shiprocket] Serviceability API response:', JSON.stringify(data, null, 2));
-      // console.log('[Shiprocket] Couriers returned:', data?.data?.available_courier_companies?.length || 0);
+      console.log('[Shiprocket] Serviceability API response:', JSON.stringify(data, null, 2));
+      console.log('[Shiprocket] Couriers returned:', data?.data?.available_courier_companies?.length || 0);
     }
 
     if (!response.ok) {
@@ -394,7 +394,7 @@ const schedulePickup = async (shipmentIds, pickupDate = null) => {
   const ids = Array.isArray(shipmentIds) ? shipmentIds : [shipmentIds];
 
   const payload = { shipment_id: ids.map(id => parseInt(id)) };
-  
+
   if (pickupDate) {
     payload.pickup_date = pickupDate;
   }

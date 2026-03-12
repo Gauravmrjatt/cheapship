@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ interface CourierPartner {
   mode: string;
   is_recommended: boolean;
   is_flagged?: boolean;
+  courier_logo_url?: string;
 }
 
 export function CourierCard({ 
@@ -35,6 +37,8 @@ export function CourierCard({
   courier: CourierPartner; 
   onShipNow: (courier: CourierPartner) => void;
 }) {
+  const [imgError, setImgError] = useState(false);
+  
   return (
     <Card
       className={cn(
@@ -44,12 +48,21 @@ export function CourierCard({
     >
       <div className="p-6 flex flex-col md:flex-row items-center gap-6">
         <div className="flex-1 flex items-center gap-5 w-full">
-          <div className={cn(
-            "h-14 w-14 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
-            courier.is_recommended ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-          )}>
-            <HugeiconsIcon icon={courier.mode.toLowerCase() === "surface" ? TruckIcon : RocketIcon} size={28} />
-          </div>
+          {courier.courier_logo_url && !imgError ? (
+            <img 
+              src={courier.courier_logo_url} 
+              alt={courier.courier_name}
+              className="h-14 w-14 rounded-xl object-contain bg-white border shadow-sm"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className={cn(
+              "h-14 w-14 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+              courier.is_recommended ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            )}>
+              <HugeiconsIcon icon={courier.mode.toLowerCase() === "surface" ? TruckIcon : RocketIcon} size={28} />
+            </div>
+          )}
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-bold">{courier.courier_name}</h3>

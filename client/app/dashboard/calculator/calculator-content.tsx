@@ -64,6 +64,7 @@ interface CourierPartner {
   mode: string;
   is_recommended: boolean;
   is_flagged?: boolean;
+  courier_logo_url?: string;
 }
 
 interface RateResponse {
@@ -572,10 +573,8 @@ export default function RateCalculatorPage() {
               <CalculationGuidelines />
             </div>
           ) : (
-            <div className="h-full min-h-[500px] border-2 border-dashed rounded-3xl bg-muted/20 flex flex-col items-center justify-center p-12 text-center animate-in zoom-in-95 duration-1000">
-              <div className="bg-background p-6 rounded-2xl shadow-sm border mb-6">
-                <HugeiconsIcon icon={AiCloudIcon} className="h-12 w-12 text-primary opacity-40" />
-              </div>
+            <div className="h-full min-h-[500px]  rounded-3xl  flex flex-col items-center justify-center p-12 text-center animate-in zoom-in-95 duration-1000">
+              <img src="/assets/svg/claculator.svg" className="h-70" />
               <h3 className="text-xl font-bold tracking-tight">Ready to Calculate</h3>
               <p className="text-muted-foreground max-w-sm mt-2">
                 Enter your shipment details on the left to see instant rates from our courier partners.
@@ -585,6 +584,7 @@ export default function RateCalculatorPage() {
                 <div className="h-1.5 w-1.5 rounded-full bg-primary/20 animate-bounce [animation-delay:0.2s]" />
                 <div className="h-1.5 w-1.5 rounded-full bg-primary/20 animate-bounce [animation-delay:0.4s]" />
               </div>
+
             </div>
           )}
         </div>
