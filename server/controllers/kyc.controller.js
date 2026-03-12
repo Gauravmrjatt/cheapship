@@ -19,7 +19,7 @@ const updateKyc = async (req, res) => {
     }
 
     if (gst_number !== undefined && gst_number !== null && gst_number !== '') {
-      const gstRegex = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}\d{1}[Z]{1}\d{1}$/;
+      const gstRegex = /^\d{2}[A-Z]{5}\d{4}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/;
       if (!gstRegex.test(gst_number.toUpperCase())) {
         return res.status(400).json({ message: 'Invalid GST number format' });
       }

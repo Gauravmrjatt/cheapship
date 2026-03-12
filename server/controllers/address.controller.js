@@ -259,13 +259,17 @@ const addShiprocketPickupLocation = registerShiprocketPickupLocation;
 const getShiprocketPickupLocations = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
+  const userType = req.user.user_type;
 
   try {
+    const whereClause = { is_shiprocket_pickup: true };
+    
+    if (userType !== 'ADMIN') {
+      whereClause.user_id = userId;
+    }
+
     const addresses = await prisma.address.findMany({
-      where: {
-        user_id: userId,
-        is_shiprocket_pickup: true
-      },
+      where: whereClause,
       orderBy: { created_at: 'desc' }
     });
 
@@ -283,7 +287,8 @@ const getShiprocketPickupLocations = async (req, res) => {
           city: addr.city,
           state: addr.state,
           country: addr.country,
-          pin_code: addr.pincode
+          pin_code: addr.pincode,
+          ...(userType === 'ADMIN' && { user_id: addr.user_id })
         }))
       }
     };
