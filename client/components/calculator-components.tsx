@@ -46,7 +46,7 @@ export function CourierCard({
         courier.is_recommended ? "border-l-primary shadow-md" : "border-l-transparent"
       )}
     >
-      <div className="p-6 flex flex-col md:flex-row items-center gap-6">
+      <div className="px-6 flex flex-col md:flex-row items-center gap-6">
         <div className="flex-1 flex items-center gap-5 w-full">
           {courier.courier_logo_url && !imgError ? (
             <img 
@@ -67,7 +67,7 @@ export function CourierCard({
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-bold">{courier.courier_name}</h3>
               {courier.is_recommended && (
-                <Badge variant="default" className="text-[10px] px-2 py-0 uppercase">Best Match</Badge>
+                <Badge variant="default" className="text-[10px] px-2 py-0 uppercase bg-green-700">Best Match</Badge>
               )}
               {(courier as any).custom_tag && (
                 <Badge variant="outline" className="text-[10px] px-2 py-0 uppercase border-primary text-primary bg-primary/5">{(courier as any).custom_tag}</Badge>

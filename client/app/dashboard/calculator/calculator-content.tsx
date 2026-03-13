@@ -510,7 +510,7 @@ export default function RateCalculatorPage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Origin</p>
-                    <p className="font-bold">{data?.pickup_location?.city || formValues.pickupPincode}</p>
+                    <p className="font-bold">{data?.pickup_location?.city || formValues.pickupPincode} ({formValues.pickupPincode})</p>
                   </div>
                 </div>
                 <div className="p-4 rounded-xl border bg-card flex items-center gap-4">
@@ -519,7 +519,7 @@ export default function RateCalculatorPage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Destination</p>
-                    <p className="font-bold">{data?.delivery_location?.city || formValues.deliveryPincode}</p>
+                    <p className="font-bold">{data?.delivery_location?.city || formValues.deliveryPincode} ({formValues.deliveryPincode})</p>
                   </div>
                 </div>
               </div>

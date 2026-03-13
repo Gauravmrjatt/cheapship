@@ -196,6 +196,23 @@ const registerShiprocketPickupLocation = async (req, res) => {
         });
         return res.status(200).json({ success: true, message: 'Pickup location registered and verified', phone_verified: true });
       } else {
+        await prisma.address.create({
+          data: {
+            user_id: userId,
+            name: req.body.name,
+            phone: req.body.phone,
+            email: req.body.email,
+            complete_address: req.body.address,
+            city: req.body.city,
+            state: req.body.state,
+            pincode: req.body.pin_code.toString(),
+            country: req.body.country || 'India',
+            is_shiprocket_pickup: true,
+            pickup_nickname: req.body.pickup_location,
+            address_label: req.body.pickup_location,
+            phone_verified: false,
+          }
+        });
         req.app.locals.pendingPickupLocations = req.app.locals.pendingPickupLocations || {};
         req.app.locals.pendingPickupLocations[userId] = {
           ...req.body,

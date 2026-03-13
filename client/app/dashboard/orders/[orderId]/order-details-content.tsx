@@ -226,7 +226,7 @@ export default function OrderDetailsPage({
             </Button>
           )}
 
-          {hasAWB && !order.pickup_scheduled_date && (
+          {/* {hasAWB && !order.pickup_scheduled_date && (
             <Button
               onClick={() => setShowSchedulePickupDialog(true)}
               disabled={schedulePickupMutation.isPending}
@@ -236,7 +236,7 @@ export default function OrderDetailsPage({
               {schedulePickupMutation.isPending ? <HugeiconsIcon icon={RefreshIcon} className="h-4 w-4 animate-spin" /> : <HugeiconsIcon icon={ShippingTruck01Icon} className="h-4 w-4" />}
               Schedule Pickup
             </Button>
-          )}
+          )} */}
 
           {isCancellable && (
             <Button

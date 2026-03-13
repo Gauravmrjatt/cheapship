@@ -30,6 +30,12 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
+import { ChartPie } from "@/components/chart-pie";
+import { ChartBar } from "@/components/chart-bar";
+import { ChartDonut } from "@/components/chart-donut";
+import { ChartLine } from "@/components/chart-line";
+import { ChartRadar } from "@/components/chart-radar";
+import { ChartHorizontal } from "@/components/chart-horizontal";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { DashboardStats } from "@/lib/hooks/use-admin";
@@ -460,7 +466,7 @@ export default function AdminDashboard() {
         <DisputeCards data={data} isLoading={isLoading} />
       </div>
 
-      {/* Chart Section */}
+      {/* Chart Section - Full Width Area Chart */}
       <Card className="rounded-2xl border-none shadow-sm">
         <CardHeader>
           <CardTitle>Orders Overview (Last 30 Days)</CardTitle>
@@ -474,6 +480,46 @@ export default function AdminDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Additional Charts Grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Pie Chart - Order Status Distribution */}
+        <ChartPie 
+          isLoading={isLoading} 
+          data={data} 
+        />
+
+        {/* Donut Chart - Revenue Breakdown */}
+        <ChartDonut 
+          isLoading={isLoading} 
+          totalRevenue={data?.totalRevenue || 0}
+        />
+
+        {/* Bar Chart - Orders vs Revenue */}
+        <ChartBar 
+          isLoading={isLoading} 
+          data={data?.graphData} 
+        />
+
+        {/* Line Chart - Order Trends */}
+        <ChartLine 
+          isLoading={isLoading} 
+          data={data?.graphData} 
+        />
+
+        {/* Radar Chart - Performance Metrics */}
+        <ChartRadar 
+          isLoading={isLoading} 
+          data={data} 
+        />
+
+        {/* Horizontal Bar Chart - Top Couriers/Users */}
+        <ChartHorizontal 
+          isLoading={isLoading} 
+          topCouriers={data?.topCouriers}
+          topUsers={data?.topUsers}
+        />
+      </div>
 
       {/* Network Commission Card */}
       <NetworkCommissionCard data={commissionStats} isLoading={commissionLoading} />

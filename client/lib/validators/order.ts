@@ -40,7 +40,7 @@ export const createOrderSchema = z.object({
   height: z.number().min(1, "Height is required"),
   total_amount: z.number().min(1, "Total amount is required"),
   // COD amount is only required when payment_mode is COD
-  cod_amount: z.number().optional(),
+  cod_amount: z.preprocess((val) => val === "" || val === null ? undefined : Number(val), z.number().optional()),
   pickup_location: z.string().min(1, "Pickup location is required"),
   pickup_address: addressSchema,
   receiver_address: addressSchema,

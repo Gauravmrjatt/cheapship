@@ -81,6 +81,10 @@ export interface DashboardStats {
     NOT_PICKED: number;
     TOTAL: number;
   }[];
+
+  // Top data
+  topCouriers: { courier_name: string; order_count: number }[];
+  topUsers: { name: string; order_count: number }[];
 }
 
 export interface AdminUser {
