@@ -93,7 +93,7 @@ export function SectionCards({
       icon: CustomerService02Icon,
       footer: "Orders needing manual attention",
       trend: "down",
-      status: "ACTION_REQUIRED",
+      // status: "ACTION_REQUIRED",
       // clickable: true,
     },
     {
@@ -102,6 +102,8 @@ export function SectionCards({
       icon: PackageIcon,
       footer: "Total processed orders",
       trend: "up",
+      status: "ALL",
+      clickable: true,
     },
     {
       label: "Avg Delivery Time",
@@ -163,8 +165,8 @@ export function SectionCards({
   return (
     <div className="grid grid-cols-1 gap-3 px-3 sm:gap-4 sm:px-4 lg:px-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {cards.map((card) => (
-        <Card 
-          key={card.label} 
+        <Card
+          key={card.label}
           className={cn("@container/card", card.clickable && "cursor-pointer hover:shadow-md transition-shadow")}
           onClick={() => handleCardClick(card.status)}
         >

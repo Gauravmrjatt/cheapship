@@ -80,7 +80,7 @@ export function ChartBar({ isLoading = false, data = [] }: ChartBarProps) {
         <CardTitle>Order Status by Day</CardTitle>
         <CardDescription>Daily breakdown by order status</CardDescription>
         <div className="flex gap-2">
-          <Select value={timeRange} onValueChange={setTimeRange}>
+          <Select value={timeRange} onValueChange={(v) => v && setTimeRange(v)}>
             <SelectTrigger className="w-28 h-8" aria-label="Select time range">
               <SelectValue placeholder="Last 14 days" />
             </SelectTrigger>

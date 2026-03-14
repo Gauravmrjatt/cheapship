@@ -123,7 +123,7 @@ export function ChartLine({ isLoading = false, data = [] }: ChartLineProps) {
         <CardTitle>Order Trends</CardTitle>
         <CardDescription>Track orders, deliveries, and RTO over time</CardDescription>
         <div className="flex gap-2">
-          <Select value={timeRange} onValueChange={setTimeRange}>
+          <Select value={timeRange} onValueChange={(v) => v && setTimeRange(v)}>
             <SelectTrigger className="w-28 h-8" aria-label="Select time range">
               <SelectValue placeholder="Last 30 days" />
             </SelectTrigger>

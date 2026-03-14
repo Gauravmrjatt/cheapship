@@ -39,6 +39,7 @@ import {
   Home01Icon,
   Building02Icon,
   Store01Icon,
+  CallIcon,
   // FlashIcon
 } from "@hugeicons/core-free-icons";
 
@@ -225,7 +226,17 @@ export default function LandingPage() {
             </Link>
           </nav>
           <div className="flex items-center gap-4">
-            <Link href="/auth/signin" className="hidden sm:block">
+            <div className="flex items-center gap-2">
+              <a href="tel:+919509698208" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                <HugeiconsIcon icon={CallIcon} size={14} className="text-green-500" />
+                <span className="hidden sm:inline">9509698208</span>
+              </a>
+              <span className="text-muted-foreground/30 hidden sm:inline">|</span>
+              <a href="tel:+919251220521" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                <span className="hidden sm:inline">9251220521</span>
+              </a>
+            </div>
+            <Link href="/auth/signin">
               <Button variant="ghost">Sign In</Button>
             </Link>
             <Link href="/dashboard">

@@ -144,8 +144,8 @@ export function ChartHorizontal({ isLoading = false, topCouriers, topUsers }: Ch
             <Tooltip
               content={<ChartTooltipContent nameKey="name" />}
               labelFormatter={(label) => [label, view === "couriers" ? "Courier" : "User"]}
-              formatter={(value: number, name: string, props: { payload: { revenue?: number } }) => [
-                view === "couriers" ? value : `${value} orders (₹${props.payload.revenue?.toLocaleString("en-IN")})`,
+              formatter={(value: number, name: string, props: any) => [
+                view === "couriers" ? value : `${value} orders (₹${props?.payload?.revenue?.toLocaleString("en-IN")})`,
                 "Orders"
               ]}
             />
