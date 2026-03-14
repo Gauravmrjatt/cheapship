@@ -20,6 +20,10 @@ const getGlobalCommissionLimits = async (prisma) => {
     prisma.systemSetting.findUnique({ where: { key: 'min_commission_rate' } }),
     prisma.systemSetting.findUnique({ where: { key: 'max_commission_rate' } })
   ]);
+  console.group('Commission Limits');
+  console.log('minSetting:', minSetting);
+  console.log('maxSetting:', maxSetting);
+  console.groupEnd('Commission Limits');
   return {
     min_rate: minSetting ? parseFloat(minSetting.value) : 0,
     max_rate: maxSetting ? parseFloat(maxSetting.value) : 100
@@ -145,13 +149,13 @@ const register = async (req, res) => {
         franchise_city: franchise_city || null,
         franchise_state: franchise_state || null,
         commission_rate: referredByUser ? (referredByUser.commission_rate || 5.00) : null,
-        min_commission_rate: globalCommissionLimits.min_rate,
-        max_commission_rate: globalCommissionLimits.max_rate,
+        min_commission_rate: parseFloat(globalCommissionLimits.min_rate),
+        max_commission_rate: parseFloat(globalCommissionLimits.max_rate),
       }
     });
 
     // Auto-assign pickup address if referrer has one
-    await autoAssignPickupAddress(prisma, user.id, referredByUser);
+    // await autoAssignPickupAddress(prisma, user.id, referredByUser);
 
     const publicUser = {
       id: user.id,
@@ -454,7 +458,7 @@ const sendLoginOtp = async (req, res) => {
   const { email: rawEmail, mobile } = req.body;
   const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
-
+  const globalCommissionLimits = await getGlobalCommissionLimits(prisma);
   try {
     let user = null;
     let userEmail = email;

@@ -124,7 +124,7 @@ export default function SignUpForm() {
 
   const checkMobileExists = async (mobile: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/auth/check-mobile`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/auth/check-mobile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile }),
