@@ -38,7 +38,8 @@ import {
   Globe02Icon,
   Wallet01Icon,
   Comment01Icon,
-  DeliveryReturnIcon
+  DeliveryReturnIcon,
+  CustomerService02Icon
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/hooks/use-auth"
 import {
@@ -90,6 +91,11 @@ export const adminNav = [
     title: "RTO",
     url: "/admin/rto",
     icon: <HugeiconsIcon icon={DeliveryReturnIcon} strokeWidth={2} />,
+  },
+  {
+    title: "Support Tickets",
+    url: "/admin/support-tickets",
+    icon: <HugeiconsIcon icon={CustomerService02Icon} strokeWidth={2} />,
   },
   {
     title: "Finance & Withdrawals",

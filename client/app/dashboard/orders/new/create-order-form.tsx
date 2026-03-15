@@ -1080,7 +1080,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
 
 function StepOne({ form, fields, append, remove, allSuggestions, formValues, isLoadingPickup, isPickupValid, pickupLocality, isLoadingDelivery, isDeliveryValid, deliveryLocality, shiprocketPickups, selectShiprocketPickup, setOpenAddPickupSheet }: any) {
   const { errors } = form.formState;
-
+  console.table(errors)
   const selectedPickup = shiprocketPickups?.find((l: any) => l.pickup_location === formValues.pickup_location);
 
   const handlePickupLocationChange = (val: string) => {
@@ -1410,7 +1410,7 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
         </div>
         <AddressFormCard prefix="receiver_address" title="Receiver Details" icon={UserGroupIcon} savedAddresses={savedAddresses} onSelect={(a: any) => selectSavedAddress(a, "receiver_address")} isLoading={isLoadingDelivery} isValid={isDeliveryValid} locality={deliveryLocality} form={form} readOnlyPincode={isFromCalculator || formValues.same_as_pickup} />
       </div>
-{/* 
+      {/* 
       <div className="flex flex-col md:flex-row md:items-center gap-6 p-6 border bg-muted/20 rounded-xl">
 
         <div className="flex items-center space-x-2">
@@ -1506,12 +1506,12 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates }:
                     src={courier.courier_logo_url}
                     alt={courier.courier_name}
                     className="h-12 w-12 rounded-lg object-contain bg-white border"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
-                ) : (
-                  <div className={cn("h-12 w-12 flex items-center justify-center", formValues.courier_id === courier.courier_company_id ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
-                    <HugeiconsIcon icon={courier.mode.toLowerCase() === "surface" ? TruckIcon : RocketIcon} size={24} />
-                  </div>
-                )}
+                ) : null}
+                <div className={cn("h-12 w-12 flex items-center justify-center", !courier.courier_logo_url ? "" : "hidden", formValues.courier_id === courier.courier_company_id ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                  <HugeiconsIcon icon={courier.mode.toLowerCase() === "surface" ? TruckIcon : RocketIcon} size={24} />
+                </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-bold">{courier.courier_name}</span>

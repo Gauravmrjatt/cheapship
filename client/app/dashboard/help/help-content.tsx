@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   HelpCircleIcon,
@@ -14,14 +15,25 @@ import {
   Clock01Icon,
   ArrowDown01Icon,
   CheckmarkCircle01Icon,
+  TicketIcon,
+  EyeIcon,
 } from "@hugeicons/core-free-icons";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useHttp } from "@/lib/hooks/use-http";
 import { sileo } from "sileo";
 
 interface FAQItem {
   question: string;
   answer: string;
+}
+
+interface Ticket {
+  id: string;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 const faqs: FAQItem[] = [
@@ -63,27 +75,27 @@ function FAQAccordion({ items }: { items: FAQItem[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="space-y-2 ">
+    <div className="grid gap-2 sm:grid-cols-2">
       {items.map((item, index) => (
         <div
           key={index}
-          className="border rounded-xl overflow-hidden"
+          className="border rounded-xl overflow-hidden bg-muted/30"
         >
           <button
             className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
             onClick={() => setOpenIndex(openIndex === index ? null : index)}
           >
-            <span className="font-medium text-sm">{item.question}</span>
+            <span className="font-medium text-sm pr-2">{item.question}</span>
             <HugeiconsIcon
               icon={ArrowDown01Icon}
               size={16}
-              className={`text-muted-foreground transition-transform ${
+              className={`text-muted-foreground transition-transform shrink-0 ${
                 openIndex === index ? "rotate-180" : ""
               }`}
             />
           </button>
           {openIndex === index && (
-            <div className="px-4 pb-4 text-sm text-muted-foreground">
+            <div className="px-4 pb-4 text-sm text-muted-foreground pt-0">
               {item.answer}
             </div>
           )}
@@ -93,11 +105,43 @@ function FAQAccordion({ items }: { items: FAQItem[] }) {
   );
 }
 
+function getStatusColor(status: string) {
+  switch (status) {
+    case "OPEN":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    case "IN_PROGRESS":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "RESOLVED":
+      return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+    case "CLOSED":
+      return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+}
+
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function HelpPage() {
   const http = useHttp();
+  const [activeTab, setActiveTab] = useState<"raise" | "my-tickets">("raise");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  const { data: ticketsData, isLoading: ticketsLoading, refetch: refetchTickets } = useQuery(
+    http.get(["my-tickets"], "/support/tickets")
+  );
+
+  const tickets: Ticket[] = ticketsData?.data || [];
 
   const submitTicket = useMutation({
     ...http.post("/support/tickets", {
@@ -106,6 +150,7 @@ export default function HelpPage() {
         setSubject("");
         setMessage("");
         setSubmitted(true);
+        refetchTickets();
       },
     }),
   });
@@ -120,118 +165,194 @@ export default function HelpPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl animate-in fade-in duration-500 p-5">
+    <div className="space-y-6 animate-in fade-in duration-500 p-5">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <HugeiconsIcon icon={HelpCircleIcon} size={24} className="text-primary" />
+        <div className="p-2.5 bg-primary/10 rounded-lg">
+          <HugeiconsIcon icon={HelpCircleIcon} size={28} className="text-primary" />
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Help & Support</h1>
           <p className="text-sm text-muted-foreground">
-            Get answers to your questions and contact our support team
+            Find answers or contact our support team
           </p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Frequently Asked Questions</CardTitle>
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Frequently Asked Questions</CardTitle>
         </CardHeader>
         <CardContent>
           <FAQAccordion items={faqs} />
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Contact Support</CardTitle>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Contact Support</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-lg">
-                  <HugeiconsIcon icon={MailIcon} size={18} className="text-muted-foreground" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl">
+                <div className="p-2 bg-background rounded-lg shadow-sm">
+                  <HugeiconsIcon icon={MailIcon} size={18} className="text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Email</p>
                   <p className="text-sm font-medium">support@cheapship.com</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-lg">
-                  <HugeiconsIcon icon={CallIcon} size={18} className="text-muted-foreground" />
+              <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl">
+                <div className="p-2 bg-background rounded-lg shadow-sm">
+                  <HugeiconsIcon icon={CallIcon} size={18} className="text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Phone</p>
                   <p className="text-sm font-medium">+91-XXXXXXXXXX</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-lg">
-                  <HugeiconsIcon icon={Clock01Icon} size={18} className="text-muted-foreground" />
+              <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl">
+                <div className="p-2 bg-background rounded-lg shadow-sm">
+                  <HugeiconsIcon icon={Clock01Icon} size={18} className="text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Working Hours</p>
-                  <p className="text-sm font-medium">Mon - Sat, 9 AM - 6 PM IST</p>
+                  <p className="text-xs text-muted-foreground">Hours</p>
+                  <p className="text-sm font-medium">Mon - Sat, 9 AM - 6 PM</p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Raise a Ticket</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {submitted ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
-                  <HugeiconsIcon
-                    icon={CheckmarkCircle01Icon}
-                    size={24}
-                    className="text-green-600 dark:text-green-400"
-                  />
-                </div>
-                <h3 className="font-semibold">Ticket Submitted!</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  We'll get back to you within 24 hours
-                </p>
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Support Tickets</CardTitle>
+              <div className="flex bg-muted rounded-lg p-0.5">
                 <Button
-                  variant="outline"
+                  variant={activeTab === "raise" ? "default" : "ghost"}
                   size="sm"
-                  className="mt-4"
-                  onClick={() => setSubmitted(false)}
+                  className="h-7 px-3"
+                  onClick={() => setActiveTab("raise")}
                 >
-                  Submit Another Ticket
+                  <HugeiconsIcon icon={TicketIcon} size={14} className="mr-1.5" />
+                  Raise
+                </Button>
+                <Button
+                  variant={activeTab === "my-tickets" ? "default" : "ghost"}
+                  size="sm"
+                  className="h-7 px-3"
+                  onClick={() => setActiveTab("my-tickets")}
+                >
+                  <HugeiconsIcon icon={EyeIcon} size={14} className="mr-1.5" />
+                  My Tickets
                 </Button>
               </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {activeTab === "raise" ? (
+              submitted ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="p-4 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
+                    <HugeiconsIcon
+                      icon={CheckmarkCircle01Icon}
+                      size={32}
+                      className="text-green-600 dark:text-green-400"
+                    />
+                  </div>
+                  <h3 className="text-lg font-semibold">Ticket Submitted!</h3>
+                  <p className="text-sm text-muted-foreground mt-1.5 max-w-[240px]">
+                    We&apos;ll get back to you within 24 hours
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-5"
+                    onClick={() => {
+                      setSubmitted(false);
+                      setActiveTab("my-tickets");
+                    }}
+                  >
+                    View My Tickets
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Input
+                      placeholder="Subject"
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Textarea
+                      placeholder="Describe your issue in detail..."
+                      rows={5}
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      className="resize-none"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={submitTicket.isPending}
+                  >
+                    {submitTicket.isPending ? "Submitting..." : "Submit Ticket"}
+                  </Button>
+                </form>
+              )
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Input
-                    placeholder="Subject"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Textarea
-                    placeholder="Describe your issue..."
-                    rows={4}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={submitTicket.isPending}
-                >
-                  {submitTicket.isPending ? "Submitting..." : "Submit Ticket"}
-                </Button>
-              </form>
+              <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                {ticketsLoading ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    Loading tickets...
+                  </div>
+                ) : tickets.length === 0 ? (
+                  <div className="text-center py-10">
+                    <div className="p-4 bg-muted rounded-full mb-4 mx-auto w-fit">
+                      <HugeiconsIcon
+                        icon={TicketIcon}
+                        size={28}
+                        className="text-muted-foreground"
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">No tickets yet</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveTab("raise")}
+                    >
+                      Raise a Ticket
+                    </Button>
+                  </div>
+                ) : (
+                  tickets.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="p-4 border rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm line-clamp-1">{ticket.subject}</p>
+                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
+                            {ticket.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {formatDate(ticket.created_at)}
+                          </p>
+                        </div>
+                        <Badge className={`shrink-0 ${getStatusColor(ticket.status)} text-[10px]`}>
+                          {ticket.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

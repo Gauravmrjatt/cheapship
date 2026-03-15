@@ -47,7 +47,116 @@ const getMyTickets = async (req, res) => {
     }
 };
 
+const getAllTickets = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const { status, page = 1, limit = 20 } = req.query;
+
+    try {
+        const where = {};
+        if (status && status !== 'ALL') {
+            where.status = status;
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const [tickets, total] = await Promise.all([
+            prisma.supportTicket.findMany({
+                where,
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            mobile: true
+                        }
+                    }
+                },
+                orderBy: { created_at: 'desc' },
+                skip,
+                take: parseInt(limit)
+            }),
+            prisma.supportTicket.count({ where })
+        ]);
+
+        res.json({
+            data: tickets,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                totalPages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching all tickets:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+const updateTicketStatus = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const { id } = req.params;
+    const { status, response } = req.body;
+
+    try {
+        const ticket = await prisma.supportTicket.findUnique({
+            where: { id }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket not found' });
+        }
+
+        const updatedTicket = await prisma.supportTicket.update({
+            where: { id },
+            data: { status }
+        });
+
+        res.json({
+            message: 'Ticket status updated successfully',
+            data: updatedTicket
+        });
+    } catch (error) {
+        console.error('Error updating ticket:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+const getTicketById = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const { id } = req.params;
+
+    try {
+        const ticket = await prisma.supportTicket.findUnique({
+            where: { id },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        mobile: true
+                    }
+                }
+            }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket not found' });
+        }
+
+        res.json({ data: ticket });
+    } catch (error) {
+        console.error('Error fetching ticket:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     createTicket,
-    getMyTickets
+    getMyTickets,
+    getAllTickets,
+    updateTicketStatus,
+    getTicketById
 };
