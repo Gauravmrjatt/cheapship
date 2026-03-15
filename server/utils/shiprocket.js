@@ -1,38 +1,51 @@
 const map = new Map();
 
-const userToken = process.env.SHIP_ROCKET_USER_TOKEN || "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vYXBpdjIuc2hpcHJvY2tldC5jby92MS9hdXRoL3JlZ2lzdGVyL21vYmlsZS92YWxpZGF0ZS1vdHAiLCJpYXQiOjE3NzIxOTY1MTUsImV4cCI6MTc3MzA2MDUxNSwibmJmIjoxNzcyMTk2NTE1LCJqdGkiOiJoUkF3Z3hSV3RkV3h6Y2ViIiwic3ViIjo5NTIxODcwLCJwcnYiOiIwNWJiNjYwZjY3Y2FjNzQ1ZjdiM2RhMWVlZjE5NzE5NWEyMTFlNmQ5IiwiY2lkIjo5MjU3ODQ4fQ.RuxSbxAqWZuEdafyh7odP7xbOxJvqvn_Xogn5l8cYUU";
 
 const getShiprocketToken = async () => {
-  if (map.has('token')) {
-    return map.get('token').value;
-  }
-  const email = process.env.SHIPROCKET_EMAIL;
-  const password = process.env.SHIPROCKET_PASSWORD;
   const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
 
+  // Check if token exists and is not expired
+  if (map.has('token')) {
+    const stored = map.get('token');
+
+    if (Date.now() < stored.expiresAt) {
+      return stored.value; // still valid
+    } else {
+      map.delete('token'); // expired
+    }
+  }
+
+  const email = process.env.SHIPROCKET_EMAIL;
+  const password = process.env.SHIPROCKET_PASSWORD;
 
   if (!email || !password) {
     throw new Error('Shiprocket credentials not found in environment variables');
   }
 
   try {
-    const response = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    const response = await fetch(
+      'https://apiv2.shiprocket.in/v1/external/auth/login',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      }
+    );
 
     const data = await response.json();
-    console.log("token generated ", data);
+    console.log("token generated", data);
+
     if (!response.ok) {
       throw new Error(data.message || 'Failed to login to Shiprocket');
     }
+
     map.set('token', {
       value: data.token,
-      expiresAt: Date.now() + NINE_DAYS
+      expiresAt: Date.now() + NINE_DAYS,
     });
+
     return data.token;
 
   } catch (error) {
@@ -41,6 +54,58 @@ const getShiprocketToken = async () => {
   }
 };
 
+const getShipRocketUserToken = async () => {
+   const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
+
+  // Check if token exists and is not expired
+  if (map.has('userToken')) {
+    const stored = map.get('userToken');
+
+    if (Date.now() < stored.expiresAt) {
+      return stored.value; // still valid
+    } else {
+      map.delete('userToken'); // expired
+    }
+  }
+
+  const email = process.env.SHIPROCKET_USER_EMAIL || "gauravmrjatt4@gmail.com";
+  const password = process.env.SHIPROCKET_USER_PASSWORD || "liIsnftEnB";
+
+  if (!email || !password) {
+    throw new Error('Shiprocket credentials not found in environment variables');
+  }
+
+  try {
+    const response = await fetch(
+      'https://apiv2.shiprocket.co/v1/auth/login',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      }
+    );
+
+    const data = await response.json();
+    console.log("token generated", data);
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to login to Shiprocket');
+    }
+
+    map.set('userToken', {
+      value: data.token,
+      expiresAt: Date.now() + NINE_DAYS,
+    });
+
+    return data.token;
+
+  } catch (error) {
+    console.error('Shiprocket login error:', error);
+    throw error;
+  }
+}
 const getServiceability = async (params) => {
   const token = await getShiprocketToken();
 
@@ -552,6 +617,7 @@ const getPickupLocations = async () => {
 
 const userVerifyAddress = async (number) => {
   try {
+    const userToken = await getShipRocketUserToken();
     const response = await fetch('https://apiv2.shiprocket.co/v1/settings/update/shipping-phone', {
       method: 'POST',
       headers: {
@@ -582,6 +648,7 @@ const userVerifyAddress = async (number) => {
 
 const verifyOtp = async (otp, number) => {
   try {
+    const userToken = await getShipRocketUserToken();
     const response = await fetch('https://apiv2.shiprocket.co/v1/settings/confirm/otp', {
       method: 'POST',
       headers: {
@@ -610,6 +677,7 @@ const verifyOtp = async (otp, number) => {
 }
 const afterVerifyOtp = async (number) => {
   try {
+    const userToken = await getShipRocketUserToken();
     const response = await fetch('https://apiv2.shiprocket.co/v1/settings/update/shipping-phone', {
       method: 'POST',
       headers: {
@@ -731,5 +799,6 @@ module.exports = {
   verifyOtp,
   isNumberVerified,
   ensureNumberVerified,
-  createOrderWithVerification
+  createOrderWithVerification,
+  getShipRocketUserToken
 };

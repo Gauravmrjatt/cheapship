@@ -42,5 +42,24 @@ route.get('/test-db', async (req, res) => {
     });
   }
 });
+const { getShipRocketUserToken } = require('../utils/shiprocket.js');
+
+route.get('/user-token', async (req, res) => {
+  try {
+    const token = await getShipRocketUserToken();
+    res.status(200).json({
+      success: true,
+      message: "Shiprocket user token retrieved successfully!",
+      token: token
+    });
+  } catch (error) {
+    console.error("Shiprocket user token retrieval error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Shiprocket user token retrieval failed.",
+      error: error.message
+    });
+  }
+});
 
 module.exports = route;

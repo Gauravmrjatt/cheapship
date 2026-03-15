@@ -533,23 +533,23 @@ const createOrder = async (req, res) => {
       const totalDeduction = orderAmount * 2; // 2x order amount for wallet deduction
 
       // New validation: Get undelivered orders (not including cancelled, delivered, RTO)
-      const undeliveredOrders = await tx.order.findMany({
-        where: {
-          user_id: userId,
-          shipment_status: {
-            in: ['PENDING', 'MANIFESTED', 'IN_TRANSIT', 'DISPATCHED', 'NOT_PICKED']
-          },
-          is_draft: false
-        },
-        select: { shipping_charge: true }
-      });
+      // const undeliveredOrders = await tx.order.findMany({
+      //   where: {
+      //     user_id: userId,
+      //     shipment_status: {
+      //       in: ['PENDING', 'MANIFESTED', 'IN_TRANSIT', 'DISPATCHED', 'NOT_PICKED']
+      //     },
+      //     is_draft: false
+      //   },
+      //   select: { shipping_charge: true }
+      // });
 
-      const undeliveredTotal = undeliveredOrders.reduce((sum, order) => sum + Number(order.shipping_charge || 0), 0);
+      // const undeliveredTotal = undeliveredOrders.reduce((sum, order) => sum + Number(order.shipping_charge || 0), 0);
 
       // New formula: wallet_balance > (undeliveredTotal) + (2 × newOrderAmount)
-      const requiredBalance = undeliveredTotal + (orderAmount * 2);
+      // const requiredBalance = (orderAmount * 2);
 
-      if (Number(user.wallet_balance) < requiredBalance) {
+      if (Number(user.wallet_balance) < totalDeduction) {
         throw new Error(`Insufficient wallet balance. Required: ₹${requiredBalance.toFixed(2)} (Undelivered Orders: ₹${undeliveredTotal.toFixed(2)} + This Order: ₹${(orderAmount * 2).toFixed(2)}), Available Wallet Balance: ₹${Number(user.wallet_balance).toFixed(2)}`);
       }
 

@@ -1650,7 +1650,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
   const undeliveredAmount = parseFloat(undeliveredSummary?.undelivered_amount || "0");
   const walletBalance = parseFloat(user?.wallet_balance || "0");
   const securityDeposit = parseFloat(undeliveredSummary?.security_deposit || "0");
-  const requiredBalance = undeliveredAmount + (orderAmount * 2);
+  const requiredBalance =  (orderAmount * 2);
   const securityForThisOrder = orderAmount;
   const hasEnoughBalance = walletBalance >= requiredBalance;
 
@@ -1701,14 +1701,14 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
+            {/* <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
               <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Undelivered Orders</p>
               <p className="text-xl md:text-2xl font-black text-foreground">{undeliveredCount}</p>
             </div>
             <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
               <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Undelivered Amount</p>
               <p className="text-xl md:text-2xl font-black text-foreground">₹{undeliveredAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            </div>
+            </div> */}
             <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
               <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">This Order Amount</p>
               <p className="text-xl md:text-2xl font-black text-foreground">₹{orderAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>

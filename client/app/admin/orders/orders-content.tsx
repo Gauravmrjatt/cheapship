@@ -443,7 +443,7 @@ function OrdersContent() {
       cell: ({ row }) => {
         const tracking = row.original.tracking_number;
         const trackUrl = row.original.track_url;
-        const labelUrl = BASE_URL + row.original.label_url;
+        const labelUrl = process.env.NEXT_PUBLIC_API_URL || "" + row.original.label_url;
 
         return (
           <div className="flex flex-col gap-2">
