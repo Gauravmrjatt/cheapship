@@ -232,7 +232,7 @@ const calculateRates = async (req, res) => {
       getServiceability({
         pickup_postcode,
         delivery_postcode,
-        weight: weight / 1000,
+        weight: weight,
         cod,
         declared_value,
         is_return,
