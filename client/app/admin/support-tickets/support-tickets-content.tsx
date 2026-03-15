@@ -99,8 +99,8 @@ export default function SupportTicketsPage() {
     }),
   });
 
-  const handleStatusChange = (newStatus: string) => {
-    if (selectedTicket) {
+  const handleStatusChange = (newStatus: string | null) => {
+    if (newStatus && selectedTicket) {
       updateStatusMutation.mutate({ status: newStatus });
       setSelectedTicket({ ...selectedTicket, status: newStatus });
     }
@@ -126,7 +126,7 @@ export default function SupportTicketsPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">All Tickets</CardTitle>
-                <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+                <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v || "ALL"); setCurrentPage(1); }}>
                   <SelectTrigger className="w-[140px] h-8">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
