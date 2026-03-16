@@ -189,7 +189,6 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   const queryClient = useQueryClient();
   const { data: rateCalculatorData, clearRateData } = useRateCalculatorStore();
   const isFromCalculator = !!rateCalculatorData;
-
   const pickupForm = useForm<z.infer<typeof shiprocketPickupSchema>>({
     resolver: zodResolver(shiprocketPickupSchema),
     defaultValues: {
@@ -291,6 +290,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
       products: [{ name: "", quantity: 1, price: 0 }],
       save_pickup_address: false, save_receiver_address: false,
       make_pickup_address: false, same_as_pickup: false,
+      pickup_pincode : ""
     },
     mode: "onChange",
   });
@@ -448,6 +448,10 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     })
   );
 
+  const { data: pickupPincodeLocality } = useQuery<any>(
+    http.get(["pincode-details-pickup", formValues.pickup_pincode], `/orders/pincode-details?postcode=${formValues.pickup_pincode}`, formValues.pickup_pincode?.length === 6)
+  );
+
   const sheetPincode = pickupForm.watch("pin_code");
   const { data: sheetPincodeData, isLoading: isLoadingSheetPincode } = useQuery<any>(
     http.get(["pincode-details-sheet", sheetPincode], `/orders/pincode-details?postcode=${sheetPincode}`, sheetPincode?.length === 6, {
@@ -467,9 +471,9 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   const isDeliveryPincodeValid = deliveryLocality?.success || !!deliveryLocality?.postcode_details;
 
   const courierParams = useMemo(() => new URLSearchParams({
-    pickup_postcode: formValues.pickup_address.pincode,
+    pickup_postcode: formValues.pickup_pincode,
     delivery_postcode: formValues.receiver_address.pincode,
-    weight: formValues.weight.toString(),
+    weight: (Number(formValues.weight) / 1000).toString(),
     cod: formValues.payment_mode === "COD" ? "1" : "0",
     declared_value: formValues.total_amount?.toString() || "0",
     length: formValues.length?.toString() || "10",
@@ -589,7 +593,10 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     const orderDataWithWeight = { ...orderData, weight: weightInKg };
     checkPhoneVerificationMutation(values.pickup_address.phone, {
       onSuccess: (data: any) => {
-        if (data.success && data.verified) createOrderMutation(orderDataWithWeight as any);
+        if (data.success && data.verified) {
+
+          createOrderMutation(orderDataWithWeight as any);
+        }
         else { setPendingOrderData(orderDataWithWeight); sendOtpMutation({ phone: values.pickup_address.phone }, { onSuccess: () => setOpenOtpDialog(true) } as any); }
       },
     } as any);
@@ -613,8 +620,10 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   };
 
   const selectShiprocketPickup = (addr: ShiprocketPickupLocation) => {
+  
     // Only fill sender details if "Same as pickup" is checked
     if (formValues.same_as_pickup) {
+      console.table("pickup_location 4", addr as any) ;
       form.setValue("pickup_address.name", addr.name, { shouldValidate: true });
       form.setValue("pickup_address.phone", addr.phone, { shouldValidate: true });
       form.setValue("pickup_address.email", addr.email || "", { shouldValidate: true });
@@ -673,9 +682,9 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
               }
             )} className="space-y-8">
               {currentStep === 1 && <StepOne form={form} fields={fields} append={append} remove={remove} allSuggestions={allProductSuggestions} formValues={formValues} isLoadingPickup={isLoadingPickup} isPickupValid={isPickupPincodeValid} pickupLocality={pickupLocality} isLoadingDelivery={isLoadingDelivery} isDeliveryValid={isDeliveryPincodeValid} deliveryLocality={deliveryLocality} shiprocketPickups={shiprocketPickupLocations} setOpenAddPickupSheet={setOpenAddPickupSheet} selectShiprocketPickup={selectShiprocketPickup} />}
-              {currentStep === 2 && <StepThree form={form} rateData={rateData} isLoadingRates={isLoadingRates} formValues={formValues} refetchRates={refetchRates} />}
+              {currentStep === 2 && <StepThree form={form} rateData={rateData} isLoadingRates={isLoadingRates} formValues={formValues} refetchRates={refetchRates} pickupPincodeLocality={pickupPincodeLocality} />}
               {currentStep === 3 && <StepTwo form={form} shiprocketPickups={shiprocketPickupLocations} savedAddresses={savedAddresses} selectSavedAddress={selectSavedAddress} selectShiprocketPickup={selectShiprocketPickup} formValues={formValues} isLoadingPickup={isLoadingPickup} isPickupValid={isPickupPincodeValid} pickupLocality={pickupLocality} isLoadingDelivery={isLoadingDelivery} isDeliveryValid={isDeliveryPincodeValid} deliveryLocality={deliveryLocality} setOpenAddPickupSheet={setOpenAddPickupSheet} isFromCalculator={isFromCalculator} />}
-              {currentStep === 4 && <StepFour formValues={formValues} shiprocketPickups={shiprocketPickupLocations} isShipped={isShipped} createdOrderId={createdOrderId} isCreatingOrder={isCreatingOrder} router={router} http={http} />}
+              {currentStep === 4 && <StepFour formValues={formValues} shiprocketPickups={shiprocketPickupLocations} isShipped={isShipped} createdOrderId={createdOrderId} isCreatingOrder={isCreatingOrder} router={router} http={http} pickupPincodeLocality={pickupPincodeLocality} />}
 
               {/* Navigation Buttons */}
               {!isShipped && (
@@ -1086,7 +1095,9 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
   const handlePickupLocationChange = (val: string) => {
     const sel = shiprocketPickups?.find((l: any) => l.pickup_location === val);
     if (sel) {
+      console.table("pickup_location selected", sel);
       form.setValue("pickup_location", val);
+      form.setValue("pickup_pincode", sel.pin_code?.toString() || "", { shouldValidate: true });
       form.setValue("pickup_address.pincode", sel.pin_code?.toString() || "", { shouldValidate: true });
       form.setValue("pickup_address.name", sel.name || "", { shouldValidate: true });
       form.setValue("pickup_address.phone", sel.phone || "", { shouldValidate: true });
@@ -1361,6 +1372,7 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
   // Keep sender empty by default - only fill when "Same as pickup" is checked
   React.useEffect(() => {
     if (!formValues.same_as_pickup) {
+      console.table("pickup_location 2", pickupLocationValue);
       // Clear sender when checkbox is unchecked
       form.setValue("pickup_address.name", "");
       form.setValue("pickup_address.phone", "");
@@ -1377,6 +1389,7 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
     if (checked && formValues.pickup_location) {
       const sel = shiprocketPickups?.find((l: any) => l.pickup_location === formValues.pickup_location);
       if (sel) {
+        console.table("pickup_location 3", sel);
         // Fill sender (pickup) address with hub details when checkbox is checked
         form.setValue("pickup_address.name", sel.name || "", { shouldValidate: true });
         form.setValue("pickup_address.phone", sel.phone || "", { shouldValidate: true });
@@ -1387,6 +1400,7 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
         form.setValue("pickup_address.state", sel.state || "", { shouldValidate: true });
       }
     } else {
+      console.table("pickup_location 4", pickupLocationValue);
       // Clear sender when unchecked
       form.setValue("pickup_address.name", "");
       form.setValue("pickup_address.phone", "");
@@ -1435,7 +1449,7 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
   );
 }
 
-function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates }: any) {
+function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates, pickupPincodeLocality }: any) {
   const { errors } = form.formState;
   const [isRefetching, setRefetching] = useState(false);
   useEffect(() => {
@@ -1465,7 +1479,7 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates }:
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="p-4  bg-muted/30 border border-border flex items-center gap-4">
           <div className="bg-background p-2 rounded-md shadow-sm"><HugeiconsIcon icon={Location01Icon} size={18} className="text-primary" /></div>
-          <div><p className="text-[10px] font-bold text-muted-foreground uppercase">Pickup</p><p className="text-sm font-semibold">{formValues.pickup_address.city} <span className="font-normal opacity-60">({formValues.pickup_address.pincode})</span></p></div>
+          <div><p className="text-[10px] font-bold text-muted-foreground uppercase">Pickup</p><p className="text-sm font-semibold">{pickupPincodeLocality?.data?.postcode_details?.city || pickupPincodeLocality?.postcode_details?.city || formValues.pickup_address.city} <span className="font-normal opacity-60">({formValues.pickup_pincode})</span></p></div>
         </div>
         <div className="p-4  bg-muted/30 border border-border flex items-center gap-4">
           <div className="bg-background p-2 rounded-md shadow-sm"><HugeiconsIcon icon={Navigation01Icon} size={18} className="text-primary" /></div>
@@ -1627,7 +1641,7 @@ function VerificationCard({
   )
 }
 
-function StepFour({ formValues, isShipped, createdOrderId, router, http, shiprocketPickups }: any) {
+function StepFour({ formValues, isShipped, createdOrderId, router, http, shiprocketPickups, pickupPincodeLocality }: any) {
   const { data: user } = useQuery<any>(
     http.get(["user-profile"], "/auth/me", true)
   );
@@ -1650,7 +1664,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
   const undeliveredAmount = parseFloat(undeliveredSummary?.undelivered_amount || "0");
   const walletBalance = parseFloat(user?.wallet_balance || "0");
   const securityDeposit = parseFloat(undeliveredSummary?.security_deposit || "0");
-  const requiredBalance =  (orderAmount * 2);
+  const requiredBalance = (orderAmount * 2);
   const securityForThisOrder = orderAmount;
   const hasEnoughBalance = walletBalance >= requiredBalance;
 

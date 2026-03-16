@@ -8,6 +8,7 @@ export const addressSchema = z.object({
   city: z.string().min(1, "City is required"),
   state: z.string().min(1, "State is required"),
   pincode: z.string().min(6, "Pincode must be at least 6 characters"),
+
 });
 
 export const productSchema = z.object({
@@ -57,6 +58,7 @@ export const createOrderSchema = z.object({
   new_pickup_gst: z.string().optional(),
   new_pickup_registered_name: z.string().optional(),
   is_insured: z.boolean().optional().default(false),
+    pickup_pincode : z.string().min(6, "Pickup pincode must be at least 6 characters"),
 }).superRefine((data, ctx) => {
   // Validate total_amount max limit
   if (data.total_amount > 475000) {
