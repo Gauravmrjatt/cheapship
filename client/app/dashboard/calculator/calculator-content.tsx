@@ -144,7 +144,7 @@ export default function RateCalculatorPage() {
   const queryParams = useMemo(() => new URLSearchParams({
     pickup_postcode: formValues.pickupPincode,
     delivery_postcode: formValues.deliveryPincode,
-    weight: (formValues.actualWeight || 0).toString(),
+    weight: (formValues.actualWeight / 1000 || 0).toString(),
     cod: formValues.paymentType === "COD" ? "1" : "0",
     declared_value: formValues.shipmentValue?.toString(),
     length: formValues.length?.toString(),

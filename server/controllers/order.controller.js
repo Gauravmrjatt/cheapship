@@ -64,7 +64,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
       where: { key: 'max_referral_levels' }
     })
   ]);
-console.log(levelSetting , " : Level settings");
+  console.log(levelSetting, " : Level settings");
   const courierConfigMap = courierConfigs.reduce((acc, config) => {
     acc[config.courier_company_id] = config;
     return acc;
@@ -127,12 +127,12 @@ console.log(levelSetting , " : Level settings");
     console.log(`[Price Calc] ${courier.courier_name}: base=${baseRate}, global=${globalCommissionAmount}, franchise=${franchiseCommissionAmount}, final=${finalRate}`);
 
     const dbConfig = courierConfigMap[courier.courier_company_id] || {};
-    
+
     let others = {};
     try {
       others = courier.others ? JSON.parse(courier.others) : {};
-    } catch (e) {}
-    
+    } catch (e) { }
+
     const defaultLogos = {
       10: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/10.png',
       29: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/142.png',
@@ -141,9 +141,9 @@ console.log(levelSetting , " : Level settings");
       142: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/142.png',
       217: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/217.png',
     };
-    
+
     const courierLogoUrl = others.courier_logo_url || defaultLogos[courier.courier_company_id] || '';
-    
+
     return {
       courier_name: courier.courier_name,
       courier_company_id: courier.courier_company_id,
@@ -249,7 +249,7 @@ const calculateRates = async (req, res) => {
         data: serviceabilityData
       });
     }
-  
+
     let availableCouriers = serviceabilityData.data.available_courier_companies || [];
 
     const filteredCourierIds = [217];
@@ -263,7 +263,7 @@ const calculateRates = async (req, res) => {
       availableCouriers,
       serviceabilityData.data.recommended_courier_company_id
     );
-  
+
     // Format the response and sanitize sensitive fields (exclude internal base rates and commission breakdowns)
     const formattedResponse = {
       pickup_location: {
