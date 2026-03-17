@@ -290,7 +290,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
       products: [{ name: "", quantity: 1, price: 0 }],
       save_pickup_address: false, save_receiver_address: false,
       make_pickup_address: false, same_as_pickup: false,
-      pickup_pincode : ""
+      pickup_pincode: ""
     },
     mode: "onChange",
   });
@@ -620,10 +620,10 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   };
 
   const selectShiprocketPickup = (addr: ShiprocketPickupLocation) => {
-  
+
     // Only fill sender details if "Same as pickup" is checked
     if (formValues.same_as_pickup) {
-      console.table("pickup_location 4", addr as any) ;
+      console.table("pickup_location 4", addr as any);
       form.setValue("pickup_address.name", addr.name, { shouldValidate: true });
       form.setValue("pickup_address.phone", addr.phone, { shouldValidate: true });
       form.setValue("pickup_address.email", addr.email || "", { shouldValidate: true });
@@ -1463,6 +1463,11 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates, p
       if (timer) clearTimeout(timer);
     };
   }, [isRefetching])
+  useEffect(() => {
+    form.setValue("courier_id", "");
+    form.setValue("courier_name", "");
+    form.setValue("shipping_charge", "");
+  }, [])
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between border-b pb-4">
