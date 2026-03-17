@@ -1265,9 +1265,32 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
                   <Input type="number" {...form.register("height", { valueAsNumber: true })} aria-invalid={!!errors.height} className="text-center h-10 px-1" placeholder="H" onFocus={(e) => e.target.select()} />
                   <FieldError errors={[errors.height]} className="text-[10px] font-bold uppercase" />
                 </Field>
-              </div>
-            </div>
 
+              </div>
+
+            </div>
+            <div className="w-full">
+              <Card className="rounded-2xl shadow-sm border w-full">
+                <CardContent className="flex items-center justify-between p-4">
+                  {/* Label */}
+                  <span className="text-sm text-muted-foreground">
+                    Volumetric Weight
+                  </span>
+
+                  {/* Value */}
+                  <span className="text-lg font-semibold text-foreground">
+                    {(
+                      (Number(formValues.height) *
+                        Number(formValues.width) *
+                        Number(formValues.length)) /
+                      5000
+                    ) * 1000}{" "}
+                    g
+                  </span>
+
+                </CardContent>
+              </Card>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -1817,6 +1840,10 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase font-bold">Type</p>
                   <Badge variant="outline">{formValues.order_type}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase font-bold">Volumetric Weight </p>
+                  <p className="font-bold">{((Number(formValues.height) * Number(formValues.width) * Number(formValues.length)) / 5000) * 1000} g</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase font-bold">Weight</p>
