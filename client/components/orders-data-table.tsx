@@ -429,8 +429,11 @@ export function OrdersDataTable({
       cell: ({ row }) => {
         const tracking = row.original.tracking_number;
         const trackUrl = row.original.track_url;
-        const labelUrl = BASE_URL + row.original.label_url;
+        const isAbsoluteUrl = (url: string): boolean => /^https?:\/\//i.test(url);
 
+        const labelUrl: string = isAbsoluteUrl(row.original.label_url || "")
+          ? row.original.label_url || ""
+          : BASE_URL + row.original.label_url || "";
         return (
           <div className="flex flex-col gap-2">
             {tracking ? (

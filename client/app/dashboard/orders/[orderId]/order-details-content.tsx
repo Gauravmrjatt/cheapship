@@ -160,12 +160,27 @@ export default function OrderDetailsPage({
     assignAWBMutation.mutate({ orderId });
   };
 
-  const handleSchedulePickup = () => {
-    const pickupDate = selectedPickupDate ? selectedPickupDate.toISOString().split('T')[0] : undefined;
-    schedulePickupMutation.mutate({ orderId, pickup_date: pickupDate });
+  const handleSchedulePickup = (): void => {
+    const pickupDate: string | undefined = selectedPickupDate
+      ? formatDateForPickup(selectedPickupDate)
+      : undefined;
+
+    schedulePickupMutation.mutate({
+      orderId,
+      pickup_date: pickupDate,
+    });
+
     setShowSchedulePickupDialog(false);
     setSelectedPickupDate(undefined);
   };
+
+  function formatDateForPickup(date: Date): string {
+    const year: number = date.getFullYear();
+    const month: string = String(date.getMonth() + 1).padStart(2, "0");
+    const day: string = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
 
   const handleGenerateLabel = () => {
     generateLabelMutation.mutate({ orderId });
@@ -262,9 +277,9 @@ export default function OrderDetailsPage({
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Order Information</CardTitle>
-            
-                <ShipmentStatus status={order.shipment_status} />
-              
+
+              <ShipmentStatus status={order.shipment_status} />
+
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
