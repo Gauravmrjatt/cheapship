@@ -415,7 +415,7 @@ const getShipmentTracking = async (shipmentId) => {
     });
 
     const data = await response.json();
-    console.log("tracking data ", data)
+    // console.log("tracking data ", data)
     if (!response.ok) {
       console.error('Shiprocket tracking error:', data);
       throw new Error(data.message || 'Failed to get tracking');
@@ -477,9 +477,9 @@ const schedulePickup = async (shipmentIds, pickupDate = null) => {
     const data = await response.json();
     console.log("schedule pickup data ", data)
    
-    if (!response.ok) {
+    if (!response.ok || data.Status === false) {
       console.error('Shiprocket schedule pickup error:', data);
-      throw new Error(data.message || 'Failed to schedule pickup');
+      throw new Error(data.message || data.Errors?.[0] || 'Failed to schedule pickup');
     }
 
     return data;

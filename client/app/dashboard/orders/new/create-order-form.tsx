@@ -591,15 +591,15 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     const { shipping_charge, base_shipping_charge, courier_name, ...orderData } = values;
     const weightInKg = values.weight / 1000;
     const orderDataWithWeight = { ...orderData, weight: weightInKg };
-    checkPhoneVerificationMutation(values.pickup_address.phone, {
-      onSuccess: (data: any) => {
-        if (data.success && data.verified) {
+    // checkPhoneVerificationMutation(values.pickup_address.phone, {
+    //   onSuccess: (data: any) => {
+    //     if (data.success && data.verified) {
 
           createOrderMutation(orderDataWithWeight as any);
-        }
-        else { setPendingOrderData(orderDataWithWeight); sendOtpMutation({ phone: values.pickup_address.phone }, { onSuccess: () => setOpenOtpDialog(true) } as any); }
-      },
-    } as any);
+    //     }
+    //     else { setPendingOrderData(orderDataWithWeight); sendOtpMutation({ phone: values.pickup_address.phone }, { onSuccess: () => setOpenOtpDialog(true) } as any); }
+    //   },
+    // } as any);
   }
 
   const handleVerifyOtp = () => {

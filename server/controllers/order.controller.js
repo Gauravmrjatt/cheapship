@@ -2229,6 +2229,10 @@ const scheduleOrderPickup = async (req, res) => {
     const pickupDateStr = pickup_date ? pickup_date : null;
     const pickupResult = await schedulePickup([order.shiprocket_shipment_id], pickupDateStr);
 
+    if (pickupResult.Status === false) {
+      return res.status(400).json({ message: pickupResult.message || 'Failed to schedule pickup' });
+    }
+
     res.json({
       message: 'Pickup scheduled successfully',
       pickup_result: pickupResult
