@@ -55,7 +55,7 @@ const getShiprocketToken = async () => {
 };
 
 const getShipRocketUserToken = async () => {
-   const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
+  const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
 
   // Check if token exists and is not expired
   if (map.has('userToken')) {
@@ -128,8 +128,8 @@ const getServiceability = async (params) => {
     const data = await response.json();
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[Shiprocket] Serviceability API response:', JSON.stringify(data, null, 2));
-      console.log('[Shiprocket] Couriers returned:', data?.data?.available_courier_companies?.length || 0);
+      // console.log('[Shiprocket] Serviceability API response:', JSON.stringify(data, null, 2));
+      // console.log('[Shiprocket] Couriers returned:', data?.data?.available_courier_companies?.length || 0);
     }
 
     if (!response.ok) {
@@ -178,7 +178,7 @@ const createQuickOrder = async (orderData) => {
     length: parseFloat(orderData.length),
     breadth: parseFloat(orderData.breadth || orderData.width),
     height: parseFloat(orderData.height),
-    weight: parseFloat(orderData.weight) / 1000,
+    weight: parseFloat(orderData.weight),
   };
 
   if (payload.shipping_is_billing === false || payload.shipping_is_billing === 'false') {
@@ -192,7 +192,8 @@ const createQuickOrder = async (orderData) => {
     payload.shipping_email = orderData.shipping_email || orderData.billing_email;
     payload.shipping_phone = orderData.shipping_phone;
   }
-
+  console.table(payload);
+  console.log("CREATE SHIPMENT DATA : ", JSON.stringify(payload, null, 2));
   try {
     const response = await fetch('https://apiv2.shiprocket.in/v1/external/orders/create/adhoc', {
       method: 'POST',
@@ -463,7 +464,7 @@ const schedulePickup = async (shipmentIds, pickupDate = null) => {
   if (pickupDate) {
     payload.pickup_date = pickupDate;
   }
-
+   console.log("payload : ", payload)
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/generate/pickup`, {
       method: 'POST',
@@ -473,9 +474,9 @@ const schedulePickup = async (shipmentIds, pickupDate = null) => {
       },
       body: JSON.stringify(payload),
     });
-
     const data = await response.json();
-
+    console.log("schedule pickup data ", data)
+   
     if (!response.ok) {
       console.error('Shiprocket schedule pickup error:', data);
       throw new Error(data.message || 'Failed to schedule pickup');
