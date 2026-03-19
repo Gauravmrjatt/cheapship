@@ -26,8 +26,14 @@ export function DatePicker({
         type="date"
         value={date ? format(date, "yyyy-MM-dd") : ""}
         onChange={(e) => {
-          const newDate = e.target.value ? new Date(e.target.value) : undefined
-          onDateChange?.(newDate)
+          const value = e.target.value;
+          if (value) {
+            const [year, month, day] = value.split('-').map(Number);
+            const newDate = new Date(year, month - 1, day);
+            onDateChange?.(newDate);
+          } else {
+            onDateChange?.(undefined);
+          }
         }}
         className="h-8 pr-8 text-xs"
         placeholder={placeholder}
@@ -57,8 +63,14 @@ export function DateRangePicker({
         type="date"
         value={fromDate ? format(fromDate, "yyyy-MM-dd") : ""}
         onChange={(e) => {
-          const newDate = e.target.value ? new Date(e.target.value) : undefined
-          onFromDateChange?.(newDate)
+          const value = e.target.value;
+          if (value) {
+            const [year, month, day] = value.split('-').map(Number);
+            const newDate = new Date(year, month - 1, day);
+            onFromDateChange?.(newDate);
+          } else {
+            onFromDateChange?.(undefined);
+          }
         }}
         className="h-8 w-32 text-xs"
         placeholder="From"
@@ -68,8 +80,14 @@ export function DateRangePicker({
         type="date"
         value={toDate ? format(toDate, "yyyy-MM-dd") : ""}
         onChange={(e) => {
-          const newDate = e.target.value ? new Date(e.target.value) : undefined
-          onToDateChange?.(newDate)
+          const value = e.target.value;
+          if (value) {
+            const [year, month, day] = value.split('-').map(Number);
+            const newDate = new Date(year, month - 1, day);
+            onToDateChange?.(newDate);
+          } else {
+            onToDateChange?.(undefined);
+          }
         }}
         className="h-8 w-32 text-xs"
         placeholder="To"
