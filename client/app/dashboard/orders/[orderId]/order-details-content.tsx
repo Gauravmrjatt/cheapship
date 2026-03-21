@@ -755,11 +755,11 @@ export default function OrderDetailsPage({
               Schedule Pickup
             </DialogTitle>
             <DialogDescription>
-              Select a date to schedule pickup for this order. You can schedule for today or a future date.
+              Click “Schedule” to confirm a pickup for this order.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
+          { /* <div className="py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Pickup Date</label>
               <DatePicker
@@ -773,6 +773,7 @@ export default function OrderDetailsPage({
               Leave empty to schedule pickup for today
             </p>
           </div>
+         */ }
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => {
