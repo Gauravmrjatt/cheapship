@@ -79,7 +79,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
 
   const referralChain = maxReferralLevels > 0 ? await getReferralChain(prisma, userId, maxReferralLevels) : [];
 
-  // console.log(`[Price Calc] User: ${userId}, franchiseRate: ${franchiseCommissionRate}, referredBy: ${user?.referred_by}, maxLevels: ${maxReferralLevels}, referralChain: ${JSON.stringify(referralChain)}`);
+  // console.log(`[Commission Calc] User ${userId}: ${referralChain.length} levels in chain`);
 
   return availableCouriers.map(courier => {
     const courierConfig = assignedRates[courier.courier_company_id] || assignedRates[courier.courier_name] || {};
@@ -118,11 +118,16 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
         const commission = (baseRate * giverRate) / 100;
         if (commission > 0.01) {
           referralCommissionAmount += commission;
+          // console.log(`[Commission Calc] Level ${i + 1}: rate=${giverRate}%, amount=${commission.toFixed(2)}`);
         }
       }
     }
 
+    // console.log(`[Commission Calc] Total referral commission: ${referralCommissionAmount.toFixed(2)}`);
+
     const finalRate = parseFloat((baseRate + globalCommissionAmount + referralCommissionAmount).toFixed(2));
+
+    // console.log(`[Commission Calc] ${courier.courier_name}: base=${baseRate}, global=${globalCommissionAmount} (${globalCommissionRate}%), referralChain=${referralChain.length} levels, referralAmt=${referralCommissionAmount}, final=${finalRate}`);
 
     // console.log(`[Price Calc] ${courier.courier_name}: base=${baseRate}, global=${globalCommissionAmount}, franchise=${franchiseCommissionAmount}, final=${finalRate}`);
 
@@ -694,8 +699,13 @@ const createOrder = async (req, res) => {
 
       // Create multi-level referral commissions (flat from base shipping)
       const baseCommissionAmount = parseFloat(order.base_shipping_charge || 0);
+      // console.log(`[Order Commission] Order ${order.id}: baseAmount=${baseCommissionAmount}, maxLevels=${maxLevels}`);
       if (baseCommissionAmount > 0) {
-        await createReferralCommissions(tx, order.id, userId, baseCommissionAmount, maxLevels);
+        const commissions = await createReferralCommissions(tx, order.id, userId, baseCommissionAmount, maxLevels);
+        // console.log(`[Order Commission] Created ${commissions.length} referral commissions for order ${order.id}`);
+        // commissions.forEach(c => {
+        //   console.log(`[Order Commission] Level ${c.level}: ${c.amount} to user ${c.referrer_id}`);
+        // });
       }
 
       let shiprocketOrderId = null;
