@@ -169,9 +169,10 @@ interface PreSelectedCourier {
 interface CreateOrderContentProps {
   preSelectedCourier?: PreSelectedCourier | null;
   preSelectedPaymentMode?: string | null;
+  preSelectedDeclaredValue?: number | null;
 }
 
-export default function CreateOrderContent({ preSelectedCourier, preSelectedPaymentMode }: CreateOrderContentProps) {
+export default function CreateOrderContent({ preSelectedCourier, preSelectedPaymentMode, preSelectedDeclaredValue }: CreateOrderContentProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isShipped, setShipped] = useState(false);
   const [openAddPickupSheet, setOpenAddPickupSheet] = useState(false);
@@ -343,10 +344,13 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     if (preSelectedPaymentMode && (preSelectedPaymentMode === "COD" || preSelectedPaymentMode === "PREPAID")) {
       form.setValue("payment_mode", preSelectedPaymentMode);
       if (preSelectedPaymentMode === "COD") {
-        form.setValue("cod_amount", form.getValues("total_amount") || 0);
+        const codAmount = preSelectedDeclaredValue !== null && preSelectedDeclaredValue !== undefined 
+          ? preSelectedDeclaredValue 
+          : form.getValues("total_amount") || 0;
+        form.setValue("cod_amount", codAmount);
       }
     }
-  }, [preSelectedPaymentMode, form]);
+  }, [preSelectedPaymentMode, form, preSelectedDeclaredValue]);
 
   const { data: savedAddresses, isLoading: isLoadingSavedAddr } = useQuery<SavedAddress[]>(
     http.get(["saved-addresses"], "/addresses", true)

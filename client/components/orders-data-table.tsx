@@ -271,10 +271,10 @@ export function OrdersDataTable({
             <Button size="icon" variant="outline" onClick={() => { copy(row.original.id); sileo.success({ title: "Copied to clipboard", description: "Order ID copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
           </div>
           <span className="text-[10px]  tabular-nums">
-            {row.original.shiprocket_order_id ? `Shiprocket OID :   ${row.original.shiprocket_order_id}` : "-"}
+            {row.original.shiprocket_order_id ? `OID :   ${row.original.shiprocket_order_id}` : "-"}
           </span>
           <span className="text-[10px]  tabular-nums">
-            {row.original.shiprocket_shipment_id ? `Shiprocket Ship ID :  ${row.original.shiprocket_shipment_id}` : "-"}
+            {row.original.shiprocket_shipment_id ? `Shipment ID :  ${row.original.shiprocket_shipment_id}` : "-"}
           </span>
 
           <span className="text-[10px]  tabular-nums">

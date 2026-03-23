@@ -122,7 +122,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
       }
     }
 
-    const finalRate = parseFloat((baseRate + globalCommissionAmount + franchiseCommissionAmount).toFixed(2));
+    const finalRate = parseFloat((baseRate + globalCommissionAmount + referralCommissionAmount).toFixed(2));
 
     // console.log(`[Price Calc] ${courier.courier_name}: base=${baseRate}, global=${globalCommissionAmount}, franchise=${franchiseCommissionAmount}, final=${finalRate}`);
 

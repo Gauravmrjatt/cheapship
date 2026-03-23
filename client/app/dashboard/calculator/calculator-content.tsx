@@ -211,6 +211,7 @@ export default function RateCalculatorPage() {
       courier_name: courier.courier_name,
       rate: courier.rate.toString(),
       payment_mode: formValues.paymentType,
+      declared_value: formValues.shipmentValue?.toString() || "0",
     });
     router.push(`/dashboard/orders/new?${params.toString()}`);
   };

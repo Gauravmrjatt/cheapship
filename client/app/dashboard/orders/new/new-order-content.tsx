@@ -42,6 +42,7 @@ function CreateOrderPageContent() {
   const courierName = searchParams.get("courier_name");
   const rate = searchParams.get("rate");
   const paymentMode = searchParams.get("payment_mode");
+  const declaredValue = searchParams.get("declared_value");
 
   const preSelectedCourier = courierId ? {
     courier_company_id: parseInt(courierId),
@@ -51,7 +52,7 @@ function CreateOrderPageContent() {
 
   const preSelectedPaymentMode = paymentMode || null;
 
-  return <CreateOrderContent preSelectedCourier={preSelectedCourier} preSelectedPaymentMode={preSelectedPaymentMode} />;
+  return <CreateOrderContent preSelectedCourier={preSelectedCourier} preSelectedPaymentMode={preSelectedPaymentMode} preSelectedDeclaredValue={declaredValue ? parseFloat(declaredValue) : null} />;
 }
 
 export default function CreateOrderPage() {
