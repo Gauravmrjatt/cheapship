@@ -839,6 +839,7 @@ const adminCreateRTODispute = async (req, res) => {
             // Deduct from security_deposit first, then wallet_balance
             if (amountValue > 0) {
                 let remainingAmount = amountValue;
+                const originalSecurityDeposit = newSecurityDeposit;
 
                 // First deduct from security_deposit
                 if (newSecurityDeposit > 0) {
@@ -857,7 +858,29 @@ const adminCreateRTODispute = async (req, res) => {
                 if (remainingAmount > 0) {
                     walletDeducted = remainingAmount;
                     newWalletBalance -= remainingAmount;
-                    // Allow negative balance
+                }
+
+                // If RTO amount is less than security deposit, refund the difference to main wallet
+                let refundAmount = 0;
+                if (newSecurityDeposit > 0) {
+                    refundAmount = newSecurityDeposit;
+                    newWalletBalance += refundAmount;
+                    
+                    // Create refund transaction
+                    await tx.transaction.create({
+                        data: {
+                            user_id: order.user_id,
+                            amount: refundAmount,
+                            closing_balance: newWalletBalance,
+                            type: 'CREDIT',
+                            category: 'REFUND',
+                            status: 'SUCCESS',
+                            description: `RTO refund for Order #${order_id}. Security deposit (₹${originalSecurityDeposit}) - RTO charge (₹${amountValue}) = ₹${refundAmount} refunded to wallet`,
+                            reference_id: order_id.toString()
+                        }
+                    });
+                    
+                    newSecurityDeposit = 0;
                 }
 
                 // Update user wallets
@@ -878,7 +901,7 @@ const adminCreateRTODispute = async (req, res) => {
                         type: 'DEBIT',
                         category: 'RTO_CHARGE',
                         status: 'SUCCESS',
-                        description: `RTO charge for Order #${order_id}. Security: ₹${securityDeducted}, Wallet: ₹${walletDeducted}`,
+                        description: `RTO charge for Order #${order_id}. Security: ₹${securityDeducted}, Wallet: ₹${walletDeducted}${refundAmount > 0 ? `, Refund: ₹${refundAmount}` : ''}`,
                         reference_id: order_id.toString()
                     }
                 });
@@ -903,7 +926,8 @@ const adminCreateRTODispute = async (req, res) => {
                     previousSecurityDeposit: Number(user.security_deposit),
                     newSecurityDeposit,
                     securityDeducted,
-                    walletDeducted
+                    walletDeducted,
+                    refundAmount: refundAmount || 0
                 }
             };
         });
