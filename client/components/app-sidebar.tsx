@@ -98,6 +98,11 @@ export const adminNav = [
     icon: <HugeiconsIcon icon={CustomerService02Icon} strokeWidth={2} />,
   },
   {
+    title: "Feedback",
+    url: "/admin/feedback",
+    icon: <HugeiconsIcon icon={Comment01Icon} strokeWidth={2} />,
+  },
+  {
     title: "Finance & Withdrawals",
     url: "/admin/withdrawals",
     icon: <HugeiconsIcon icon={MoneyReceiveCircleIcon} strokeWidth={2} />,

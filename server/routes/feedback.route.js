@@ -8,5 +8,6 @@ router.use(auth);
 
 router.post('/', feedbackController.submitFeedback);
 router.get('/', admin, feedbackController.getFeedbacks);
+router.get('/:id', admin, feedbackController.getFeedbackById);
 
 module.exports = router;

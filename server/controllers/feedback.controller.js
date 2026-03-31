@@ -82,7 +82,40 @@ const getFeedbacks = async (req, res) => {
     }
 };
 
+const getFeedbackById = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const { id } = req.params;
+
+    try {
+        const feedback = await prisma.feedback.findUnique({
+            where: { id },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        mobile: true
+                    }
+                }
+            }
+        });
+
+        if (!feedback) {
+            return res.status(404).json({ message: 'Feedback not found' });
+        }
+
+        res.json({
+            data: feedback
+        });
+    } catch (error) {
+        console.error('Error fetching feedback:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     submitFeedback,
-    getFeedbacks
+    getFeedbacks,
+    getFeedbackById
 };

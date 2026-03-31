@@ -190,6 +190,13 @@ export default function FeedbackPage() {
                     <p className="text-xs text-muted-foreground leading-relaxed">
                         For urgent issues regarding active shipments or payments, please visit our <Button variant="link" className="p-0 h-auto text-xs font-bold" onClick={() => (window.location.href = '/dashboard/help')}>Help Center</Button> or contact support directly.
                     </p>
+                    <Button 
+                        variant="outline" 
+                        className="mt-3 text-xs"
+                        onClick={() => window.open('mailto:admin@cheapship.com?subject=CheapShip Feedback/Complaint', '_blank')}
+                    >
+                        Email Admin
+                    </Button>
                 </div>
             </div>
         </div>
