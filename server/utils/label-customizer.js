@@ -34,7 +34,7 @@ class LabelCustomizer {
             // 3. REMOVE SHIPROCKET BORDERS
             // (Crop edges where branding exists)
             // ===============================
-            const cropMargin = 8; // adjust 15–25 if needed
+            const cropMargin = 6; // adjust 15–25 if needed
 
             firstPage.setCropBox(
                 cropMargin,

@@ -106,3 +106,13 @@ export const useRTODisputes = (page: number = 1, pageSize: number = 10, status?:
     }
   }>(["rto-disputes", page, pageSize, status], `/disputes/rto?${queryParams.toString()}`));
 };
+
+export const useWeightDisputeById = (id: string) => {
+  const http = useHttp();
+  return useQuery(http.get<{ data: WeightDispute }>(["weight-dispute", id], `/disputes/weight/${id}`));
+};
+
+export const useRTODisputeById = (id: string) => {
+  const http = useHttp();
+  return useQuery(http.get<{ data: RTODispute }>(["rto-dispute", id], `/disputes/rto/${id}`));
+};

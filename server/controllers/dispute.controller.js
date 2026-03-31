@@ -104,6 +104,82 @@ const getRTODisputes = async (req, res) => {
 };
 
 /**
+ * Get single weight dispute by ID for the logged-in user
+ */
+const getWeightDisputeById = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    try {
+        const dispute = await prisma.weightDispute.findFirst({
+            where: { id, user_id: userId },
+            include: {
+                order: {
+                    select: {
+                        id: true,
+                        tracking_number: true,
+                        courier_name: true,
+                        length: true,
+                        width: true,
+                        height: true,
+                        weight: true,
+                        shipping_charge: true,
+                        shipment_status: true,
+                        created_at: true
+                    }
+                }
+            }
+        });
+
+        if (!dispute) {
+            return res.status(404).json({ message: 'Weight dispute not found' });
+        }
+
+        res.json({ data: dispute });
+    } catch (error) {
+        console.error('Error fetching weight dispute:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+/**
+ * Get single RTO dispute by ID for the logged-in user
+ */
+const getRTODisputeById = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    try {
+        const dispute = await prisma.rTODispute.findFirst({
+            where: { id, user_id: userId },
+            include: {
+                order: {
+                    select: {
+                        id: true,
+                        tracking_number: true,
+                        courier_name: true,
+                        shipment_status: true,
+                        rto_charges: true,
+                        created_at: true
+                    }
+                }
+            }
+        });
+
+        if (!dispute) {
+            return res.status(404).json({ message: 'RTO dispute not found' });
+        }
+
+        res.json({ data: dispute });
+    } catch (error) {
+        console.error('Error fetching RTO dispute:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+/**
  * Create a weight dispute (Admin or System triggered)
  */
 const createWeightDispute = async (req, res) => {
@@ -945,6 +1021,8 @@ const adminCreateRTODispute = async (req, res) => {
 module.exports = {
     getWeightDisputes,
     getRTODisputes,
+    getWeightDisputeById,
+    getRTODisputeById,
     createWeightDispute,
     resolveWeightDispute,
     userRaiseWeightDispute,

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import * as z from "zod";
 import {
   Card,
@@ -85,6 +86,7 @@ export default function WeightMismatchContent() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [weightPhoto, setWeightPhoto] = useState<File | null>(null);
   const [packedPhoto, setPackedPhoto] = useState<File | null>(null);
+  const router = useRouter();
 
   const { data: disputesData, isLoading: isLoadingDisputes } = useWeightDisputes(page, 10, statusFilter);
   const raiseDisputeMutation = useRaiseWeightDispute();
@@ -200,7 +202,11 @@ export default function WeightMismatchContent() {
                       dispute.order?.height ?? null
                     );
                     return (
-                      <TableRow key={dispute.id} className="group hover:bg-muted/30 transition-colors">
+                      <TableRow 
+                        key={dispute.id} 
+                        className="group hover:bg-muted/30 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/dashboard/weight-mismatch/${dispute.id}`)}
+                      >
                         <TableCell className="pl-6">
                           <div className="flex flex-col">
                             <span className="font-bold text-sm">#{dispute.order?.id.toString().slice(-8)}</span>

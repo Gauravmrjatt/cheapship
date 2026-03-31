@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useRTODisputes, RTODispute } from "@/lib/hooks/use-dispute";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ function Rtocontent() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const router = useRouter();
 
   const { data: rtoData, isLoading } = useRTODisputes(page, pageSize, statusFilter);
 
@@ -107,7 +109,11 @@ function Rtocontent() {
                   </TableRow>
                 ) : rtoData?.data && rtoData.data.length > 0 ? (
                   rtoData.data.map((rto: RTODispute) => (
-                    <TableRow key={rto.id}>
+                    <TableRow 
+                      key={rto.id} 
+                      className="cursor-pointer hover:bg-muted/30 transition-colors"
+                      onClick={() => router.push(`/dashboard/rto/${rto.id}`)}
+                    >
                       <TableCell className="font-medium">{rto.order_id}</TableCell>
                       <TableCell className="text-sm">{rto.order?.tracking_number || "N/A"}</TableCell>
                       <TableCell className="text-sm">{rto.order?.courier_name || "N/A"}</TableCell>
