@@ -5,7 +5,7 @@ const getReferralChain = async (prisma, userId, maxLevels = 10) => {
   let currentUserId = userId;
   let level = 0;
 
-  console.log(`[Referral Chain] Starting for userId=${userId}, maxLevels=${maxLevels}`);
+  // console.log(`[Referral Chain] Starting for userId=${userId}, maxLevels=${maxLevels}`);
 
   while (level < maxLevels) {
     const user = await prisma.user.findUnique({
@@ -13,10 +13,10 @@ const getReferralChain = async (prisma, userId, maxLevels = 10) => {
       select: { id: true, referer_code: true, referred_by: true, commission_rate: true }
     });
 
-    console.log(`[Referral Chain] Level ${level}: user=${currentUserId}, referred_by=${user?.referred_by}, rate=${user?.commission_rate}`);
+    // console.log(`[Referral Chain] Level ${level}: user=${currentUserId}, referred_by=${user?.referred_by}, rate=${user?.commission_rate}`);
 
     if (!user || !user.referred_by) {
-      console.log(`[Referral Chain] Breaking at level ${level}: no user or no referred_by`);
+      // console.log(`[Referral Chain] Breaking at level ${level}: no user or no referred_by`);
       break;
     }
 
@@ -27,7 +27,7 @@ const getReferralChain = async (prisma, userId, maxLevels = 10) => {
     });
 
     if (!referrer) {
-      console.log(`[Referral Chain] Breaking at level ${level}: referrer not found for code ${user.referred_by}`);
+      // console.log(`[Referral Chain] Breaking at level ${level}: referrer not found for code ${user.referred_by}`);
       break;
     }
 
@@ -38,13 +38,13 @@ const getReferralChain = async (prisma, userId, maxLevels = 10) => {
       commission_rate: user.commission_rate ? parseFloat(user.commission_rate.toString()) : 0
     });
 
-    console.log(`[Referral Chain] Added level ${level + 1}: referrer=${referrer.id}, shipper_rate=${user.commission_rate}`);
+    // console.log(`[Referral Chain] Added level ${level + 1}: referrer=${referrer.id}, shipper_rate=${user.commission_rate}`);
 
     currentUserId = referrer.id;
     level++;
   }
 
-  console.log(`[Referral Chain] Complete: ${chain.length} levels in chain`);
+  // console.log(`[Referral Chain] Complete: ${chain.length} levels in chain`);
   return chain;
 };
 

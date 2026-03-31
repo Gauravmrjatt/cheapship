@@ -64,7 +64,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
       where: { key: 'max_referral_levels' }
     })
   ]);
-  console.log(levelSetting, " : Level settings");
+  // console.log(levelSetting, " : Level settings");
   const courierConfigMap = courierConfigs.reduce((acc, config) => {
     acc[config.courier_company_id] = config;
     return acc;
@@ -555,7 +555,7 @@ const createOrder = async (req, res) => {
       // const requiredBalance = (orderAmount * 2);
 
       if (Number(user.wallet_balance) < totalDeduction) {
-        throw new Error(`Insufficient wallet balance. Required: ₹${requiredBalance.toFixed(2)} (Undelivered Orders: ₹${undeliveredTotal.toFixed(2)} + This Order: ₹${(orderAmount * 2).toFixed(2)}), Available Wallet Balance: ₹${Number(user.wallet_balance).toFixed(2)}`);
+        throw new Error(`Insufficient wallet balance. Required: ₹${totalDeduction.toFixed(2)}, Available Wallet Balance: ₹${Number(user.wallet_balance).toFixed(2)}`);
       }
 
       // 2. Debit wallet (2x order amount - 1x for shipping, 1x as security hold)
