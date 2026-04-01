@@ -911,6 +911,7 @@ const adminCreateRTODispute = async (req, res) => {
             let newSecurityDeposit = Number(user.security_deposit);
             let securityDeducted = 0;
             let walletDeducted = 0;
+            let refundAmount = 0;
 
             // Deduct from security_deposit first, then wallet_balance
             if (amountValue > 0) {
@@ -937,7 +938,6 @@ const adminCreateRTODispute = async (req, res) => {
                 }
 
                 // If RTO amount is less than security deposit, refund the difference to main wallet
-                let refundAmount = 0;
                 if (newSecurityDeposit > 0) {
                     refundAmount = newSecurityDeposit;
                     newWalletBalance += refundAmount;
