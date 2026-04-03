@@ -715,12 +715,12 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
                     </Button>
                   ) : (
                     <div className="flex gap-4">
-                      {/* <Button
+                      <Button
                         type="button"
                         variant="outline"
                         onClick={() => {
                           const values = form.getValues();
-                          const { shipping_charge, base_shipping_charge, courier_name, ...orderData } = values;
+                          const { shipping_charge, base_shipping_charge, courier_name, is_insured, ...orderData } = values;
                           setIsSavingDraft(true);
                           createOrderMutation({ ...orderData, is_draft: true } as any);
                         }}
@@ -729,7 +729,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
                       >
                         <HugeiconsIcon icon={Add01Icon} size={18} />
                         Save as Draft {isSavingDraft ? "..." : ""}
-                      </Button> */}
+                      </Button>
                       <Button
                         type="submit"
                         onClick={(e) => {

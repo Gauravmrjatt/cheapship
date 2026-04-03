@@ -437,7 +437,7 @@ const createOrder = async (req, res) => {
           user_id: userId,
           order_type: order_type || 'SURFACE',
           is_draft: true,
-          shipment_status: 'PENDING',
+          shipment_status: 'DRAFT',
           shipment_type: shipment_type || 'DOMESTIC',
           payment_mode: payment_mode || 'PREPAID',
           total_amount: total_amount || 0,
@@ -449,7 +449,6 @@ const createOrder = async (req, res) => {
           height: height || 0,
           courier_id: courier_id ? parseInt(courier_id) : null,
           pickup_location: pickup_location || null,
-          is_insured: is_insured || false,
           order_pickup_address: {
             create: {
               name: pickup_address.name,

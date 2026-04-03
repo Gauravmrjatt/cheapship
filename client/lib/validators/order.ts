@@ -58,7 +58,8 @@ export const createOrderSchema = z.object({
   new_pickup_gst: z.string().optional(),
   new_pickup_registered_name: z.string().optional(),
   is_insured: z.boolean().optional().default(false),
-    pickup_pincode : z.string().min(6, "Pickup pincode must be at least 6 characters"),
+  is_draft: z.boolean().optional().default(false),
+  pickup_pincode : z.string().min(6, "Pickup pincode must be at least 6 characters"),
 }).superRefine((data, ctx) => {
   // Validate total_amount max limit
   if (data.total_amount > 475000) {

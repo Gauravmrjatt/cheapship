@@ -440,6 +440,7 @@ enum ShipmentStatus {
   CANCELLED
   RTO
   RTO_DELIVERED
+  DRAFT
 }
 
 enum ShipmentType {

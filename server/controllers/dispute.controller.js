@@ -887,6 +887,7 @@ const adminCreateRTODispute = async (req, res) => {
             where: { id: orderId },
             select: {
                 user_id: true,
+                total_amount: true,
                 rto_charges: true
             }
         });
@@ -911,18 +912,19 @@ const adminCreateRTODispute = async (req, res) => {
             let newSecurityDeposit = Number(user.security_deposit);
             let securityDeducted = 0;
             let walletDeducted = 0;
-            let refundAmount = 0;
+            let orderValue = 0;
 
-            // Deduct from security_deposit first, then wallet_balance
+            // Deduct from security_deposit (capped at order value), then wallet_balance
             if (amountValue > 0) {
+                orderValue = Number(order.total_amount);
+                const maxSecurityDeduction = Math.min(amountValue, orderValue);
                 let remainingAmount = amountValue;
-                const originalSecurityDeposit = newSecurityDeposit;
 
-                // First deduct from security_deposit
-                if (newSecurityDeposit > 0) {
-                    if (newSecurityDeposit >= remainingAmount) {
-                        securityDeducted = remainingAmount;
-                        newSecurityDeposit -= remainingAmount;
+                // First deduct from security_deposit (capped at order value)
+                if (newSecurityDeposit > 0 && maxSecurityDeduction > 0) {
+                    if (newSecurityDeposit >= maxSecurityDeduction) {
+                        securityDeducted = maxSecurityDeduction;
+                        newSecurityDeposit -= maxSecurityDeduction;
                         remainingAmount = 0;
                     } else {
                         securityDeducted = newSecurityDeposit;
@@ -937,28 +939,6 @@ const adminCreateRTODispute = async (req, res) => {
                     newWalletBalance -= remainingAmount;
                 }
 
-                // If RTO amount is less than security deposit, refund the difference to main wallet
-                if (newSecurityDeposit > 0) {
-                    refundAmount = newSecurityDeposit;
-                    newWalletBalance += refundAmount;
-                    
-                    // Create refund transaction
-                    await tx.transaction.create({
-                        data: {
-                            user_id: order.user_id,
-                            amount: refundAmount,
-                            closing_balance: newWalletBalance,
-                            type: 'CREDIT',
-                            category: 'REFUND',
-                            status: 'SUCCESS',
-                            description: `RTO refund for Order #${order_id}. Security deposit (₹${originalSecurityDeposit}) - RTO charge (₹${amountValue}) = ₹${refundAmount} refunded to wallet`,
-                            reference_id: order_id.toString()
-                        }
-                    });
-                    
-                    newSecurityDeposit = 0;
-                }
-
                 // Update user wallets
                 await tx.user.update({
                     where: { id: order.user_id },
@@ -968,19 +948,37 @@ const adminCreateRTODispute = async (req, res) => {
                     }
                 });
 
-                // Create transaction record
-                await tx.transaction.create({
-                    data: {
-                        user_id: order.user_id,
-                        amount: amountValue,
-                        closing_balance: newWalletBalance,
-                        type: 'DEBIT',
-                        category: 'RTO_CHARGE',
-                        status: 'SUCCESS',
-                        description: `RTO charge for Order #${order_id}. Security: ₹${securityDeducted}, Wallet: ₹${walletDeducted}${refundAmount > 0 ? `, Refund: ₹${refundAmount}` : ''}`,
-                        reference_id: order_id.toString()
-                    }
-                });
+                // Create transaction record for security deposit deduction
+                if (securityDeducted > 0) {
+                    await tx.transaction.create({
+                        data: {
+                            user_id: order.user_id,
+                            amount: securityDeducted,
+                            closing_balance: newSecurityDeposit,
+                            type: 'DEBIT',
+                            category: 'SECURITY_DEBIT',
+                            status: 'SUCCESS',
+                            description: `RTO charge for Order #${order_id}. Security deposit deduction: ₹${securityDeducted} (Order value: ₹${orderValue}, RTO: ₹${amountValue})`,
+                            reference_id: order_id.toString()
+                        }
+                    });
+                }
+
+                // Create transaction record for wallet deduction (if any)
+                if (walletDeducted > 0) {
+                    await tx.transaction.create({
+                        data: {
+                            user_id: order.user_id,
+                            amount: walletDeducted,
+                            closing_balance: newWalletBalance,
+                            type: 'DEBIT',
+                            category: 'RTO_CHARGE',
+                            status: 'SUCCESS',
+                            description: `RTO charge for Order #${order_id}. Wallet deduction: ₹${walletDeducted} (Remaining after security: ₹${amountValue - securityDeducted})`,
+                            reference_id: order_id.toString()
+                        }
+                    });
+                }
             }
 
             // Create RTO dispute record (auto ACCEPTED)
@@ -1003,7 +1001,7 @@ const adminCreateRTODispute = async (req, res) => {
                     newSecurityDeposit,
                     securityDeducted,
                     walletDeducted,
-                    refundAmount: refundAmount || 0
+                    orderValue: orderValue || Number(order.total_amount)
                 }
             };
         });
