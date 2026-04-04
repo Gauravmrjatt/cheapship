@@ -1382,7 +1382,6 @@ const refundSecurityDeposit = async (req, res) => {
       const depositAmount = Number(user.security_deposit);
       if (depositAmount <= 0) throw new Error('No security deposit to refund');
 
-      // 1. Reset security deposit to 0
       await tx.user.update({
         where: { id: userId },
         data: {
@@ -1391,13 +1390,11 @@ const refundSecurityDeposit = async (req, res) => {
         }
       });
 
-      // Get updated balances
       const updatedUser = await tx.user.findUnique({
         where: { id: userId },
         select: { wallet_balance: true, security_deposit: true }
       });
 
-      // 2. Create Debit transaction for security deposit
       await tx.transaction.create({
         data: {
           user_id: userId,
@@ -1410,7 +1407,6 @@ const refundSecurityDeposit = async (req, res) => {
         }
       });
 
-      // 3. Create Credit transaction for wallet refund
       await tx.transaction.create({
         data: {
           user_id: userId,
@@ -1430,6 +1426,207 @@ const refundSecurityDeposit = async (req, res) => {
   } catch (error) {
     console.error('Refund security deposit error:', error);
     res.status(400).json({ message: error.message || 'Internal Server Error' });
+  }
+};
+
+const getWalletPlans = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { status } = req.query;
+
+  try {
+    const where = {};
+    if (status === 'active') {
+      where.is_active = true;
+    } else if (status === 'inactive') {
+      where.is_active = false;
+    }
+
+    const plans = await prisma.walletPlan.findMany({
+      where,
+      orderBy: { recharge_amount: 'asc' }
+    });
+
+    const plansData = plans.map(plan => ({
+      ...plan,
+      recharge_amount: Number(plan.recharge_amount),
+      discount_percentage: Number(plan.discount_percentage)
+    }));
+
+    res.json({ data: plansData });
+  } catch (error) {
+    console.error('Get wallet plans error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const createWalletPlan = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { name, recharge_amount, discount_percentage } = req.body;
+
+  if (!name || recharge_amount === undefined || discount_percentage === undefined) {
+    return res.status(400).json({ message: 'Name, recharge_amount, and discount_percentage are required' });
+  }
+
+  const rechargeAmount = parseFloat(recharge_amount);
+  const discountPercent = parseFloat(discount_percentage);
+
+  if (isNaN(rechargeAmount) || rechargeAmount <= 0) {
+    return res.status(400).json({ message: 'Invalid recharge amount' });
+  }
+
+  if (isNaN(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+    return res.status(400).json({ message: 'Discount percentage must be between 0 and 100' });
+  }
+
+  try {
+    const existingPlan = await prisma.walletPlan.findFirst({
+      where: { recharge_amount: rechargeAmount }
+    });
+
+    if (existingPlan) {
+      return res.status(400).json({ message: 'A plan with this recharge amount already exists' });
+    }
+
+    const plan = await prisma.walletPlan.create({
+      data: {
+        name: name.trim(),
+        recharge_amount: rechargeAmount,
+        discount_percentage: discountPercent
+      }
+    });
+
+    res.status(201).json({
+      message: 'Wallet plan created successfully',
+      plan: {
+        ...plan,
+        recharge_amount: Number(plan.recharge_amount),
+        discount_percentage: Number(plan.discount_percentage)
+      }
+    });
+  } catch (error) {
+    console.error('Create wallet plan error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const updateWalletPlan = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { id } = req.params;
+  const { name, recharge_amount, discount_percentage, is_active } = req.body;
+
+  try {
+    const existingPlan = await prisma.walletPlan.findUnique({
+      where: { id }
+    });
+
+    if (!existingPlan) {
+      return res.status(404).json({ message: 'Wallet plan not found' });
+    }
+
+    const updateData = {};
+
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res.status(400).json({ message: 'Name cannot be empty' });
+      }
+      updateData.name = name.trim();
+    }
+
+    if (recharge_amount !== undefined) {
+      const rechargeAmount = parseFloat(recharge_amount);
+      if (isNaN(rechargeAmount) || rechargeAmount <= 0) {
+        return res.status(400).json({ message: 'Invalid recharge amount' });
+      }
+
+      const duplicatePlan = await prisma.walletPlan.findFirst({
+        where: {
+          recharge_amount: rechargeAmount,
+          id: { not: id }
+        }
+      });
+
+      if (duplicatePlan) {
+        return res.status(400).json({ message: 'Another plan with this recharge amount already exists' });
+      }
+
+      updateData.recharge_amount = rechargeAmount;
+    }
+
+    if (discount_percentage !== undefined) {
+      const discountPercent = parseFloat(discount_percentage);
+      if (isNaN(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+        return res.status(400).json({ message: 'Discount percentage must be between 0 and 100' });
+      }
+      updateData.discount_percentage = discountPercent;
+    }
+
+    if (is_active !== undefined) {
+      updateData.is_active = Boolean(is_active);
+    }
+
+    const updatedPlan = await prisma.walletPlan.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json({
+      message: 'Wallet plan updated successfully',
+      plan: {
+        ...updatedPlan,
+        recharge_amount: Number(updatedPlan.recharge_amount),
+        discount_percentage: Number(updatedPlan.discount_percentage)
+      }
+    });
+  } catch (error) {
+    console.error('Update wallet plan error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const deleteWalletPlan = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { id } = req.params;
+
+  try {
+    const existingPlan = await prisma.walletPlan.findUnique({
+      where: { id }
+    });
+
+    if (!existingPlan) {
+      return res.status(404).json({ message: 'Wallet plan not found' });
+    }
+
+    await prisma.walletPlan.update({
+      where: { id },
+      data: { is_active: false }
+    });
+
+    res.json({ message: 'Wallet plan deactivated successfully' });
+  } catch (error) {
+    console.error('Delete wallet plan error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const getActiveWalletPlans = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const plans = await prisma.walletPlan.findMany({
+      where: { is_active: true },
+      orderBy: { recharge_amount: 'asc' }
+    });
+
+    const plansData = plans.map(plan => ({
+      ...plan,
+      recharge_amount: Number(plan.recharge_amount),
+      discount_percentage: Number(plan.discount_percentage)
+    }));
+
+    res.json({ data: plansData });
+  } catch (error) {
+    console.error('Get active wallet plans error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 
@@ -1458,5 +1655,10 @@ module.exports = {
   getOrderById,
   getKycUsers,
   updateKycStatus,
-  refundSecurityDeposit
+  refundSecurityDeposit,
+  getWalletPlans,
+  createWalletPlan,
+  updateWalletPlan,
+  deleteWalletPlan,
+  getActiveWalletPlans
 };

@@ -270,13 +270,16 @@ export function OrdersDataTable({
             </Link>
             <Button size="icon" variant="outline" onClick={() => { copy(row.original.id); sileo.success({ title: "Copied to clipboard", description: "Order ID copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
           </div>
+          {row.original.shiprocket_order_id && (
           <span className="text-[10px]  tabular-nums">
             {row.original.shiprocket_order_id ? `OID :   ${row.original.shiprocket_order_id}` : "-"}
           </span>
+          )}
+          {row.original.shiprocket_shipment_id && (
           <span className="text-[10px]  tabular-nums">
             {row.original.shiprocket_shipment_id ? `Shipment ID :  ${row.original.shiprocket_shipment_id}` : "-"}
           </span>
-
+          )}
           <span className="text-[10px]  tabular-nums">
             {row.original.created_at ? new Date(row.original.created_at).toLocaleString() : "-"}
           </span>
@@ -431,9 +434,10 @@ export function OrdersDataTable({
         const trackUrl = row.original.track_url;
         const isAbsoluteUrl = (url: string): boolean => /^https?:\/\//i.test(url);
 
-        const labelUrl: string = isAbsoluteUrl(row.original.label_url || "")
+        const labelUrl: string = row.original.label_url ? ( isAbsoluteUrl(row.original.label_url || "")
           ? row.original.label_url || ""
-          : BASE_URL + row.original.label_url || "";
+          : BASE_URL + row.original.label_url || "") : "";
+        
         return (
           <div className="flex flex-col gap-2">
             {tracking ? (
@@ -460,10 +464,11 @@ export function OrdersDataTable({
 
               </div>
             ) : (
-              <span className="text-muted-foreground text-center text-xs">-</span>
+              <span className="text-muted-foreground text-left text-xs">-</span>
+              // <></>
             )}
 
-            {labelUrl && (
+            {labelUrl && labelUrl !== null && (
               <a
                 href={labelUrl}
                 target="_blank"

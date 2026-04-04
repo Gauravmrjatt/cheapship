@@ -41,9 +41,11 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onClose,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
+  onClose?: () => void
 }) {
   return (
     <DialogPortal>
@@ -62,6 +64,7 @@ function DialogContent({
             data-slot="dialog-close"
             className="absolute top-4 right-4 flex items-center justify-center w-10 h-10 rounded-full bg-muted hover:bg-muted/80 cursor-pointer touch-manipulation"
             aria-label="Close"
+            onClick={onClose}
           >
             <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} size={20} />
             <span className="sr-only">Close</span>

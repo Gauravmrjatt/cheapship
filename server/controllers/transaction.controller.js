@@ -272,10 +272,12 @@ const verifyRazorpayPayment = async (req, res) => {
         });
 
         const newDiscount = applicablePlans.length > 0 ? applicablePlans[0].discount_percentage : null;
+        const bonusAmount = newDiscount ? (amountNumber * Number(newDiscount)) / 100 : 0;
+        const totalCredit = amountNumber + bonusAmount;
 
         // 3. Update user wallet balance (and active_discount if the new discount is higher)
         const user = await tx.user.findUnique({ where: { id: userId }, select: { active_discount: true } });
-        const updateData = { wallet_balance: { increment: amountNumber } };
+        const updateData = { wallet_balance: { increment: totalCredit } };
 
         if (newDiscount && Number(newDiscount) > Number(user.active_discount || 0)) {
           updateData.active_discount = newDiscount;
@@ -285,6 +287,17 @@ const verifyRazorpayPayment = async (req, res) => {
           where: { id: userId },
           data: updateData
         });
+
+        // Update transaction description to include bonus info
+        if (bonusAmount > 0) {
+          await tx.transaction.update({
+            where: { id: newTransaction.id },
+            data: {
+              description: `Wallet Top-up via Razorpay (₹${amountNumber} + ₹${bonusAmount.toFixed(2)} bonus)`,
+              amount: totalCredit
+            }
+          });
+        }
       }
 
       return newTransaction;

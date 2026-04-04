@@ -86,8 +86,10 @@ interface TrackingActivity {
 interface ShipmentHistory {
   id: string;
   status: string;
+  shipment_status: string
   status_date: string;
   location?: string;
+  activity?: string;
 }
 
 export default function OrderDetailsPage({
@@ -208,7 +210,7 @@ export default function OrderDetailsPage({
   const hasAWB = !!order.tracking_number;
   const isPending = order.shipment_status === "PENDING";
   const isManifested = order.shipment_status === "MANIFESTED";
-  const isCancellable = (isPending || isManifested);
+  const isCancellable = (isPending || isManifested) || order.is_draft;
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-700">
@@ -218,7 +220,7 @@ export default function OrderDetailsPage({
           <p className="text-muted-foreground">Order ID: #{orderId}</p>
         </div>
         <div className="flex gap-2">
-          {isPending && !hasAWB && (
+          {isPending && order.tracking_number && (
             <Button
               onClick={handleAssignAWB}
               disabled={assignAWBMutation.isPending}
@@ -266,8 +268,7 @@ export default function OrderDetailsPage({
           )}
 
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={liveStatusLoading} className="rounded-xl">
-            <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 mr-2 ${liveStatusLoading ? "animate-spin" : ""}`} />
-            Refresh
+            <HugeiconsIcon icon={RefreshIcon} className={`h-4 w-4 ${liveStatusLoading ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
@@ -474,61 +475,44 @@ export default function OrderDetailsPage({
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {liveStatus?.live_status && (
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Badge className={`${statusColors[liveStatus.live_status.current_status] || "bg-gray-500"} text-white`}>
-                        {liveStatus.live_status.status}
-                      </Badge>
-                      {liveStatus.live_status.estimated_delivery && (
-                        <span className="text-sm text-muted-foreground flex items-center gap-1">
-                          <HugeiconsIcon icon={ClockIcon} className="h-3 w-3" />
-                          ETA: {new Date(liveStatus.live_status.estimated_delivery).toLocaleDateString("en-IN")}
-                        </span>
-                      )}
+              {liveStatus?.history && liveStatus.history.length > 0 && (
+               
+                    <div className="relative pl-4 border-l-2 p-0 m-0 border-dotted border-muted-foreground/20 max-h-[500px] overflow-scroll ">
+                      {liveStatus.history
+                        .filter((item: ShipmentHistory, idx: number, arr: ShipmentHistory[]) => {
+                          const firstIndex = arr.findIndex(h =>
+                            h.status_date === item.status_date && h.shipment_status === item.shipment_status
+                          );
+                          return firstIndex === idx;
+                        })
+                        .map((history: ShipmentHistory, index: number) => {
+                          const date = new Date(history.status_date);
+                          const day = date.getDate();
+                          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                          const month = monthNames[date.getMonth()];
+                          const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+                          return (
+                            <div key={history.id || index} className="relative pb-9  last:pb-0">
+                              <div className="absolute -left-[28px] top-[10px] h-6 w-6 rounded-full bg-primary border-2 border-background" />
+                              <div className="flex gap-4">
+                                <div className="text-center flex-1">
+
+                                  <p className="text-xl font-medium">{day} {month}</p>
+                                  <p className="text-xs text-muted-foreground">{time}</p>
+                                  
+                                </div>
+                                <div className="flex-3 flex justify-center flex-col">
+                                  <p className="font-medium text-sm">{history.activity}</p>
+                                  {history.location && <p className="text-xs text-muted-foreground mt-1 mb-2">{history.location}</p>}
+                                  <ShipmentStatus status={history.shipment_status} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      Last updated: {formatDate(lastUpdated.toISOString())}
-                    </span>
-                  </div>
-                  {liveStatus.live_status.courier && (
-                    <p className="text-sm">
-                      <span className="font-medium">Courier:</span> {liveStatus.live_status.courier}
-                    </p>
-                  )}
-                  {liveStatus.live_status.tracking_number && (
-                    <p className="text-sm">
-                      <span className="font-medium">Tracking:</span> {liveStatus.live_status.tracking_number}
-                    </p>
-                  )}
-                  {liveStatus.live_status.activities && liveStatus.live_status.activities.length > 0 && (
-                    <div className="mt-4 space-y-3">
-                      <p className="text-xs font-medium text-muted-foreground uppercase">Tracking Timeline</p>
-                      {liveStatus.live_status.activities.map((activity: TrackingActivity, index: number) => (
-                        <div key={index} className="flex gap-3 text-sm">
-                          <div className="flex flex-col items-center">
-                            {index === 0 ? (
-                              <HugeiconsIcon icon={CheckmarkCircle01Icon} className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <HugeiconsIcon icon={CircleDot} className="h-4 w-4 text-muted-foreground" />
-                            )}
-                            {index < liveStatus.live_status.activities.length - 1 && (
-                              <div className="w-0.5 h-full bg-muted-foreground/30 mt-1" />
-                            )}
-                          </div>
-                          <div className="flex-1 pb-2">
-                            <p className="font-medium">{activity.status}</p>
-                            {activity.location && <p className="text-muted-foreground text-xs">{activity.location}</p>}
-                            {activity.date && (
-                              <p className="text-muted-foreground text-xs">{formatDate(activity.date)}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                 
               )}
 
               <div className="flex flex-wrap gap-3">
@@ -540,14 +524,14 @@ export default function OrderDetailsPage({
                     </Button>
                   </a>
                 )} */}
-                {order.track_url && (
+                {/* {order.track_url && (
                   <a href={order.track_url} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" size="sm">
                       <HugeiconsIcon icon={AlertCircleIcon} className="h-4 w-4 mr-2" />
                       Track on Shiprocket
                     </Button>
                   </a>
-                )}
+                )} */}
               </div>
             </CardContent>
           </Card>
@@ -595,31 +579,7 @@ export default function OrderDetailsPage({
           </Card>
         </div>
 
-        {liveStatus?.history && liveStatus.history.length > 0 && (
-          <Card className="rounded-xl shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Shipment History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {liveStatus.history.map((history: ShipmentHistory) => (
-                  <div key={history.id} className="flex gap-4 pb-4 border-b last:border-0">
-                    <div className="flex flex-col items-center">
-                      <HugeiconsIcon icon={CircleDot} className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium">{history.status}</p>
-                        <p className="text-xs text-muted-foreground">{formatDate(history.status_date)}</p>
-                      </div>
-                      {history.location && <p className="text-sm text-muted-foreground">{history.location}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
       </div>
 
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>

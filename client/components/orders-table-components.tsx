@@ -4,11 +4,15 @@ import * as React from "react";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  MoreVerticalCircle01Icon,
+  ArrowDown01Icon,
   ArrowLeftDoubleIcon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowRightDoubleIcon,
+  PackageSentIcon,
+  DeliveryView01Icon,
+  PackageOutOfStockIcon,
+  Download02Icon
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +33,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useQueryClient } from "@tanstack/react-query";
 import { sileo } from "sileo";
-
+import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group"
 const generateManifest = async (orderId: string) => {
   const res = await fetch(`${BASE_URL}/api/v1/orders/${orderId}/manifest`, {
     method: 'POST',
@@ -67,22 +71,30 @@ export const ActionsCell = ({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            className="data-open:bg-muted text-muted-foreground flex size-8"
-            size="icon"
-          > <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
-            <span className="sr-only">Open menu</span></Button>
-        }
-      >
+      <ButtonGroup>
+        {row.original.is_draft ? (
 
-      </DropdownMenuTrigger>
+          <Button render={<Link href={`/dashboard/orders/new?id=${row.original.id}`} />} variant="secondary" className="font-bold text-primary"> <HugeiconsIcon className="bg-muted mr-1" icon={PackageSentIcon} strokeWidth={2} /> Ship Now</Button>
+
+
+        ) : (<Button render={<Link href={`/dashboard/orders/${row.original.id}`} />} variant="secondary" className="font-bold text-primary"><HugeiconsIcon className="" icon={DeliveryView01Icon} strokeWidth={2} />View Now</Button>
+        )}
+        <ButtonGroupSeparator />
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="secondary"
+            > <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} />
+              <span className="sr-only">Open menu</span></Button>
+          }
+        >
+        </DropdownMenuTrigger>
+      </ButtonGroup>
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuItem render={<Link href={`/dashboard/orders/${row.original.id}`} />}>
-          View Details
+          <HugeiconsIcon className="" icon={DeliveryView01Icon} strokeWidth={2} />View Details
         </DropdownMenuItem>
+
         {row.original.tracking_number && row.original.track_url && (
           <DropdownMenuItem>
             <a href={row.original.track_url} target="_blank" rel="noopener noreferrer" className="w-full">
@@ -92,7 +104,7 @@ export const ActionsCell = ({
         )}
         {row.original.label_url && (
           <DropdownMenuItem>
-            <a
+            <Link
               href={
                 /^https?:\/\//i.test(row.original.label_url)
                   ? row.original.label_url
@@ -100,17 +112,17 @@ export const ActionsCell = ({
               }
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full"
+              className="w-full flex gap-3 items-center"
             >
-              Download Label
-            </a>
+              <HugeiconsIcon icon={Download02Icon} strokeWidth={2} /> Download Label
+            </Link>
           </DropdownMenuItem>
         )}
-        {row.original.is_draft && (
+        {/* {row.original.is_draft && (
           <DropdownMenuItem render={<Link href={`/dashboard/orders/new?id=${row.original.id}`} />}>
             <span className="text-primary font-bold">Ship Now</span>
           </DropdownMenuItem>
-        )}
+        )} */}
         {row.original.shipment_status === "MANIFESTED" && !row.original.manifest_url && (
           <DropdownMenuItem onClick={handleGenerateManifest} disabled={isGeneratingManifest}>
             {isGeneratingManifest ? "Generating..." : "Generate Manifest"}
@@ -123,14 +135,14 @@ export const ActionsCell = ({
             </a>
           </DropdownMenuItem>
         )}
-        {row.original.shipment_status === "PENDING" && (
+        {(row.original.shipment_status === "PENDING" || row.original.shipment_status === "DRAFT") && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
               onClick={() => handleCancelOrder(row.original.id)}
             >
-              Cancel Order
+              <HugeiconsIcon icon={PackageOutOfStockIcon} strokeWidth={2} /> Cancel Order
             </DropdownMenuItem>
           </>
         )}

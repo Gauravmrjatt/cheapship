@@ -558,6 +558,7 @@ const adminCreateWeightDispute = async (req, res) => {
             where: { id: orderId },
             select: {
                 user_id: true,
+                total_amount: true,
                 weight: true,
                 shipping_charge: true,
                 base_shipping_charge: true
@@ -590,17 +591,19 @@ const adminCreateWeightDispute = async (req, res) => {
             let securityDeducted = 0;
             let walletDeducted = 0;
             let walletAdded = 0;
+            let orderValue = 0;
 
             if (amountValue > 0) {
-                // Deduction case - take from security_deposit first, then wallet_balance
-                const amountToDeduct = amountValue;
-                let remainingAmount = amountToDeduct;
+                // Deduction case - take from security_deposit first (capped at order value), then wallet_balance
+                orderValue = Number(order.total_amount);
+                const maxSecurityDeduction = Math.min(amountValue, orderValue);
+                let remainingAmount = amountValue;
 
-                // First deduct from security_deposit
-                if (newSecurityDeposit > 0) {
-                    if (newSecurityDeposit >= remainingAmount) {
-                        securityDeducted = remainingAmount;
-                        newSecurityDeposit -= remainingAmount;
+                // First deduct from security_deposit (capped at order value)
+                if (newSecurityDeposit > 0 && maxSecurityDeduction > 0) {
+                    if (newSecurityDeposit >= maxSecurityDeduction) {
+                        securityDeducted = maxSecurityDeduction;
+                        newSecurityDeposit -= maxSecurityDeduction;
                         remainingAmount = 0;
                     } else {
                         securityDeducted = newSecurityDeposit;
@@ -625,19 +628,37 @@ const adminCreateWeightDispute = async (req, res) => {
                     }
                 });
 
-                // Create DEBIT transaction for deduction
-                await tx.transaction.create({
-                    data: {
-                        user_id: order.user_id,
-                        amount: amountToDeduct,
-                        closing_balance: newWalletBalance,
-                        type: 'DEBIT',
-                        category: 'WEIGHT_DISPUTE',
-                        status: 'SUCCESS',
-                        description: `Weight dispute deduction - ${weight_type} weight. Order #${order_id}. Security: ${securityDeducted}, Wallet: ${walletDeducted}`,
-                        reference_id: order_id.toString()
-                    }
-                });
+                // Create transaction record for security deposit deduction
+                if (securityDeducted > 0) {
+                    await tx.transaction.create({
+                        data: {
+                            user_id: order.user_id,
+                            amount: securityDeducted,
+                            closing_balance: newSecurityDeposit,
+                            type: 'DEBIT',
+                            category: 'SECURITY_DEBIT',
+                            status: 'SUCCESS',
+                            description: `Weight dispute for Order #${order_id}. Security deposit deduction: ₹${securityDeducted} (Order value: ₹${orderValue}, Dispute: ₹${amountValue})`,
+                            reference_id: order_id.toString()
+                        }
+                    });
+                }
+
+                // Create transaction record for wallet deduction (if any)
+                if (walletDeducted > 0) {
+                    await tx.transaction.create({
+                        data: {
+                            user_id: order.user_id,
+                            amount: walletDeducted,
+                            closing_balance: newWalletBalance,
+                            type: 'DEBIT',
+                            category: 'WEIGHT_DISPUTE',
+                            status: 'SUCCESS',
+                            description: `Weight dispute for Order #${order_id}. Wallet deduction: ₹${walletDeducted} (Remaining after security: ₹${amountValue - securityDeducted})`,
+                            reference_id: order_id.toString()
+                        }
+                    });
+                }
 
             } else if (amountValue < 0) {
                 // Addition case - add to wallet_balance
@@ -693,7 +714,8 @@ const adminCreateWeightDispute = async (req, res) => {
                     newSecurityDeposit,
                     securityDeducted,
                     walletDeducted,
-                    walletAdded
+                    walletAdded,
+                    orderValue: orderValue || Number(order.total_amount)
                 }
             };
         });

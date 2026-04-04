@@ -21,7 +21,7 @@ type Props = {
     status?: string;
 };
 
-const statusConfig: Record<
+export const statusConfig: Record<
     string,
     { label: string; icon: any; color: string }
 > = {

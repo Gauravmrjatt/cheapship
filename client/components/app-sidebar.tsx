@@ -21,16 +21,16 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   DashboardSquare01Icon,
   ShoppingBasket01Icon,
-  Add01Icon,
+  PackageAddIcon,
   Calculator01Icon,
   Invoice01Icon,
   CreditCardIcon,
   UserGroupIcon,
   WeightScale01Icon,
-  RotateLeft01Icon,
+  TruckReturnIcon,
   Settings05Icon,
   HelpCircleIcon,
-  SearchIcon,
+  PackageSearchIcon,
   ShippingTruck01Icon,
   AddressBookIcon,
   UserCircle02Icon,
@@ -39,7 +39,8 @@ import {
   Wallet01Icon,
   Comment01Icon,
   DeliveryReturnIcon,
-  CustomerService02Icon
+  CustomerService02Icon,
+  Wallet02Icon
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/hooks/use-auth"
 import {
@@ -112,6 +113,11 @@ export const adminNav = [
     url: "/admin/settings",
     icon: <HugeiconsIcon icon={Globe02Icon} strokeWidth={2} />,
   },
+  {
+    title: "Wallet Plans",
+    url: "/admin/wallet-plans",
+    icon: <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />,
+  },
 ];
 
 export const data = {
@@ -134,7 +140,7 @@ export const data = {
       title: "Create Order",
       url: "/dashboard/orders/new",
       icon: (
-        <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
+        <HugeiconsIcon icon={PackageAddIcon} strokeWidth={2} />
       ),
     },
     {
@@ -169,7 +175,7 @@ export const data = {
       title: "COD & Remittance",
       url: "/dashboard/remittances",
       icon: (
-        <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />
+        <HugeiconsIcon icon={Wallet02Icon} strokeWidth={2} />
       ),
     },
     {
@@ -185,7 +191,7 @@ export const data = {
       title: "Search Orders",
       url: "/dashboard/orders?search=1",
       icon: (
-        <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />
+        <HugeiconsIcon icon={PackageSearchIcon} strokeWidth={2} />
       ),
     },
     {
@@ -216,7 +222,7 @@ export const data = {
       name: "RTO",
       url: "/dashboard/rto",
       icon: (
-        <HugeiconsIcon icon={RotateLeft01Icon} strokeWidth={2} />
+        <HugeiconsIcon icon={TruckReturnIcon} strokeWidth={2} />
       ),
     },
   ],
@@ -295,7 +301,7 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
           </DialogHeader>
           <div className="flex flex-col gap-4 py-4">
             <div className="relative">
-              <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <HugeiconsIcon icon={PackageSearchIcon} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 placeholder="Search by order ID, shipment ID, tracking number..."
                 className="pl-10"

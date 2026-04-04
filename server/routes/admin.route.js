@@ -90,4 +90,13 @@ router.post('/users/:userId/custom-rates', adminController.setUserCustomRates);
 router.get('/cod-orders', adminController.getAllCODOrders);
 router.patch('/orders/:id/remittance', adminController.updateOrderRemittance);
 
+// Wallet Plans (Recharge Discounts)
+router.get('/wallet-plans', adminController.getWalletPlans);
+router.post('/wallet-plans', adminController.createWalletPlan);
+router.put('/wallet-plans/:id', adminController.updateWalletPlan);
+router.delete('/wallet-plans/:id', adminController.deleteWalletPlan);
+
+// Public endpoint for users to get active plans
+router.get('/wallet-plans/active', adminController.getActiveWalletPlans);
+
 module.exports = router;

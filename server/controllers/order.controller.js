@@ -332,7 +332,8 @@ const createOrder = async (req, res) => {
     pickup_location,
     products,
     is_insured,
-    is_draft
+    is_draft,
+    draft_id
   } = req.body;
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
@@ -432,50 +433,106 @@ const createOrder = async (req, res) => {
     }
 
     if (is_draft) {
-      const draftedOrder = await prisma.order.create({
-        data: {
-          user_id: userId,
-          order_type: order_type || 'SURFACE',
-          is_draft: true,
-          shipment_status: 'DRAFT',
-          shipment_type: shipment_type || 'DOMESTIC',
-          payment_mode: payment_mode || 'PREPAID',
-          total_amount: total_amount || 0,
-          product_amount: total_amount || 0,
-          products: products || null,
-          weight: weight || 0,
-          length: length || 0,
-          width: width || 0,
-          height: height || 0,
-          courier_id: courier_id ? parseInt(courier_id) : null,
-          pickup_location: pickup_location || null,
-          order_pickup_address: {
-            create: {
-              name: pickup_address.name,
-              phone: pickup_address.phone,
-              email: pickup_address.email,
-              address: pickup_address.address,
-              city: pickup_address.city,
-              state: pickup_address.state,
-              pincode: pickup_address.pincode
+      let draftedOrder;
+      
+      // If draft_id is provided, update existing draft; otherwise create new
+      if (draft_id) {
+        // Update existing draft
+        draftedOrder = await prisma.order.update({
+          where: { id: BigInt(draft_id), user_id: userId, is_draft: true },
+          data: {
+            order_type: order_type || 'SURFACE',
+            shipment_type: shipment_type || 'DOMESTIC',
+            payment_mode: payment_mode || 'PREPAID',
+            total_amount: total_amount || 0,
+            product_amount: total_amount || 0,
+            products: products || null,
+            weight: weight || 0,
+            length: length || 0,
+            width: width || 0,
+            height: height || 0,
+            courier_id: courier_id ? parseInt(courier_id) : null,
+            pickup_location: pickup_location || null,
+            order_pickup_address: {
+              update: {
+                name: pickup_address.name,
+                phone: pickup_address.phone,
+                email: pickup_address.email,
+                address: pickup_address.address,
+                city: pickup_address.city,
+                state: pickup_address.state,
+                pincode: pickup_address.pincode
+              }
+            },
+            order_receiver_address: {
+              update: {
+                name: receiver_address.name,
+                phone: receiver_address.phone,
+                email: receiver_address.email,
+                address: receiver_address.address,
+                city: receiver_address.city,
+                state: receiver_address.state,
+                pincode: receiver_address.pincode
+              }
             }
           },
-          order_receiver_address: {
-            create: {
-              name: receiver_address.name,
-              phone: receiver_address.phone,
-              email: receiver_address.email,
-              address: receiver_address.address,
-              city: receiver_address.city,
-              state: receiver_address.state,
-              pincode: receiver_address.pincode
-            }
+          include: {
+            order_pickup_address: true,
+            order_receiver_address: true
           }
-        }
-      });
+        });
+      } else {
+        // Create new draft
+        draftedOrder = await prisma.order.create({
+          data: {
+            id: generateOrderId(),
+            user_id: userId,
+            order_type: order_type || 'SURFACE',
+            is_draft: true,
+            shipment_status: 'DRAFT',
+            shipment_type: shipment_type || 'DOMESTIC',
+            payment_mode: payment_mode || 'PREPAID',
+            total_amount: total_amount || 0,
+            product_amount: total_amount || 0,
+            products: products || null,
+            weight: weight || 0,
+            length: length || 0,
+            width: width || 0,
+            height: height || 0,
+            courier_id: courier_id ? parseInt(courier_id) : null,
+            pickup_location: pickup_location || null,
+            order_pickup_address: {
+              create: {
+                name: pickup_address.name,
+                phone: pickup_address.phone,
+                email: pickup_address.email,
+                address: pickup_address.address,
+                city: pickup_address.city,
+                state: pickup_address.state,
+                pincode: pickup_address.pincode
+              }
+            },
+            order_receiver_address: {
+              create: {
+                name: receiver_address.name,
+                phone: receiver_address.phone,
+                email: receiver_address.email,
+                address: receiver_address.address,
+                city: receiver_address.city,
+                state: receiver_address.state,
+                pincode: receiver_address.pincode
+              }
+            }
+          },
+          include: {
+            order_pickup_address: true,
+            order_receiver_address: true
+          }
+        });
+      }
 
       return res.status(201).json({
-        message: 'Order saved as draft successfully',
+        message: draft_id ? 'Draft updated successfully' : 'Order saved as draft successfully',
         data: draftedOrder
       });
     }
@@ -944,12 +1001,11 @@ const getOrders = async (req, res) => {
 
   if (shipment_status === 'DRAFT') {
     where.is_draft = true;
-  } else {
+  } else if (shipment_status && shipment_status !== 'ALL') {
     where.is_draft = false;
-    if (shipment_status && shipment_status !== 'ALL') {
-      where.shipment_status = shipment_status;
-    }
+    where.shipment_status = shipment_status;
   }
+  // When shipment_status is 'ALL', don't filter by is_draft - show all orders including drafts
 
   if (order_type && order_type !== 'ALL') {
     where.order_type = order_type;
@@ -1096,12 +1152,22 @@ const cancelOrder = async (req, res) => {
       return res.status(403).json({ message: 'You are not authorized to cancel this order' });
     }
 
-    // Only allow cancellation if status is PENDING or PROCESSING
-    if (order.shipment_status !== 'PENDING' && order.shipment_status !== 'PROCESSING' && order.shipment_status !== 'MANIFESTED') {
+    // Allow cancellation if status is PENDING, PROCESSING, MANIFESTED or if it's a draft
+    const isCancellable = (order.shipment_status === 'PENDING' || order.shipment_status === 'PROCESSING' || order.shipment_status === 'MANIFESTED' || order.is_draft);
+    
+    if (!isCancellable) {
       return res.status(400).json({
         message: 'Order can only be cancelled if status is PENDING, PROCESSING, or MANIFESTED',
         current_status: order.shipment_status
       });
+    }
+
+    // For drafts, simply delete the order without any refund
+    if (order.is_draft) {
+      await prisma.order.delete({
+        where: { id: BigInt(id) }
+      });
+      return res.status(200).json({ message: 'Draft order deleted successfully' });
     }
 
     // Update the order status to CANCELLED and refund within a transaction

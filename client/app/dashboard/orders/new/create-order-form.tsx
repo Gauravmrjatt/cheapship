@@ -91,7 +91,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter
+  DialogFooter,
+  DialogClose
 } from "@/components/ui/dialog";
 import { useRateCalculatorStore } from "@/lib/store/rate-calculator";
 import { useWatch } from "react-hook-form";
@@ -243,7 +244,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
       onSuccess: (data: any) => {
         if (isSavingDraft) {
           setIsSavingDraft(false);
-          sileo.success({ title: "Draft Saved", description: "Your order has been saved as a draft" });
+          sileo.success({ title: draftId ? "Draft Updated" : "Draft Saved", description: draftId ? "Your draft has been updated" : "Your order has been saved as a draft" });
           return;
         }
         setCreatedOrderId(data.id?.toString() || null);
@@ -390,6 +391,15 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
 
   const handleLoadDraft = (refreshRates: boolean) => {
     const data = draftToLoad;
+    console.log("Draft data:", JSON.stringify(data.order_pickup_address, null, 2));
+    
+    // Check if receiver is same as pickup
+    const isSameAsPickup = (
+      data.order_receiver_address?.name === data.order_pickup_address?.name &&
+      data.order_receiver_address?.phone === data.order_pickup_address?.phone &&
+      data.order_receiver_address?.address === data.order_pickup_address?.address
+    );
+
     form.reset({
       ...form.getValues(),
       order_type: data.order_type,
@@ -402,30 +412,32 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
       width: Number(data.width),
       height: Number(data.height),
       pickup_location: data.pickup_location || "",
+      pickup_pincode: data.order_pickup_address?.pincode || data.pickup_address?.pincode || "",
+      same_as_pickup: isSameAsPickup,
+      make_pickup_address: data.pickup_location ? true : false,
       pickup_address: {
-        name: data.order_pickup_address?.name || "",
-        phone: data.order_pickup_address?.phone || "",
-        email: data.order_pickup_address?.email || "",
-        address: data.order_pickup_address?.address || "",
-        city: data.order_pickup_address?.city || "",
-        state: data.order_pickup_address?.state || "",
-        pincode: data.order_pickup_address?.pincode || "",
+        name: data.order_pickup_address?.name || data.pickup_address?.name || "",
+        phone: data.order_pickup_address?.phone || data.pickup_address?.phone || "",
+        email: data.order_pickup_address?.email || data.pickup_address?.email || "",
+        address: data.order_pickup_address?.address || data.pickup_address?.address || "",
+        city: data.order_pickup_address?.city || data.pickup_address?.city || "",
+        state: data.order_pickup_address?.state || data.pickup_address?.state || "",
+        pincode: data.order_pickup_address?.pincode || data.pickup_address?.pincode || "",
       },
       receiver_address: {
-        name: data.order_receiver_address?.name || "",
-        phone: data.order_receiver_address?.phone || "",
-        email: data.order_receiver_address?.email || "",
-        address: data.order_receiver_address?.address || "",
-        city: data.order_receiver_address?.city || "",
-        state: data.order_receiver_address?.state || "",
-        pincode: data.order_receiver_address?.pincode || "",
+        name: data.order_receiver_address?.name || data.receiver_address?.name || "",
+        phone: data.order_receiver_address?.phone || data.receiver_address?.phone || "",
+        email: data.order_receiver_address?.email || data.receiver_address?.email || "",
+        address: data.order_receiver_address?.address || data.receiver_address?.address || "",
+        city: data.order_receiver_address?.city || data.receiver_address?.city || "",
+        state: data.order_receiver_address?.state || data.receiver_address?.state || "",
+        pincode: data.order_receiver_address?.pincode || data.receiver_address?.pincode || "",
       },
       products: data.products || [{ name: "", quantity: 1, price: 0 }],
       courier_id: refreshRates ? undefined : data.courier_id,
     });
     setCurrentStep(refreshRates ? 2 : 4);
     setShowLoadDraftDialog(false);
-    setDraftToLoad(null);
   };
 
   const allProductSuggestions = [...new Set([...PRODUCT_SUGGESTIONS, ...(recentProductsData || [])])];
@@ -722,7 +734,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
                           const values = form.getValues();
                           const { shipping_charge, base_shipping_charge, courier_name, is_insured, ...orderData } = values;
                           setIsSavingDraft(true);
-                          createOrderMutation({ ...orderData, is_draft: true } as any);
+                          createOrderMutation({ ...orderData, is_draft: true, draft_id: draftId || undefined } as any);
                         }}
                         disabled={isCreatingOrder}
                         className="gap-2 px-6 font-bold h-10 border-primary text-primary hover:bg-primary/5"
@@ -1069,22 +1081,37 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showLoadDraftDialog} onOpenChange={(open) => { if (!open) { setShowLoadDraftDialog(false); setDraftToLoad(null); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+      <Dialog open={isLoadingDraft && !!draftId} modal={false}>
+        <DialogContent className="sm:max-w-md" showCloseButton={false}>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <HugeiconsIcon icon={Loading03Icon} className="animate-spin mb-4" size={32} />
+            <DialogTitle>Loading Draft...</DialogTitle>
+            <DialogDescription className="mt-2">Please wait while we fetch your draft order.</DialogDescription>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showLoadDraftDialog} modal={false}>
+        <DialogContent className="sm:max-w-md" showCloseButton={true} onClose={() => setShowLoadDraftDialog(false)}>
+          <DialogHeader className="mt-4">
             <DialogTitle>Load Draft</DialogTitle>
             <DialogDescription>Would you like to refresh courier rates or use your saved courier selection?</DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-3">
-            <Button onClick={() => handleLoadDraft(true)} className="w-full gap-2">
+            <Button onClick={() => { handleLoadDraft(true); }} className="w-full gap-2">
               <HugeiconsIcon icon={TruckIcon} size={18} />
-              Refresh Courier Rates
-            </Button>
-            <Button variant="outline" onClick={() => handleLoadDraft(false)} className="w-full gap-2">
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} />
               Use Saved Courier
             </Button>
+            {/* <Button variant="outline" onClick={() => handleLoadDraft(false)} className="w-full gap-2">
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} />
+              Use Saved Courier
+            </Button> */}
           </div>
+          {/* <DialogFooter className="sm:justify-center">
+            <Button variant="ghost" onClick={() => setShowLoadDraftDialog(false)} className="w-full">
+              Cancel
+            </Button>
+          </DialogFooter> */}
         </DialogContent>
       </Dialog>
     </div>
@@ -1547,15 +1574,15 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates, p
               )}
             >
               <div className="flex items-center gap-4 w-full md:w-auto">
-                {courier.courier_logo_url ? (
+                {/* {courier.courier_logo_url ? (
                   <img
                     src={courier.courier_logo_url}
                     alt={courier.courier_name}
                     className="h-12 w-12 rounded-lg object-contain bg-white border"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
-                ) : null}
-                <div className={cn("h-12 w-12 flex items-center justify-center", !courier.courier_logo_url ? "" : "hidden", formValues.courier_id === courier.courier_company_id ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                ) : null} */}
+                <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center", !courier.courier_logo_url ? "" : "", formValues.courier_id === courier.courier_company_id ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
                   <HugeiconsIcon icon={courier.mode.toLowerCase() === "surface" ? TruckIcon : RocketIcon} size={24} />
                 </div>
                 <div>

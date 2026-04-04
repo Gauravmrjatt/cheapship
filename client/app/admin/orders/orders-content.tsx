@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -88,7 +89,10 @@ import {
   Mail01Icon,
   SmartPhone01Icon,
   AlertCircleIcon,
-  CopyIcon
+  CopyIcon,
+  PackageSentIcon,
+  PackageOutOfStockIcon,
+  DeliveryView01Icon
 } from "@hugeicons/core-free-icons";
 
 import copy from 'copy-to-clipboard';
@@ -288,12 +292,12 @@ function OrdersContent() {
             </Link>
             <Button size="icon" variant="outline" onClick={() => { copy(row.original.id); sileo.success({ title: "Copied to clipboard", description: "Order ID copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
           </div>
-          <span className="text-[10px]  tabular-nums">
+          {row.original.shiprocket_order_id && (<span className="text-[10px]  tabular-nums">
             {row.original.shiprocket_order_id ? `OID :   ${row.original.shiprocket_order_id}` : "-"}
-          </span>
-          <span className="text-[10px]  tabular-nums">
+          </span>)}
+          {row.original.shiprocket_shipment_id && (<span className="text-[10px]  tabular-nums">
             {row.original.shiprocket_shipment_id ? `Shipment ID :  ${row.original.shiprocket_shipment_id}` : "-"}
-          </span>
+          </span>)}
           <span className="text-[10px]  tabular-nums">
             {row.original.created_at ? new Date(row.original.created_at).toLocaleString() : "-"}
           </span>
@@ -444,9 +448,10 @@ function OrdersContent() {
         const trackUrl = row.original.track_url;
         const isAbsoluteUrl = (url: string): boolean => /^https?:\/\//i.test(url);
 
-        const labelUrl: string = isAbsoluteUrl(row.original.label_url || "")
+        const labelUrl: string = row.original.label_url ? (isAbsoluteUrl(row.original.label_url || "")
           ? row.original.label_url || ""
-          : BASE_URL + row.original.label_url || "";
+          : BASE_URL + row.original.label_url || "") : "";
+
         return (
           <div className="flex flex-col gap-2">
             {tracking ? (
@@ -456,46 +461,47 @@ function OrdersContent() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="
-            inline-flex items-center
-            text-xs font-mono font-medium
-            text-primary
-            bg-muted
-            hover:bg-primary/10
-            hover:text-primary
-            transition-colors
-            px-3 py-2.5
-            rounded-md
-            w-full
-          "
+                  inline-flex items-center
+                  text-xs font-mono font-medium
+                  text-primary
+                  bg-muted
+                  hover:bg-primary/10
+                  hover:text-primary
+                  transition-colors
+                  px-3 py-2.5
+                  rounded-md
+                  w-full
+                "
                 >
                   {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
                 </a>     <Button size="icon" className="bg-muted rounded-md" variant="outline" onClick={() => { copy(tracking); sileo.success({ title: "Copied to clipboard", description: "Tracking number copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
 
               </div>
             ) : (
-              <span className="text-muted-foreground text-center text-xs">-</span>
+              <span className="text-muted-foreground text-left text-xs">-</span>
+              // <></>
             )}
 
-            {labelUrl && (
+            {labelUrl && labelUrl !== null && (
               <a
                 href={labelUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
-    
-    text-xs font-medium
-    text-foreground
-    bg-muted
-    border border-border
-    hover:bg-muted
-    hover:text-foreground
-    transition-colors
-    px-2 py-2
-    rounded-md
-    w-full
-    text-center gap-4
-    flex items-center
-  "
+          
+          text-xs font-medium
+          text-foreground
+          bg-muted
+          border border-border
+          hover:bg-muted
+          hover:text-foreground
+          transition-colors
+          px-2 py-2
+          rounded-md
+          w-full
+          text-center gap-4
+          flex items-center
+        "
               >
 
                 <HugeiconsIcon
@@ -539,24 +545,36 @@ function OrdersContent() {
 
         return (
           <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button
-                variant="ghost"
-                className="data-open:bg-muted text-muted-foreground flex size-8"
-                size="icon"
-              > <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} />
-                <span className="sr-only">Open menu</span></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem>
-                <Link href={`/dashboard/orders/${order.id}`} className="w-full">
-                  View Details
-                </Link>
+            <ButtonGroup>
+              {order.is_draft ? (
+                <Button render={<Link href={`/dashboard/orders/new?id=${order.id}`} />} variant="secondary" className="font-bold text-primary">
+                  <HugeiconsIcon className="bg-muted mr-1" icon={PackageSentIcon} strokeWidth={2} /> Ship Now
+                </Button>
+              ) : (
+                <Button render={<Link href={`/dashboard/orders/${order.id}`} />} variant="secondary" className="font-bold text-primary">
+                  <HugeiconsIcon className="" icon={DeliveryView01Icon} strokeWidth={2} />View Now
+                </Button>
+              )}
+              <ButtonGroupSeparator />
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="secondary">
+                    <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                }
+              >
+              </DropdownMenuTrigger>
+            </ButtonGroup>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem render={<Link href={`/dashboard/orders/${order.id}`} />}>
+                <HugeiconsIcon className="mr-2" icon={DeliveryView01Icon} strokeWidth={2} />View Details
               </DropdownMenuItem>
+
               {order.tracking_number && order.track_url && (
                 <DropdownMenuItem>
-                  <a href={order.track_url} target="_blank" rel="noopener noreferrer" className="w-full">
-                    Track Shipment
+                  <a href={order.track_url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center">
+                    <HugeiconsIcon className="mr-2" icon={DeliveryTruck01Icon} strokeWidth={2} />Track Shipment
                   </a>
                 </DropdownMenuItem>
               )}
@@ -570,9 +588,9 @@ function OrdersContent() {
                     }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full"
+                    className="w-full flex items-center"
                   >
-                    Download Label
+                    <HugeiconsIcon className="mr-2" icon={Download02Icon} strokeWidth={2} />Download Label
                   </a>
                 </DropdownMenuItem>
               ) : (
@@ -580,17 +598,15 @@ function OrdersContent() {
                   onClick={() => handleGenerateLabel(order.id)}
                   disabled={generateLabel.isPending}
                 >
-                  {generateLabel.isPending ? "Generating..." : "Generate Label"}
+                  <HugeiconsIcon className="mr-2" icon={Download02Icon} strokeWidth={2} />{generateLabel.isPending ? "Generating..." : "Generate Label"}
                 </DropdownMenuItem>
               )}
               {order.is_draft && (
-                <DropdownMenuItem>
-                  <Link href={`/dashboard/orders/new?id=${order.id}`} className="w-full text-primary font-bold">
-                    Ship Now
-                  </Link>
+                <DropdownMenuItem render={<Link href={`/dashboard/orders/new?id=${order.id}`} />}>
+                  <HugeiconsIcon className="mr-2" icon={PackageSentIcon} strokeWidth={2} /><span className="text-primary font-bold">Ship Now</span>
                 </DropdownMenuItem>
               )}
-              {isPending && (
+              {(order.shipment_status === "PENDING" || order.is_draft) && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -598,7 +614,7 @@ function OrdersContent() {
                     onClick={() => handleCancelOrder(order.id)}
                     disabled={cancelOrder.isPending}
                   >
-                    {cancelOrder.isPending ? "Cancelling..." : "Cancel Order"}
+                    <HugeiconsIcon className="mr-2" icon={PackageOutOfStockIcon} strokeWidth={2} /> {cancelOrder.isPending ? "Cancelling..." : "Cancel Order"}
                   </DropdownMenuItem>
                 </>
               )}

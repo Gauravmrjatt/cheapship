@@ -577,3 +577,95 @@ export const useAdminGenerateLabel = () => {
     }
   });
 };
+
+export interface WalletPlan {
+  id: string;
+  name: string;
+  recharge_amount: number;
+  discount_percentage: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WalletPlansResponse {
+  data: WalletPlan[];
+}
+
+export const useWalletPlans = (status: string = "ALL") => {
+  const http = useHttp();
+  return useQuery<WalletPlansResponse>(http.get<WalletPlansResponse>(["wallet-plans", status], `/admin/wallet-plans?status=${status}`));
+};
+
+export const useActiveWalletPlans = () => {
+  const http = useHttp();
+  return useQuery<WalletPlansResponse>(http.get<WalletPlansResponse>(["active-wallet-plans"], "/admin/wallet-plans/active"));
+};
+
+export const useCreateWalletPlan = (isMounted?: React.MutableRefObject<boolean>) => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async ({ name, recharge_amount, discount_percentage }: { name: string; recharge_amount: number; discount_percentage: number }) => {
+      const mutator = http.post<{ message: string; plan: WalletPlan }, { name: string; recharge_amount: number; discount_percentage: number }>("/admin/wallet-plans").mutationFn;
+      return mutator({ name, recharge_amount, discount_percentage });
+    },
+    onSuccess: () => {
+      if (isMounted?.current === false) return;
+      sileo.success({ title: "Wallet plan created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["wallet-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["active-wallet-plans"] });
+    },
+    onError: (err: any) => {
+      sileo.error({ title: "Failed to create wallet plan", description: err.message });
+    }
+  });
+};
+
+export const useUpdateWalletPlan = (isMounted?: React.MutableRefObject<boolean>) => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async ({ id, name, recharge_amount, discount_percentage, is_active }: { id: string; name?: string; recharge_amount?: number; discount_percentage?: number; is_active?: boolean }) => {
+      const mutator = http.put<{ message: string; plan: WalletPlan }, { name?: string; recharge_amount?: number; discount_percentage?: number; is_active?: boolean }>(`/admin/wallet-plans/${id}`).mutationFn;
+      return mutator({ name, recharge_amount, discount_percentage, is_active });
+    },
+    onSuccess: () => {
+      if (isMounted?.current === false) return;
+      sileo.success({ title: "Wallet plan updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["wallet-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["active-wallet-plans"] });
+    },
+    onError: (err: any) => {
+      sileo.error({ title: "Failed to update wallet plan", description: err.message });
+    }
+  });
+};
+
+export const useDeleteWalletPlan = (isMounted?: React.MutableRefObject<boolean>) => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const token = localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : '';
+      const response = await fetch(`${BASE_URL}/api/v1/admin/wallet-plans/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete wallet plan');
+      return response.json();
+    },
+    onSuccess: () => {
+      if (isMounted?.current === false) return;
+      sileo.success({ title: "Wallet plan deactivated" });
+      queryClient.invalidateQueries({ queryKey: ["wallet-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["active-wallet-plans"] });
+    },
+    onError: (err: any) => {
+      sileo.error({ title: "Failed to delete wallet plan", description: err.message });
+    }
+  });
+};
