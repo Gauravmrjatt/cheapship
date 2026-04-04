@@ -558,7 +558,6 @@ const adminCreateWeightDispute = async (req, res) => {
             where: { id: orderId },
             select: {
                 user_id: true,
-                total_amount: true,
                 weight: true,
                 shipping_charge: true,
                 base_shipping_charge: true
@@ -591,19 +590,16 @@ const adminCreateWeightDispute = async (req, res) => {
             let securityDeducted = 0;
             let walletDeducted = 0;
             let walletAdded = 0;
-            let orderValue = 0;
 
             if (amountValue > 0) {
-                // Deduction case - take from security_deposit first (capped at order value), then wallet_balance
-                orderValue = Number(order.total_amount);
-                const maxSecurityDeduction = Math.min(amountValue, orderValue);
+                // Deduction case - take from security_deposit first (no cap), then wallet_balance
                 let remainingAmount = amountValue;
 
-                // First deduct from security_deposit (capped at order value)
-                if (newSecurityDeposit > 0 && maxSecurityDeduction > 0) {
-                    if (newSecurityDeposit >= maxSecurityDeduction) {
-                        securityDeducted = maxSecurityDeduction;
-                        newSecurityDeposit -= maxSecurityDeduction;
+                // First deduct from security_deposit (no cap - full amount)
+                if (newSecurityDeposit > 0) {
+                    if (newSecurityDeposit >= remainingAmount) {
+                        securityDeducted = remainingAmount;
+                        newSecurityDeposit -= remainingAmount;
                         remainingAmount = 0;
                     } else {
                         securityDeducted = newSecurityDeposit;
@@ -636,9 +632,9 @@ const adminCreateWeightDispute = async (req, res) => {
                             amount: securityDeducted,
                             closing_balance: newSecurityDeposit,
                             type: 'DEBIT',
-                            category: 'SECURITY_DEBIT',
+                            category: 'SECURITY_DEPOSIT',
                             status: 'SUCCESS',
-                            description: `Weight dispute for Order #${order_id}. Security deposit deduction: ₹${securityDeducted} (Order value: ₹${orderValue}, Dispute: ₹${amountValue})`,
+                            description: `Weight dispute for Order #${order_id}. Security deposit deduction: ₹${securityDeducted}`,
                             reference_id: order_id.toString()
                         }
                     });
@@ -654,7 +650,7 @@ const adminCreateWeightDispute = async (req, res) => {
                             type: 'DEBIT',
                             category: 'WEIGHT_DISPUTE',
                             status: 'SUCCESS',
-                            description: `Weight dispute for Order #${order_id}. Wallet deduction: ₹${walletDeducted} (Remaining after security: ₹${amountValue - securityDeducted})`,
+                            description: `Weight dispute for Order #${order_id}. Wallet deduction: ₹${walletDeducted}`,
                             reference_id: order_id.toString()
                         }
                     });
@@ -714,8 +710,7 @@ const adminCreateWeightDispute = async (req, res) => {
                     newSecurityDeposit,
                     securityDeducted,
                     walletDeducted,
-                    walletAdded,
-                    orderValue: orderValue || Number(order.total_amount)
+                    walletAdded
                 }
             };
         });
@@ -909,7 +904,6 @@ const adminCreateRTODispute = async (req, res) => {
             where: { id: orderId },
             select: {
                 user_id: true,
-                total_amount: true,
                 rto_charges: true
             }
         });
@@ -934,19 +928,16 @@ const adminCreateRTODispute = async (req, res) => {
             let newSecurityDeposit = Number(user.security_deposit);
             let securityDeducted = 0;
             let walletDeducted = 0;
-            let orderValue = 0;
 
-            // Deduct from security_deposit (capped at order value), then wallet_balance
+            // Deduct from security_deposit first (no cap), then wallet_balance
             if (amountValue > 0) {
-                orderValue = Number(order.total_amount);
-                const maxSecurityDeduction = Math.min(amountValue, orderValue);
                 let remainingAmount = amountValue;
 
-                // First deduct from security_deposit (capped at order value)
-                if (newSecurityDeposit > 0 && maxSecurityDeduction > 0) {
-                    if (newSecurityDeposit >= maxSecurityDeduction) {
-                        securityDeducted = maxSecurityDeduction;
-                        newSecurityDeposit -= maxSecurityDeduction;
+                // First deduct from security_deposit (no cap - full amount)
+                if (newSecurityDeposit > 0) {
+                    if (newSecurityDeposit >= remainingAmount) {
+                        securityDeducted = remainingAmount;
+                        newSecurityDeposit -= remainingAmount;
                         remainingAmount = 0;
                     } else {
                         securityDeducted = newSecurityDeposit;
@@ -978,9 +969,9 @@ const adminCreateRTODispute = async (req, res) => {
                             amount: securityDeducted,
                             closing_balance: newSecurityDeposit,
                             type: 'DEBIT',
-                            category: 'SECURITY_DEBIT',
+                            category: 'SECURITY_DEPOSIT',
                             status: 'SUCCESS',
-                            description: `RTO charge for Order #${order_id}. Security deposit deduction: ₹${securityDeducted} (Order value: ₹${orderValue}, RTO: ₹${amountValue})`,
+                            description: `RTO charge for Order #${order_id}. Security deposit deduction: ₹${securityDeducted}`,
                             reference_id: order_id.toString()
                         }
                     });
@@ -996,7 +987,7 @@ const adminCreateRTODispute = async (req, res) => {
                             type: 'DEBIT',
                             category: 'RTO_CHARGE',
                             status: 'SUCCESS',
-                            description: `RTO charge for Order #${order_id}. Wallet deduction: ₹${walletDeducted} (Remaining after security: ₹${amountValue - securityDeducted})`,
+                            description: `RTO charge for Order #${order_id}. Wallet deduction: ₹${walletDeducted}`,
                             reference_id: order_id.toString()
                         }
                     });
@@ -1022,8 +1013,7 @@ const adminCreateRTODispute = async (req, res) => {
                     previousSecurityDeposit: Number(user.security_deposit),
                     newSecurityDeposit,
                     securityDeducted,
-                    walletDeducted,
-                    orderValue: orderValue || Number(order.total_amount)
+                    walletDeducted
                 }
             };
         });

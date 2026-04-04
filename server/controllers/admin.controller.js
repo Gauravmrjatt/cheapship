@@ -541,7 +541,7 @@ const getWithdrawals = async (req, res) => {
 const processWithdrawal = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { id } = req.params;
-  const { status } = req.body; // APPROVED or REJECTED
+  const { status } = req.body;
 
   if (!['APPROVED', 'REJECTED'].includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
@@ -562,33 +562,11 @@ const processWithdrawal = async (req, res) => {
         data: { status }
       });
 
-      // If approved, create a debit transaction for the user
-      // Note: The actual "money" logic depends on how you store commission.
-      // If commission is already in wallet_balance, then Approved means money is sent out, so debit wallet.
-      // If Rejected, money stays in wallet (or rather, the lock is released).
-
-      // Assuming 'withdraw' created a pending record but didn't debit yet?
-      // Or typically, you debit on request (hold funds) and refund on reject.
-      // Let's assume standard: Request -> Debit Wallet (Hold) -> Admin Approve (Done) or Reject (Refund).
-      // Checking `franchise.controller.js`: It creates a record but didn't debit wallet there! 
-      // Wait, franchise controller checked balance but didn't decrement it. 
-      // I should fix that logic or handle it here.
-      // Let's assume:
-      // Approve -> Debit Wallet (Real payout)
-      // Reject -> Do nothing (Balance remains)
+      // Funds were already debited from wallet when the withdrawal request was created (franchise.controller.js withdrawCommission).
+      // APPROVE -> funds stay withheld (payout goes out), just create DEBIT transaction record
+      // REJECT -> refund back to wallet
 
       if (status === 'APPROVED') {
-        // Check balance again
-        const user = await tx.user.findUnique({ where: { id: withdrawal.user_id } });
-        if (Number(user.wallet_balance) < Number(withdrawal.amount)) {
-          throw new Error('Insufficient user balance for approval');
-        }
-
-        await tx.user.update({
-          where: { id: withdrawal.user_id },
-          data: { wallet_balance: { decrement: withdrawal.amount } }
-        });
-
         // If it's a franchise withdrawal, consume the orders
         if (withdrawal.franchise_id) {
           await tx.order.updateMany({
@@ -611,7 +589,7 @@ const processWithdrawal = async (req, res) => {
               referrer_id: withdrawal.user_id,
               is_withdrawn: true,
               withdrawn_at: {
-                gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Within last 24 hours
+                gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
               }
             }
           });
@@ -621,7 +599,33 @@ const processWithdrawal = async (req, res) => {
           }
         }
 
-        // Get updated wallet balance
+        // Record the DEBIT transaction (funds already withheld on request)
+        const currentUser = await tx.user.findUnique({
+          where: { id: withdrawal.user_id },
+          select: { wallet_balance: true }
+        });
+
+        await tx.transaction.create({
+          data: {
+            user_id: withdrawal.user_id,
+            amount: withdrawal.amount,
+            closing_balance: Number(currentUser.wallet_balance),
+            type: 'DEBIT',
+            category: 'COMMISSION',
+            status: 'SUCCESS',
+            description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
+            reference_id: withdrawal.id
+          }
+        });
+      } else if (status === 'REJECTED') {
+        // Refund back to wallet
+        await tx.user.update({
+          where: { id: withdrawal.user_id },
+          data: {
+            wallet_balance: { increment: withdrawal.amount }
+          }
+        });
+
         const updatedUser = await tx.user.findUnique({
           where: { id: withdrawal.user_id },
           select: { wallet_balance: true }
@@ -632,10 +636,10 @@ const processWithdrawal = async (req, res) => {
             user_id: withdrawal.user_id,
             amount: withdrawal.amount,
             closing_balance: Number(updatedUser.wallet_balance),
-            type: 'DEBIT',
+            type: 'CREDIT',
             category: 'COMMISSION',
             status: 'SUCCESS',
-            description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
+            description: 'Withdrawal request rejected — funds returned to wallet',
             reference_id: withdrawal.id
           }
         });
@@ -678,6 +682,37 @@ const updateGlobalSettings = async (req, res) => {
       }
     });
     res.json(setting);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const getSecurityRefundSchedule = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  try {
+    const schedule = await prisma.securityRefundSchedule.findFirst({
+      orderBy: { created_at: 'desc' }
+    });
+    res.json(schedule);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const setSecurityRefundSchedule = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { scheduled_date, is_active } = req.body;
+
+  try {
+    const schedule = await prisma.securityRefundSchedule.create({
+      data: {
+        scheduled_date: new Date(scheduled_date),
+        is_active: is_active !== undefined ? is_active : true
+      }
+    });
+    res.json(schedule);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -1660,5 +1695,7 @@ module.exports = {
   createWalletPlan,
   updateWalletPlan,
   deleteWalletPlan,
-  getActiveWalletPlans
+  getActiveWalletPlans,
+  getSecurityRefundSchedule,
+  setSecurityRefundSchedule
 };

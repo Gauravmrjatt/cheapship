@@ -1435,38 +1435,7 @@ const processOrderUpdate = async (prisma, order, payload, res) => {
   // Handle security deposit release on delivery
   if (newStatus === 'DELIVERED') {
     updateData.delivered_at = new Date();
-
-    const securityAmount = Number(order.shipping_charge || 0);
-
-    if (securityAmount > 0) {
-      await prisma.$transaction(async (tx) => {
-        await tx.user.update({
-          where: { id: order.user_id },
-          data: {
-            security_deposit: { decrement: securityAmount },
-            wallet_balance: { increment: securityAmount }
-          }
-        });
-
-        const updatedUser = await tx.user.findUnique({
-          where: { id: order.user_id },
-          select: { wallet_balance: true }
-        });
-
-        await tx.transaction.create({
-          data: {
-            user_id: order.user_id,
-            amount: securityAmount,
-            closing_balance: Number(updatedUser.wallet_balance),
-            type: 'CREDIT',
-            category: 'REFUND',
-            status: 'SUCCESS',
-            description: `Security deposit released for Order #${order.id} (Delivered)`,
-            reference_id: String(order.id)
-          }
-        });
-      });
-    }
+    // Security deposit remains with user - no auto release on delivery
   }
 
   // Handle CANCELLED status - release security deposit and refund to wallet
@@ -1570,48 +1539,9 @@ const processOrderUpdate = async (prisma, order, payload, res) => {
     }
   }
 
-  // Handle NOT_PICKED status - release security deposit and refund shipping charge
+  // Handle NOT_PICKED status - security deposit remains with user
   if (newStatus === 'NOT_PICKED' && order.shipment_status !== 'NOT_PICKED') {
-    const securityAmount = Number(order.shipping_charge || 0);
-
-    if (securityAmount > 0) {
-      await prisma.$transaction(async (tx) => {
-        // Release security deposit
-        await tx.user.update({
-          where: { id: order.user_id },
-          data: {
-            security_deposit: { decrement: securityAmount }
-          }
-        });
-
-        // Refund shipping charge to wallet
-        await tx.user.update({
-          where: { id: order.user_id },
-          data: {
-            wallet_balance: { increment: securityAmount }
-          }
-        });
-
-        const updatedUser = await tx.user.findUnique({
-          where: { id: order.user_id },
-          select: { wallet_balance: true }
-        });
-
-        // Create transaction records
-        await tx.transaction.create({
-          data: {
-            user_id: order.user_id,
-            amount: securityAmount,
-            closing_balance: Number(updatedUser.wallet_balance),
-            type: 'CREDIT',
-            category: 'REFUND',
-            status: 'SUCCESS',
-            description: `Security deposit & shipping refund for NOT_PICKED Order #${order.id}`,
-            reference_id: String(order.id)
-          }
-        });
-      });
-    }
+    // Security deposit remains with user - no auto release on NOT_PICKED
   }
 
   // Handle COD remittance status for delivered orders

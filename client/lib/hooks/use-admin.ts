@@ -669,3 +669,34 @@ export const useDeleteWalletPlan = (isMounted?: React.MutableRefObject<boolean>)
     }
   });
 };
+
+// Security Refund Schedule
+export interface SecurityRefundSchedule {
+  id: string;
+  scheduled_date: string;
+  is_active: boolean;
+  last_triggered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const useSecurityRefundSchedule = () => {
+  const http = useHttp();
+  return useQuery(http.get<SecurityRefundSchedule>(["security-refund"], "/admin/settings/security-refund"));
+};
+
+export const useSetSecurityRefundSchedule = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    ...http.post<SecurityRefundSchedule, { scheduled_date: string; is_active: boolean }>("/admin/settings/security-refund", {
+      onSuccess: () => {
+        sileo.success({ title: "Security refund schedule saved" });
+        queryClient.invalidateQueries({ queryKey: ["security-refund"] });
+      },
+      onError: (err: any) => {
+        sileo.error({ title: "Failed to save schedule", description: err.message });
+      }
+    })
+  });
+};

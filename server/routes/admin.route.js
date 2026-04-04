@@ -71,6 +71,10 @@ router.post('/withdrawals/:id/process', adminController.processWithdrawal);
 router.get('/settings/global-commission', adminController.getGlobalSettings);
 router.post('/settings/global-commission', adminController.updateGlobalSettings);
 
+// Security Refund Schedule
+router.get('/settings/security-refund', adminController.getSecurityRefundSchedule);
+router.post('/settings/security-refund', adminController.setSecurityRefundSchedule);
+
 // Commission Limits
 router.get('/settings/commission-limits', adminController.getCommissionLimits);
 router.post('/settings/commission-limits', adminController.updateCommissionLimits);
