@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const { validationResult } = require('express-validator');
 const otpService = require('../services/otp.service');
 const emailService = require('../services/email.service');
+const moment = require('moment-timezone');
 
 const sendAdminForgotPasswordOtp = async (req, res) => {
   const { email: rawEmail } = req.body;
@@ -706,22 +707,34 @@ const setSecurityRefundSchedule = async (req, res) => {
   const { scheduled_date, is_active } = req.body;
 
   try {
-    // Ensure the date is treated as UTC
+    // Frontend sends IST datetime string. Convert to UTC for storage.
     let parsedDate;
     if (scheduled_date) {
-      // If the date string ends with 'Z' or contains 'T', use as-is
-      // Otherwise, append 'Z' to treat as UTC
-      parsedDate = scheduled_date.includes('Z') || scheduled_date.includes('T')
-        ? new Date(scheduled_date)
-        : new Date(scheduled_date + 'Z');
+      parsedDate = moment.tz(scheduled_date, 'Asia/Kolkata').toDate();
     }
 
-    const schedule = await prisma.securityRefundSchedule.create({
-      data: {
-        scheduled_date: parsedDate,
-        is_active: is_active !== undefined ? is_active : true
-      }
+    // Check if schedule exists, update or create
+    const existing = await prisma.securityRefundSchedule.findFirst({
+      orderBy: { created_at: 'desc' }
     });
+
+    let schedule;
+    if (existing) {
+      schedule = await prisma.securityRefundSchedule.update({
+        where: { id: existing.id },
+        data: {
+          scheduled_date: parsedDate,
+          is_active: is_active !== undefined ? is_active : true
+        }
+      });
+    } else {
+      schedule = await prisma.securityRefundSchedule.create({
+        data: {
+          scheduled_date: parsedDate,
+          is_active: is_active !== undefined ? is_active : true
+        }
+      });
+    }
     res.json(schedule);
   } catch (error) {
     console.error(error);

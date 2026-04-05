@@ -1,23 +1,5 @@
 const cron = require('node-cron');
-const { PrismaClient } = require('@prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
-
-// Helper function to get current time in IST (Indian Standard Time)
-function getISTTime() {
-  return new Date(new Date().getTime() + (5 * 60 + 30) * 60 * 1000);
-}
-
-// Helper function to check if date is today (using IST)
-function isSameDay(date1, date2) {
-  if (!date1 || !date2) return false;
-  const d1 = new Date(date1);
-  const d2 = new Date(date2);
-  const d1IST = new Date(d1.getTime() + (5 * 60 + 30) * 60 * 1000);
-  const d2IST = new Date(d2.getTime() + (5 * 60 + 30) * 60 * 1000);
-  return d1IST.getFullYear() === d2IST.getFullYear() &&
-    d1IST.getMonth() === d2IST.getMonth() &&
-    d1IST.getDate() === d2IST.getDate();
-}
+const moment = require('moment-timezone');
 
 function initializeCronJobs(prisma) {
   console.log('Initializing cron jobs...');
@@ -30,29 +12,32 @@ function initializeCronJobs(prisma) {
         return;
       }
 
-      // Get active schedule
+      // Get active schedule (latest one)
       const schedule = await prisma.securityRefundSchedule.findFirst({
-        where: { is_active: true }
+        where: { is_active: true },
+        orderBy: { created_at: 'desc' }
       });
 
       if (!schedule) {
         return;
       }
 
-      // Check if already triggered today (using IST)
-      const nowIST = getISTTime();
-      if (schedule.last_triggered_at && isSameDay(schedule.last_triggered_at, nowIST)) {
-        console.log('Security refund already triggered today, skipping...');
-        return;
+      const nowIST = moment().tz('Asia/Kolkata');
+
+      // Check if already triggered today (using IST date)
+      if (schedule.last_triggered_at) {
+        const lastTriggeredIST = moment(schedule.last_triggered_at).tz('Asia/Kolkata');
+        if (lastTriggeredIST.isSame(nowIST, 'day')) {
+          console.log('Security refund already triggered today, skipping...');
+          return;
+        }
       }
 
-      // Check if scheduled time has passed
-      // scheduled_date from DB is already in UTC (frontend converts IST to UTC)
-      // Only convert current time to IST for comparison
-      const scheduledDate = new Date(schedule.scheduled_date);
+      // Parse the scheduled date/time as IST
+      const scheduledIST = moment.tz(schedule.scheduled_date, 'Asia/Kolkata');
 
-      if (nowIST < scheduledDate) {
-        console.log(`Security refund scheduled time not yet reached. Now IST: ${nowIST.toISOString()}, Scheduled (UTC): ${scheduledDate.toISOString()}`);
+      if (nowIST.isBefore(scheduledIST)) {
+        console.log(`Security refund scheduled time not yet reached. Now IST: ${nowIST.format('YYYY-MM-DD HH:mm:ss')}, Scheduled IST: ${scheduledIST.format('YYYY-MM-DD HH:mm:ss')}`);
         return;
       }
 
@@ -135,8 +120,8 @@ function initializeCronJobs(prisma) {
                 type: 'CREDIT',
                 category: 'REFUND',
                 status: 'SUCCESS',
-                description: `Security deposit refund triggered on ${new Date().toISOString()}. Refunded ${data.deposits.length} orders.`,
-                reference_id: `BATCH_${new Date().getTime()}`
+                description: `Security deposit refund triggered on ${moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss')} IST. Refunded ${data.deposits.length} orders.`,
+                reference_id: `BATCH_${Date.now()}`
               }
             });
 

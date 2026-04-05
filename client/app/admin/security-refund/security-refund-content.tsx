@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
+import moment from "moment-timezone";
 import { useSecurityRefundSchedule, useSetSecurityRefundSchedule, useAdminSecurityDeposits } from "@/lib/hooks/use-admin";
 import { AdminSecurityDepositsDataTable } from "@/components/admin-security-deposits-data-table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -44,13 +45,10 @@ export default function SecurityManagementContent() {
 
   useEffect(() => {
     if (schedule) {
-      const dateObj = new Date(schedule.scheduled_date);
-      // Format as YYYY-MM-DD for date input
-      const dateStr = dateObj.toISOString().split('T')[0];
-      // Format as HH:mm for time input
-      const timeStr = dateObj.toISOString().split('T')[1].slice(0, 5);
-      setScheduledDate(dateStr);
-      setScheduledTime(timeStr);
+      // Convert UTC stored in DB to IST for display in input fields
+      const istMom = moment(schedule.scheduled_date).tz('Asia/Kolkata');
+      setScheduledDate(istMom.format('YYYY-MM-DD'));
+      setScheduledTime(istMom.format('HH:mm'));
       setIsActive(schedule.is_active);
     }
   }, [schedule]);
@@ -61,12 +59,12 @@ export default function SecurityManagementContent() {
       return;
     }
 
-    const scheduledDateTime = new Date(scheduledDate + 'T' + scheduledTime + ':00');
-    const scheduledDateTimeUTC = new Date(scheduledDateTime.getTime() - (scheduledDateTime.getTimezoneOffset() * 60000)).toISOString();
+    // User input is IST. Parse as IST, convert to ISO string (UTC) for the backend.
+    const istDateTime = moment.tz(`${scheduledDate} ${scheduledTime}`, 'YYYY-MM-DD HH:mm', 'Asia/Kolkata');
 
     try {
       await setScheduleMutation.mutateAsync({
-        scheduled_date: scheduledDateTimeUTC,
+        scheduled_date: istDateTime.format('YYYY-MM-DD HH:mm:ss'),  // send as unformatted IST datetime for backend to parse
         is_active: isActive
       });
       sileo.success({ title: "Success", description: "Security refund schedule saved" });
@@ -84,13 +82,7 @@ export default function SecurityManagementContent() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return moment(dateString).tz('Asia/Kolkata').format('DD MMM YYYY, hh:mm A');
   };
 
   const getScheduleStatusBadge = (isActive: boolean, lastTriggered: string | null) => {
