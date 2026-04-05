@@ -27,14 +27,21 @@ checkDbConnection();
 // Cron job for security deposit refund - runs every minute
 const cron = require('node-cron');
 
-// Helper function to check if date is today
+// Helper function to get current time in IST (Indian Standard Time)
+function getISTTime() {
+  return new Date(new Date().getTime() + (5 * 60 + 30) * 60 * 1000);
+}
+
+// Helper function to check if date is today (using IST)
 function isSameDay(date1, date2) {
   if (!date1 || !date2) return false;
   const d1 = new Date(date1);
   const d2 = new Date(date2);
-  return d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
+  const d1IST = new Date(d1.getTime() + (5 * 60 + 30) * 60 * 1000);
+  const d2IST = new Date(d2.getTime() + (5 * 60 + 30) * 60 * 1000);
+  return d1IST.getFullYear() === d2IST.getFullYear() &&
+    d1IST.getMonth() === d2IST.getMonth() &&
+    d1IST.getDate() === d2IST.getDate();
 }
 
 // Cron job: runs every minute to check if security refund should be triggered
@@ -57,14 +64,19 @@ cron.schedule('* * * * *', async () => {
     }
 
     // Check if already triggered today
-    if (schedule.last_triggered_at && isSameDay(schedule.last_triggered_at, new Date())) {
+    // Check if already triggered today (using IST)
+    const nowIST = getISTTime();
+    if (schedule.last_triggered_at && isSameDay(schedule.last_triggered_at, nowIST)) {
       console.log('Security refund already triggered today, skipping...');
       return;
     }
 
-    // Check if scheduled time has passed
-    if (new Date() < new Date(schedule.scheduled_date)) {
-      console.log('Security refund scheduled time not yet reached');
+    // Check if scheduled time has passed (using IST)
+    const scheduledDate = new Date(schedule.scheduled_date);
+    const scheduledIST = new Date(scheduledDate.getTime() + (5 * 60 + 30) * 60 * 1000);
+    
+    if (nowIST < scheduledIST) {
+      console.log(`Security refund scheduled time not yet reached. Now IST: ${nowIST.toISOString()}, Scheduled IST: ${scheduledIST.toISOString()}`);
       return;
     }
 
