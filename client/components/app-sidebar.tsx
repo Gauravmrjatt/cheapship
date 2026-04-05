@@ -120,11 +120,6 @@ export const adminNav = [
     icon: <HugeiconsIcon icon={RefreshIcon} strokeWidth={2} />,
   },
   {
-    title: "Security Deposits",
-    url: "/admin/security-deposits",
-    icon: <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />,
-  },
-  {
     title: "Wallet Plans",
     url: "/admin/wallet-plans",
     icon: <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />,
