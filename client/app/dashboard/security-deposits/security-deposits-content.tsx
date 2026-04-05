@@ -1,282 +1,104 @@
 "use client";
 
-import * as React from "react";
-import { useUserSecurityDeposits, SecurityDeposit } from "@/lib/hooks/use-user";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { useSecurityDeposits, SecurityDepositFilters } from "@/lib/hooks/use-security-deposits";
+import { SecurityDepositsDataTable } from "@/components/security-deposits-data-table";
+import { useSearchParams } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { 
-  Wallet01Icon, 
-  RefreshIcon,
-  Calendar01Icon,
-} from "@hugeicons/core-free-icons";
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type ColumnDef,
-  type SortingState,
-} from "@tanstack/react-table";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SearchIcon } from "@hugeicons/core-free-icons";
 
 export default function SecurityDepositsContent() {
-  const { data, isLoading, refetch } = useUserSecurityDeposits();
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-    }).format(amount || 0);
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return <Badge variant="default">Active</Badge>;
-      case 'PARTIAL':
-        return <Badge variant="secondary">Partial</Badge>;
-      case 'FULLY_USED':
-        return <Badge variant="destructive">Used</Badge>;
-      case 'REFUNDED':
-        return <Badge variant="outline">Refunded</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
-
-  const columns: ColumnDef<SecurityDeposit>[] = React.useMemo(() => [
-    {
-      accessorKey: "order_id",
-      header: "Order ID",
-      cell: ({ row }) => (
-        <span className="font-medium">#{row.original.order_id.toString()}</span>
-      )
-    },
-    {
-      accessorKey: "order",
-      header: "Order Status",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">{row.original.order?.shipment_status || '-'}</span>
-      )
-    },
-    {
-      accessorKey: "amount",
-      header: "Original",
-      cell: ({ row }) => (
-        <span>{formatCurrency(row.original.amount)}</span>
-      )
-    },
-    {
-      accessorKey: "used_amount",
-      header: "Used",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">{formatCurrency(row.original.used_amount)}</span>
-      )
-    },
-    {
-      accessorKey: "remaining",
-      header: "Remaining",
-      cell: ({ row }) => (
-        <span className="font-medium">{formatCurrency(row.original.remaining)}</span>
-      )
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => getStatusBadge(row.original.status)
-    },
-    {
-      accessorKey: "created_at",
-      header: "Date",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">{formatDate(row.original.created_at)}</span>
-      )
-    }
-  ], []);
-
-  const table = useReactTable({
-    data: data?.data || [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onSortingChange: setSorting,
-    state: { sorting },
-    pageCount: data?.pagination?.totalPages || 1,
-    manualPagination: true,
+  const searchParams = useSearchParams();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [sidebarSearch, setSidebarSearch] = useState("");
+  const [filters, setFilters] = useState<SecurityDepositFilters>({
+    status: "ALL",
+    from: "",
+    to: "",
+    search: "",
   });
 
-  const deposits = data?.data || [];
+  const { data, isLoading, isError } = useSecurityDeposits(page, pageSize, filters);
+
+  const handleFilterChange = (newFilters: SecurityDepositFilters) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
+
+  const handleSearchSubmit = () => {
+    setFilters((prev) => ({ ...prev, search: sidebarSearch }));
+    setPage(1);
+    setShowSearchDialog(false);
+  };
+
+  if (isError) return (
+    <div className="flex flex-1 flex-col items-center justify-center">
+      <p className="text-destructive">Error fetching security deposits</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-8 p-5 animate-in fade-in duration-500">
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Deposited
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-9 w-20" />
-            ) : (
-              <div className="text-2xl font-bold">
-                {formatCurrency(data?.totals?.totalAmount || 0)}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              All security deposits
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Used
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-9 w-32" />
-            ) : (
-              <div className="text-2xl font-bold">
-                {formatCurrency(data?.totals?.totalUsed || 0)}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              For disputes
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Remaining
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-9 w-32" />
-            ) : (
-              <div className="text-2xl font-bold">
-                {formatCurrency(data?.totals?.totalRemaining || 0)}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              To be refunded
-            </p>
-          </CardContent>
-        </Card>
+    <div className="flex flex-1 flex-col">
+      <div className="@container/main flex flex-1 flex-col gap-2">
+        <div className="flex flex-col gap-4 py-9">
+          <SecurityDepositsDataTable
+            data={data?.data ?? []}
+            isLoading={isLoading}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            pagination={{
+              currentPage: page,
+              pageSize,
+              totalPages: data?.pagination?.totalPages ?? 1,
+              total: data?.pagination?.total ?? 0,
+            }}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ))}
+      <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Search Deposits</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            <div className="relative">
+              <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by order ID..."
+                className="pl-10"
+                value={sidebarSearch}
+                onChange={(e) => setSidebarSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearchSubmit();
+                  }
+                }}
+              />
             </div>
-          ) : deposits.length > 0 ? (
-            <>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                        {headerGroup.headers.map((header) => (
-                          <TableHead key={header.id} className="text-xs font-medium uppercase text-muted-foreground">
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(header.column.columnDef.header, header.getContext())}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {table.getRowModel().rows.map((row) => (
-                      <TableRow key={row.id}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id} className="py-3">
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {data?.pagination && data.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between p-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {((data.pagination.currentPage - 1) * data.pagination.pageSize) + 1} to{' '}
-                    {Math.min(data.pagination.currentPage * data.pagination.pageSize, data.pagination.total)} of{' '}
-                    {data.pagination.total}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => table.previousPage()}
-                      disabled={!table.getCanPreviousPage()}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => table.nextPage()}
-                      disabled={!table.getCanNextPage()}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
-              <div className="rounded-full bg-muted p-4 mb-4">
-                <HugeiconsIcon icon={Wallet01Icon} className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-1">No Security Deposits</h3>
-              <p className="text-muted-foreground text-sm text-center max-w-sm">
-                Your security deposits will appear here when you place orders.
-              </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowSearchDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSearchSubmit}>
+                Search
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
