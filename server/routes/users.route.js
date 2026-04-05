@@ -9,4 +9,7 @@ router.get('/profile', usersController.getProfile);
 router.post('/commission-rate', usersController.updateCommissionRate);
 router.post('/default-pickup', usersController.setDefaultReferredPickup);
 
+// Security Deposits
+router.get('/security-deposits', usersController.getUserSecurityDeposits);
+
 module.exports = router;

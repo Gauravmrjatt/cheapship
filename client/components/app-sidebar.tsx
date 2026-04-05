@@ -40,7 +40,8 @@ import {
   Comment01Icon,
   DeliveryReturnIcon,
   CustomerService02Icon,
-  Wallet02Icon
+  Wallet02Icon,
+  RefreshIcon
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/lib/hooks/use-auth"
 import {
@@ -116,6 +117,11 @@ export const adminNav = [
   {
     title: "Security Refund",
     url: "/admin/security-refund",
+    icon: <HugeiconsIcon icon={RefreshIcon} strokeWidth={2} />,
+  },
+  {
+    title: "Security Deposits",
+    url: "/admin/security-deposits",
     icon: <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />,
   },
   {
@@ -188,6 +194,13 @@ export const data = {
       url: "/dashboard/franchise",
       icon: (
         <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />
+      ),
+    },
+    {
+      title: "Security Deposits",
+      url: "/dashboard/security-deposits",
+      icon: (
+        <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />
       ),
     },
   ],

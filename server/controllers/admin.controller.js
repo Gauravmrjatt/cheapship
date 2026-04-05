@@ -719,7 +719,97 @@ const setSecurityRefundSchedule = async (req, res) => {
   }
 };
 
-const getAllTransactions = async (req, res) => {
+// Get all security deposits (admin)
+const getAllSecurityDeposits = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  try {
+    const { page = 1, pageSize = 20, status, userId, search } = req.query;
+    
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const pageSizeNum = parseInt(pageSize, 10);
+    const offset = (pageNum - 1) * pageSizeNum;
+
+    const where = {};
+    if (status) {
+      where.status = status;
+    }
+    if (userId) {
+      where.user_id = userId;
+    }
+
+    const [deposits, total] = await Promise.all([
+      prisma.securityDeposit.findMany({
+        where,
+        include: {
+          order: {
+            select: {
+              id: true,
+              shipment_status: true,
+              total_amount: true,
+              shipping_charge: true
+            }
+          },
+          user: {
+            select: {
+              name: true,
+              email: true,
+              mobile: true
+            }
+          }
+        },
+        orderBy: { created_at: 'desc' },
+        skip: offset,
+        take: pageSizeNum
+      }),
+      prisma.securityDeposit.count({ where })
+    ]);
+
+    res.json({
+      data: deposits,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / pageSizeNum),
+        currentPage: pageNum,
+        pageSize: pageSizeNum
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Get security deposits by order ID
+const getSecurityDepositByOrder = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  try {
+    const { orderId } = req.params;
+    const deposit = await prisma.securityDeposit.findFirst({
+      where: { order_id: BigInt(orderId) },
+      include: {
+        order: {
+          select: {
+            id: true,
+            shipment_status: true,
+            total_amount: true,
+            shipping_charge: true
+          }
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            mobile: true
+          }
+        }
+      }
+    });
+    res.json(deposit);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -1697,5 +1787,7 @@ module.exports = {
   deleteWalletPlan,
   getActiveWalletPlans,
   getSecurityRefundSchedule,
-  setSecurityRefundSchedule
+  setSecurityRefundSchedule,
+  getAllSecurityDeposits,
+  getSecurityDepositByOrder
 };

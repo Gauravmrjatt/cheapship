@@ -630,6 +630,18 @@ const createOrder = async (req, res) => {
         }
       });
 
+      // 3.1 Create SecurityDeposit record for tracking
+      await tx.securityDeposit.create({
+        data: {
+          user_id: userId,
+          order_id: newOrder.id,
+          amount: securityDepositAmount,
+          used_amount: 0,
+          remaining: securityDepositAmount,
+          status: 'ACTIVE'
+        }
+      });
+
       // Get updated balances after deductions
       const updatedUser = await tx.user.findUnique({
         where: { id: userId },
@@ -1266,6 +1278,16 @@ const cancelOrder = async (req, res) => {
             reference_id: id.toString()
           }
         });
+
+        // Update SecurityDeposit record to REFUNDED
+        await tx.securityDeposit.updateMany({
+          where: { order_id: BigInt(id), user_id: userId },
+          data: {
+            remaining: 0,
+            status: 'REFUNDED',
+            updated_at: new Date()
+          }
+        });
       }
 
       return { order: updatedOrder, shiprocketCancelResult, cancellationAttempted };
@@ -1496,6 +1518,16 @@ const processOrderUpdate = async (prisma, order, payload, res) => {
             status: 'SUCCESS',
             description: `Shipping charge refunded for cancelled Order #${order.id}`,
             reference_id: String(order.id)
+          }
+        });
+
+        // Update SecurityDeposit record to REFUNDED
+        await tx.securityDeposit.updateMany({
+          where: { order_id: order.id, user_id: order.user_id },
+          data: {
+            remaining: 0,
+            status: 'REFUNDED',
+            updated_at: new Date()
           }
         });
       });

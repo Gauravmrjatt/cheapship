@@ -700,3 +700,53 @@ export const useSetSecurityRefundSchedule = () => {
     })
   });
 };
+
+// Admin Security Deposits
+export interface AdminSecurityDeposit {
+  id: string;
+  user_id: string;
+  order_id: string;
+  amount: number;
+  used_amount: number;
+  remaining: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  order?: {
+    id: string;
+    shipment_status: string;
+    total_amount: number;
+    shipping_charge: number;
+  };
+  user?: {
+    name: string;
+    email: string;
+    mobile: string;
+  };
+}
+
+export interface AdminSecurityDepositsResponse {
+  data: AdminSecurityDeposit[];
+  pagination: {
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  };
+}
+
+export const useAdminSecurityDeposits = (page: number = 1, pageSize: number = 20, status: string = "") => {
+  const http = useHttp();
+  return useQuery(http.get<AdminSecurityDepositsResponse>(
+    ["admin-security-deposits", page, pageSize, status],
+    `/admin/settings/security-deposits?page=${page}&pageSize=${pageSize}${status ? `&status=${status}` : ""}`
+  ));
+};
+
+export const useAdminSecurityDepositByOrder = (orderId: string) => {
+  const http = useHttp();
+  return useQuery(http.get<AdminSecurityDeposit>(
+    ["admin-security-deposit-by-order", orderId],
+    `/admin/settings/security-deposits/${orderId}`
+  ));
+};

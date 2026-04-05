@@ -108,8 +108,76 @@ const getProfile = async (req, res) => {
     }
 };
 
+// Get current user's security deposits
+const getUserSecurityDeposits = async (req, res) => {
+    const prisma = req.app.locals.prisma;
+    const userId = req.user.id;
+
+    try {
+        const { page = 1, pageSize = 20, status } = req.query;
+        
+        const pageNum = Math.max(1, parseInt(page, 10));
+        const pageSizeNum = parseInt(pageSize, 10);
+        const offset = (pageNum - 1) * pageSizeNum;
+
+        const where = { user_id: userId };
+        if (status) {
+            where.status = status;
+        }
+
+        const [deposits, total] = await Promise.all([
+            prisma.securityDeposit.findMany({
+                where,
+                include: {
+                    order: {
+                        select: {
+                            id: true,
+                            shipment_status: true,
+                            total_amount: true,
+                            shipping_charge: true
+                        }
+                    }
+                },
+                orderBy: { created_at: 'desc' },
+                skip: offset,
+                take: pageSizeNum
+            }),
+            prisma.securityDeposit.count({ where })
+        ]);
+
+        // Calculate totals
+        const totals = await prisma.securityDeposit.aggregate({
+            where: { user_id: userId },
+            _sum: {
+                amount: true,
+                used_amount: true,
+                remaining: true
+            }
+        });
+
+        res.json({
+            data: deposits,
+            totals: {
+                totalAmount: totals._sum.amount || 0,
+                totalUsed: totals._sum.used_amount || 0,
+                totalRemaining: totals._sum.remaining || 0
+            },
+            pagination: {
+                total,
+                totalPages: Math.ceil(total / pageSizeNum),
+                currentPage: pageNum,
+                pageSize: pageSizeNum
+            }
+        });
+    } catch (error) {
+        console.error('Get security deposits error:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     updateCommissionRate,
     setDefaultReferredPickup,
-    getProfile
+    getProfile,
+    getUserSecurityDeposits
 };

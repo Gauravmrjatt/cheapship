@@ -103,3 +103,45 @@ export const useSetDefaultPickup = () => {
     }
   });
 };
+
+// User Security Deposits
+export interface SecurityDeposit {
+  id: string;
+  user_id: string;
+  order_id: string;
+  amount: number;
+  used_amount: number;
+  remaining: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  order?: {
+    id: string;
+    shipment_status: string;
+    total_amount: number;
+    shipping_charge: number;
+  };
+}
+
+export interface SecurityDepositsResponse {
+  data: SecurityDeposit[];
+  totals: {
+    totalAmount: number;
+    totalUsed: number;
+    totalRemaining: number;
+  };
+  pagination: {
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  };
+}
+
+export const useUserSecurityDeposits = () => {
+  const http = useHttp();
+  return useQuery(http.get<SecurityDepositsResponse>(
+    ["user-security-deposits"],
+    "/api/v1/users/security-deposits"
+  ));
+};

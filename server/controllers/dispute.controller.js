@@ -638,6 +638,26 @@ const adminCreateWeightDispute = async (req, res) => {
                             reference_id: order_id.toString()
                         }
                     });
+
+                    // Update SecurityDeposit record for tracking
+                    const securityDepositRecord = await tx.securityDeposit.findFirst({
+                        where: { order_id: orderId, user_id: order.user_id }
+                    });
+
+                    if (securityDepositRecord) {
+                        const newUsedAmount = Number(securityDepositRecord.used_amount) + securityDeducted;
+                        const newRemaining = Number(securityDepositRecord.amount) - newUsedAmount;
+                        
+                        await tx.securityDeposit.update({
+                            where: { id: securityDepositRecord.id },
+                            data: {
+                                used_amount: newUsedAmount,
+                                remaining: Math.max(0, newRemaining),
+                                status: newRemaining <= 0 ? 'FULLY_USED' : 'PARTIAL',
+                                updated_at: new Date()
+                            }
+                        });
+                    }
                 }
 
                 // Create transaction record for wallet deduction (if any)
@@ -975,6 +995,26 @@ const adminCreateRTODispute = async (req, res) => {
                             reference_id: order_id.toString()
                         }
                     });
+
+                    // Update SecurityDeposit record for tracking
+                    const securityDepositRecord = await tx.securityDeposit.findFirst({
+                        where: { order_id: orderId, user_id: order.user_id }
+                    });
+
+                    if (securityDepositRecord) {
+                        const newUsedAmount = Number(securityDepositRecord.used_amount) + securityDeducted;
+                        const newRemaining = Number(securityDepositRecord.amount) - newUsedAmount;
+                        
+                        await tx.securityDeposit.update({
+                            where: { id: securityDepositRecord.id },
+                            data: {
+                                used_amount: newUsedAmount,
+                                remaining: Math.max(0, newRemaining),
+                                status: newRemaining <= 0 ? 'FULLY_USED' : 'PARTIAL',
+                                updated_at: new Date()
+                            }
+                        });
+                    }
                 }
 
                 // Create transaction record for wallet deduction (if any)

@@ -75,6 +75,10 @@ router.post('/settings/global-commission', adminController.updateGlobalSettings)
 router.get('/settings/security-refund', adminController.getSecurityRefundSchedule);
 router.post('/settings/security-refund', adminController.setSecurityRefundSchedule);
 
+// Security Deposits
+router.get('/settings/security-deposits', adminController.getAllSecurityDeposits);
+router.get('/settings/security-deposits/:orderId', adminController.getSecurityDepositByOrder);
+
 // Commission Limits
 router.get('/settings/commission-limits', adminController.getCommissionLimits);
 router.post('/settings/commission-limits', adminController.updateCommissionLimits);

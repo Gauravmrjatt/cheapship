@@ -70,32 +70,35 @@ cron.schedule('* * * * *', async () => {
 
     console.log('Starting security deposit refund process...');
 
-    // Get all delivered orders with security deposit
-    const deliveredOrders = await prisma.order.findMany({
-      where: { shipment_status: 'DELIVERED' },
-      select: { 
-        id: true,
-        user_id: true, 
-        shipping_charge: true 
+    // Get all security deposits with remaining amount > 0 for delivered orders
+    const securityDeposits = await prisma.securityDeposit.findMany({
+      where: {
+        remaining: { gt: 0 },
+        status: { in: ['ACTIVE', 'PARTIAL'] }
+      },
+      include: {
+        order: {
+          select: { shipment_status: true }
+        }
       }
     });
 
-    // Group by user and calculate total security per user
-    const userSecurityMap = new Map();
-    for (const order of deliveredOrders) {
-      const securityAmount = Number(order.shipping_charge || 0);
-      if (securityAmount > 0) {
-        const current = userSecurityMap.get(order.user_id) || { total: 0, orders: [] };
-        current.total += securityAmount;
-        current.orders.push(order.id);
-        userSecurityMap.set(order.user_id, current);
-      }
+    // Filter to only delivered orders
+    const eligibleDeposits = securityDeposits.filter(sd => sd.order && sd.order.shipment_status === 'DELIVERED');
+
+    console.log(`Found ${eligibleDeposits.length} eligible security deposits to refund`);
+
+    // Group by user for batch processing
+    const userRefundMap = new Map();
+    for (const deposit of eligibleDeposits) {
+      const current = userRefundMap.get(deposit.user_id) || { totalRefund: 0, deposits: [] };
+      current.totalRefund += Number(deposit.remaining);
+      current.deposits.push(deposit);
+      userRefundMap.set(deposit.user_id, current);
     }
 
-    console.log(`Found ${userSecurityMap.size} users with security deposits to refund`);
-
     // Process refund for each user
-    for (const [userId, data] of userSecurityMap) {
+    for (const [userId, data] of userRefundMap) {
       try {
         await prisma.$transaction(async (tx) => {
           // Get current user wallet info
@@ -108,7 +111,7 @@ cron.schedule('* * * * *', async () => {
             return;
           }
 
-          const refundAmount = Math.min(data.total, Number(user.security_deposit));
+          const refundAmount = Math.min(data.totalRefund, Number(user.security_deposit));
 
           if (refundAmount <= 0) {
             return;
@@ -123,6 +126,18 @@ cron.schedule('* * * * *', async () => {
             }
           });
 
+          // Update all security deposit records for this user to REFUNDED
+          for (const deposit of data.deposits) {
+            await tx.securityDeposit.update({
+              where: { id: deposit.id },
+              data: {
+                remaining: 0,
+                status: 'REFUNDED',
+                updated_at: new Date()
+              }
+            });
+          }
+
           // Create transaction record
           await tx.transaction.create({
             data: {
@@ -132,12 +147,12 @@ cron.schedule('* * * * *', async () => {
               type: 'CREDIT',
               category: 'REFUND',
               status: 'SUCCESS',
-              description: `Security deposit refund triggered on ${new Date().toISOString()}. Refunded ${data.orders.length} orders.`,
+              description: `Security deposit refund triggered on ${new Date().toISOString()}. Refunded ${data.deposits.length} orders.`,
               reference_id: `BATCH_${new Date().getTime()}`
             }
           });
 
-          console.log(`Refund of ₹${refundAmount} processed for user ${userId}`);
+          console.log(`Refund of ₹${refundAmount} processed for user ${userId} (${data.deposits.length} orders)`);
         });
       } catch (userError) {
         console.error(`Error processing refund for user ${userId}:`, userError);
