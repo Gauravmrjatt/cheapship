@@ -706,9 +706,19 @@ const setSecurityRefundSchedule = async (req, res) => {
   const { scheduled_date, is_active } = req.body;
 
   try {
+    // Ensure the date is treated as UTC
+    let parsedDate;
+    if (scheduled_date) {
+      // If the date string ends with 'Z' or contains 'T', use as-is
+      // Otherwise, append 'Z' to treat as UTC
+      parsedDate = scheduled_date.includes('Z') || scheduled_date.includes('T')
+        ? new Date(scheduled_date)
+        : new Date(scheduled_date + 'Z');
+    }
+
     const schedule = await prisma.securityRefundSchedule.create({
       data: {
-        scheduled_date: new Date(scheduled_date),
+        scheduled_date: parsedDate,
         is_active: is_active !== undefined ? is_active : true
       }
     });

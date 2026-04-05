@@ -45,8 +45,12 @@ export default function SecurityManagementContent() {
   useEffect(() => {
     if (schedule) {
       const dateObj = new Date(schedule.scheduled_date);
-      setScheduledDate(dateObj.toISOString().split('T')[0]);
-      setScheduledTime(dateObj.toTimeString().slice(0, 5));
+      // Format as YYYY-MM-DD for date input
+      const dateStr = dateObj.toISOString().split('T')[0];
+      // Format as HH:mm for time input
+      const timeStr = dateObj.toISOString().split('T')[1].slice(0, 5);
+      setScheduledDate(dateStr);
+      setScheduledTime(timeStr);
       setIsActive(schedule.is_active);
     }
   }, [schedule]);
@@ -57,11 +61,12 @@ export default function SecurityManagementContent() {
       return;
     }
 
-    const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
+    const scheduledDateTime = new Date(scheduledDate + 'T' + scheduledTime + ':00');
+    const scheduledDateTimeUTC = new Date(scheduledDateTime.getTime() - (scheduledDateTime.getTimezoneOffset() * 60000)).toISOString();
 
     try {
       await setScheduleMutation.mutateAsync({
-        scheduled_date: scheduledDateTime,
+        scheduled_date: scheduledDateTimeUTC,
         is_active: isActive
       });
       sileo.success({ title: "Success", description: "Security refund schedule saved" });
