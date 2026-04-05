@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { 
-  Wallet01Icon, 
+import {
+  Wallet01Icon,
   RefreshIcon,
   Calendar02Icon,
   Loading03Icon,
@@ -30,7 +30,7 @@ import {
 
 export default function SecurityManagementContent() {
   const [activeTab, setActiveTab] = useState("deposits");
-  
+
   const { data: schedule, isLoading: scheduleLoading, refetch: refetchSchedule } = useSecurityRefundSchedule();
   const setScheduleMutation = useSetSecurityRefundSchedule();
   const [scheduledDate, setScheduledDate] = useState("");
@@ -105,35 +105,22 @@ export default function SecurityManagementContent() {
           <TabsTrigger value="deposits">Security Deposits</TabsTrigger>
           <TabsTrigger value="schedule">Refund Schedule</TabsTrigger>
         </TabsList>
-
         <TabsContent value="deposits" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <HugeiconsIcon icon={Wallet01Icon} />
-                All Security Deposits
-              </CardTitle>
-              <CardDescription>
-                Complete list of security deposits with usage tracking
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AdminSecurityDepositsDataTable
-                data={depositsData?.data ?? []}
-                isLoading={depositsLoading}
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                pagination={{
-                  currentPage: page,
-                  pageSize,
-                  totalPages: depositsData?.pagination?.totalPages ?? 1,
-                  total: depositsData?.pagination?.total ?? 0,
-                }}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            </CardContent>
-          </Card>
+          <AdminSecurityDepositsDataTable
+            data={depositsData?.data ?? []}
+            isLoading={depositsLoading}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            pagination={{
+              currentPage: page,
+              pageSize,
+              totalPages: depositsData?.pagination?.totalPages ?? 1,
+              total: depositsData?.pagination?.total ?? 0,
+            }}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+
         </TabsContent>
 
         <TabsContent value="schedule" className="space-y-4">
@@ -186,8 +173,8 @@ export default function SecurityManagementContent() {
                 </div>
 
                 <div className="flex items-end">
-                  <Button 
-                    onClick={handleSaveSchedule} 
+                  <Button
+                    onClick={handleSaveSchedule}
                     disabled={setScheduleMutation.isPending}
                     className="w-full"
                   >

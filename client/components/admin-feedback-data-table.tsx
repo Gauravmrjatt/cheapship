@@ -42,35 +42,33 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowDown01Icon,
   SearchIcon,
-  FilterIcon,
-  Calendar01Icon,
-  Cancel01Icon,
-  Wallet01Icon,
+  ArrowRight01Icon,
+  ArrowLeft01Icon,
+  Comment01Icon,
+  UserIcon,
   Loading03Icon,
+  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-import { DataTablePagination } from "./orders-table-components"
+import { FeedbackFilters } from "@/lib/hooks/use-admin-feedback"
+import Link from "next/link"
 
-export type AdminSecurityDeposit = {
-  id: string
-  order_id: string
-  amount: number
-  used_amount: number
-  remaining: number
-  status: string
-  created_at?: string
-  order?: {
-    shipment_status?: string
-  }
-  user?: {
-    name?: string
-    mobile?: string
-  }
+export type Feedback = {
+  id: string;
+  subject: string;
+  message: string;
+  type: string;
+  created_at: string;
+  updated_at: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    mobile: string;
+  };
 }
 
-interface AdminSecurityDepositsDataTableProps {
-  data: AdminSecurityDeposit[]
+interface AdminFeedbackDataTableProps {
+  data: Feedback[]
   isLoading?: boolean
   pagination?: {
     currentPage: number
@@ -78,49 +76,34 @@ interface AdminSecurityDepositsDataTableProps {
     totalPages: number
     total: number
   }
-  filters?: {
-    status?: string
-    search?: string
-  }
+  filters?: FeedbackFilters
   onPageChange?: (page: number) => void
   onPageSizeChange?: (pageSize: number) => void
-  onFilterChange?: (filters: { status?: string; search?: string }) => void
+  onFilterChange?: (filters: FeedbackFilters) => void
 }
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-  }).format(amount || 0);
-};
-
-const formatDate = (dateString: string | null | undefined) => {
-  if (!dateString) return "-";
-  return new Date(dateString).toLocaleString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case 'ACTIVE':
-      return <Badge className="bg-blue-100 text-blue-700 border-blue-200">Active</Badge>;
-    case 'PARTIAL':
-      return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Partial</Badge>;
-    case 'FULLY_USED':
-      return <Badge className="bg-red-100 text-red-700 border-red-200">Fully Used</Badge>;
-    case 'REFUNDED':
-      return <Badge className="bg-green-100 text-green-700 border-green-200">Refunded</Badge>;
+function getTypeColor(type: string) {
+  switch (type) {
+    case "FEEDBACK":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+    case "COMPLAINT":
+      return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     default:
-      return <Badge>{status}</Badge>;
+      return "bg-gray-100 text-gray-800";
   }
-};
+}
 
-export function AdminSecurityDepositsDataTable({
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function AdminFeedbackDataTable({
   data,
   isLoading,
   pagination,
@@ -128,7 +111,7 @@ export function AdminSecurityDepositsDataTable({
   onPageChange,
   onPageSizeChange,
   onFilterChange,
-}: AdminSecurityDepositsDataTableProps) {
+}: AdminFeedbackDataTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [isMounted, setIsMounted] = React.useState(false)
@@ -146,7 +129,7 @@ export function AdminSecurityDepositsDataTable({
     onPageChange?.(1);
   };
 
-  const handleFilterUpdate = React.useCallback((key: string, value: string) => {
+  const handleFilterUpdate = React.useCallback((key: keyof FeedbackFilters, value: string) => {
     if (!isMounted) return
     onFilterChange?.({ ...filters, [key]: value })
   }, [onFilterChange, filters, isMounted])
@@ -155,53 +138,50 @@ export function AdminSecurityDepositsDataTable({
     ([key, value]) => value && value !== "ALL" && key !== "search"
   ).length
 
-  const columns = React.useMemo<ColumnDef<AdminSecurityDeposit>[]>(() => [
+  const columns = React.useMemo<ColumnDef<Feedback>[]>(() => [
     {
-      accessorKey: "order_id",
-      header: "Order ID",
+      accessorKey: "subject",
+      header: "Subject",
       cell: ({ row }) => (
-        <span className="font-medium">#{row.original.order_id.toString()}</span>
-      )
+        <p className="font-medium text-sm truncate max-w-[200px]">{row.original.subject}</p>
+      ),
     },
     {
       accessorKey: "user",
       header: "User",
       cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium">{row.original.user?.name || 'N/A'}</span>
-          <span className="text-xs text-muted-foreground">{row.original.user?.mobile || ''}</span>
+        <div className="flex items-center gap-2">
+          <HugeiconsIcon icon={UserIcon} size={14} className="text-muted-foreground" />
+          <span className="text-sm">{row.original.user.name}</span>
         </div>
-      )
+      ),
     },
     {
-      accessorKey: "order.shipment_status",
-      header: "Order Status",
-      cell: ({ row }) => <span>{row.original.order?.shipment_status || '-'}</span>
-    },
-    {
-      accessorKey: "amount",
-      header: "Original",
-      cell: ({ row }) => <span>{formatCurrency(row.original.amount)}</span>
-    },
-    {
-      accessorKey: "used_amount",
-      header: "Used",
-      cell: ({ row }) => <span className="text-red-600">-{formatCurrency(row.original.used_amount)}</span>
-    },
-    {
-      accessorKey: "remaining",
-      header: "Remaining",
-      cell: ({ row }) => <span className="text-green-600 font-medium">{formatCurrency(row.original.remaining)}</span>
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => getStatusBadge(row.original.status)
+      accessorKey: "type",
+      header: "Type",
+      cell: ({ row }) => (
+        <Badge className={`${getTypeColor(row.original.type)}`}>
+          {row.original.type}
+        </Badge>
+      ),
     },
     {
       accessorKey: "created_at",
-      header: "Created",
-      cell: ({ row }) => <span className="text-muted-foreground text-sm">{formatDate(row.original.created_at)}</span>
+      header: "Date",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">{formatDate(row.original.created_at)}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Action",
+      cell: ({ row }) => (
+        <Link href={`/admin/feedback/${row.original.id}`}>
+          <Button variant="ghost" size="sm" className="h-8">
+            View <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="ml-1" />
+          </Button>
+        </Link>
+      ),
     },
   ], []);
 
@@ -230,27 +210,25 @@ export function AdminSecurityDepositsDataTable({
     <div className="w-full flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Label htmlFor="status-filter" className="sr-only">
-            Status
+          <Label htmlFor="type-filter" className="sr-only">
+            Type
           </Label>
           <Select
-            value={filters?.status ?? ""}
-            onValueChange={(v) => handleFilterUpdate("status", v ?? "")}
+            value={filters?.type ?? "ALL"}
+            onValueChange={(v) => handleFilterUpdate("type", v ?? "ALL")}
           >
             <SelectTrigger
               className="flex w-fit"
               size="sm"
-              id="status-filter"
+              id="type-filter"
             >
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="">All Status</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="PARTIAL">Partial</SelectItem>
-                <SelectItem value="FULLY_USED">Fully Used</SelectItem>
-                <SelectItem value="REFUNDED">Refunded</SelectItem>
+                <SelectItem value="ALL">All Types</SelectItem>
+                <SelectItem value="FEEDBACK">Feedback</SelectItem>
+                <SelectItem value="COMPLAINT">Complaint</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -260,7 +238,7 @@ export function AdminSecurityDepositsDataTable({
           <div className="relative hidden w-64 lg:block">
             <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Search deposits..."
+              placeholder="Search feedback..."
               className="pl-9 h-8"
               value={filters?.search ?? ""}
               onChange={(e) => handleFilterUpdate("search", e.target.value)}
@@ -290,7 +268,7 @@ export function AdminSecurityDepositsDataTable({
         </div>
       </div>
 
-      {filters?.search && (
+      {(activeFiltersCount > 0 || filters?.search) && (
         <div className="flex flex-wrap items-center gap-2 px-4 lg:px-6">
           {filters?.search && (
             <Badge variant="secondary" className="px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1.5">
@@ -299,7 +277,7 @@ export function AdminSecurityDepositsDataTable({
             </Badge>
           )}
           {activeFiltersCount > 0 && (
-            <Button variant="ghost" size="sm" className="h-6 px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all" onClick={() => onFilterChange?.({ status: "", search: "" })}>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all" onClick={() => onFilterChange?.({ type: "ALL", search: "" })}>
               Clear All
             </Button>
           )}
@@ -307,7 +285,7 @@ export function AdminSecurityDepositsDataTable({
       )}
 
       <div
-        className="relative flex flex-col gap-4 "
+        className="relative flex flex-col gap-4  rounded-2xl"
       >
         <div className="overflow-x-auto border rounded-2xl">
           <Table className="min-w-[640px]">
@@ -347,11 +325,11 @@ export function AdminSecurityDepositsDataTable({
                   <TableCell colSpan={columns.length} className="h-24 text-center">
                     <div className="flex flex-col items-center justify-center py-8 text-center">
                       <div className="p-3 bg-muted rounded-full mb-4">
-                        <HugeiconsIcon icon={Wallet01Icon} size={24} className="text-muted-foreground" />
+                        <HugeiconsIcon icon={Comment01Icon} size={24} className="text-muted-foreground" />
                       </div>
-                      <h3 className="font-semibold">No Security Deposits</h3>
+                      <h3 className="font-semibold">No Feedback</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        No security deposits found
+                        No feedback found
                       </p>
                     </div>
                   </TableCell>
@@ -361,12 +339,81 @@ export function AdminSecurityDepositsDataTable({
           </Table>
         </div>
 
-        <DataTablePagination
-          pagination={pagination}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-          filteredCount={table.getFilteredRowModel().rows.length}
-        />
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 mt-4">
+            <div className="text-muted-foreground hidden flex-1 text-sm lg:flex tabular-nums">
+              Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to {Math.min(pagination.currentPage * pagination.pageSize, pagination.total)} of {pagination.total} feedback
+            </div>
+            <div className="flex w-full items-center gap-8 lg:w-fit">
+              <div className="hidden items-center gap-2 lg:flex">
+                <Label htmlFor="rows-per-page" className="text-xs font-bold uppercase text-muted-foreground">
+                  Rows per page
+                </Label>
+                <Select
+                  value={`${pagination.pageSize}`}
+                  onValueChange={(value) => handlePageSizeChange(Number(value))}
+                >
+                  <SelectTrigger size="sm" className="w-20 h-8" id="rows-per-page">
+                    <SelectValue placeholder={pagination.pageSize} />
+                  </SelectTrigger>
+                  <SelectContent side="top">
+                    <SelectGroup>
+                      {[10, 20, 30, 40, 50].map((pageSize) => (
+                        <SelectItem key={pageSize} value={`${pageSize}`}>
+                          {pageSize}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex w-fit items-center justify-center text-xs font-bold uppercase text-muted-foreground">
+                Page {pagination.currentPage} of {pagination.totalPages}
+              </div>
+              <div className="ml-auto flex items-center gap-2 lg:ml-0">
+                <Button
+                  variant="outline"
+                  className="hidden h-8 w-8 p-0 lg:flex"
+                  onClick={() => handlePageChange(1)}
+                  disabled={pagination.currentPage === 1}
+                >
+                  <span className="sr-only">Go to first page</span>
+                  <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="size-8"
+                  size="icon"
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                >
+                  <span className="sr-only">Go to previous page</span>
+                  <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="size-8"
+                  size="icon"
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.totalPages}
+                >
+                  <span className="sr-only">Go to next page</span>
+                  <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="hidden size-8 lg:flex"
+                  size="icon"
+                  onClick={() => handlePageChange(pagination.totalPages)}
+                  disabled={pagination.currentPage === pagination.totalPages}
+                >
+                  <span className="sr-only">Go to last page</span>
+                  <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

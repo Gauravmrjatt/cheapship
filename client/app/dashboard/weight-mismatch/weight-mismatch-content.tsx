@@ -1,265 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import * as z from "zod";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  WeightScale01Icon,
-  ImageAdd01Icon,
-  Alert01Icon,
-  CheckmarkCircle02Icon,
-  Loading03Icon,
-  Search01Icon,
-  ArrowRight01Icon,
-  Clock01Icon
-} from "@hugeicons/core-free-icons";
-import { useWeightDisputes, useRaiseWeightDispute, WeightDispute } from "@/lib/hooks/use-dispute";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-
-const disputeSchema = z.object({
-  awb_number: z.string().min(1, "AWB number is required"),
-  declared_weight: z.number().min(0.01, "Declared weight must be greater than 0"),
-  charged_weight: z.number().min(0.01, "Charged weight must be greater than 0"),
-  product_category: z.string().min(1, "Category is required"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-});
-
-type DisputeFormValues = z.infer<typeof disputeSchema>;
-const formatAmount = (amount: number) => {
-  const sign = amount > 0 ? "+" : ""
-
-  return sign + new Intl.NumberFormat("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount)
-}
-
-const calculateVolumetricWeight = (length: number | null, width: number | null, height: number | null) => {
-  if (!length || !width || !height) return null;
-  return (Number(length) * Number(width) * Number(height)) / 5000;
-}
-const productCategories = [
-  "Electronics",
-  "Apparel & Fashion",
-  "Home & Kitchen",
-  "Beauty & Personal Care",
-  "Books & Stationery",
-  "Toys & Games",
-  "Automotive",
-  "Others"
-];
+import { useWeightDisputes } from "@/lib/hooks/use-dispute";
+import { WeightDisputesDataTable } from "@/components/weight-disputes-data-table";
 
 export default function WeightMismatchContent() {
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [weightPhoto, setWeightPhoto] = useState<File | null>(null);
-  const [packedPhoto, setPackedPhoto] = useState<File | null>(null);
-  const router = useRouter();
+  const [pageSize, setPageSize] = useState(10);
+  const [filters, setFilters] = useState({ status: "ALL", search: "" });
 
-  const { data: disputesData, isLoading: isLoadingDisputes } = useWeightDisputes(page, 10, statusFilter);
-  const raiseDisputeMutation = useRaiseWeightDispute();
+  const { data, isLoading, isError } = useWeightDisputes(page, pageSize, filters.status);
 
-  const form = useForm<DisputeFormValues>({
-    resolver: zodResolver(disputeSchema),
-    defaultValues: {
-      awb_number: "",
-      declared_weight: 0,
-      charged_weight: 0,
-      product_category: "",
-      description: "",
-    }
-  });
-
-  const onSubmit = (values: DisputeFormValues) => {
-    // In a real app, we would upload files first and get URLs
-    // For now, we pass the form values. 
-    // We can simulate the upload by just adding placeholders for images if they are selected.
-    const submissionData = {
-      ...values,
-      weight_scale_image: weightPhoto ? "uploaded_weight_photo_url" : undefined,
-      packed_box_image: packedPhoto ? "uploaded_packed_photo_url" : undefined,
-    };
-
-    raiseDisputeMutation.mutate(submissionData, {
-      onSuccess: () => {
-        form.reset();
-        setWeightPhoto(null);
-        setPackedPhoto(null);
-      }
-    });
+  const handleFilterChange = (newFilters: { status?: string; search?: string }) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+    setPage(1);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'weight' | 'packed') => {
-    if (e.target.files && e.target.files[0]) {
-      if (type === 'weight') setWeightPhoto(e.target.files[0]);
-      else setPackedPhoto(e.target.files[0]);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "ACCEPTED":
-        return <Badge className="bg-green-500 hover:bg-green-600">Accepted</Badge>;
-      case "REJECTED":
-        return <Badge variant="destructive">Rejected</Badge>;
-      default:
-        return <Badge variant="secondary">Pending</Badge>;
-    }
-  };
+  if (isError) return (
+    <div className="flex flex-1 flex-col items-center justify-center">
+      <p className="text-destructive">Error fetching weight disputes</p>
+    </div>
+  );
 
   return (
-    <div className="p-5">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl mb-4 font-extrabold tracking-tight lg:text-2xl text-foreground">
-          Weight Dispute
-        </h1>
+    <div className="flex flex-1 flex-col">
+      <div className="@container/main flex flex-1 flex-col gap-2">
+        <div className="flex flex-col gap-4 py-9">
+          <WeightDisputesDataTable
+            data={data?.data ?? []}
+            isLoading={isLoading}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            pagination={{
+              currentPage: page,
+              pageSize,
+              totalPages: data?.pagination?.totalPages ?? 1,
+              total: data?.pagination?.total ?? 0,
+            }}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
       </div>
-      {/* Disputes History */}
-      <div className="w-full">
-        <Card className="shadow-sm w-full border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <div>
-              <CardTitle>Recent Disputes</CardTitle>
-              <CardDescription>Track status of your submitted weight disputes.</CardDescription>
-            </div>
-            <Select onValueChange={(val) => val && setStatusFilter(val)} value={statusFilter}>
-              <SelectTrigger className="w-[130px] h-9">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Status</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="ACCEPTED">Accepted</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow>
-                  <TableHead className="pl-6">Order Details</TableHead>
-                  <TableHead>Volumetric Wt</TableHead>
-                  <TableHead>Weight (App/Chg)</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right pr-6">Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoadingDisputes ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell colSpan={6} className="h-16 animate-pulse bg-muted/20" />
-                    </TableRow>
-                  ))
-                ) : !disputesData?.data?.length ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <HugeiconsIcon icon={Search01Icon} size={32} className="opacity-20" />
-                        <p>No disputes found.</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  disputesData.data.map((dispute: WeightDispute) => {
-                    const volumetricWeight = calculateVolumetricWeight(
-                      dispute.order?.length ?? null,
-                      dispute.order?.width ?? null,
-                      dispute.order?.height ?? null
-                    );
-                    return (
-                      <TableRow 
-                        key={dispute.id} 
-                        className="group hover:bg-muted/30 transition-colors cursor-pointer"
-                        onClick={() => router.push(`/dashboard/weight-mismatch/${dispute.id}`)}
-                      >
-                        <TableCell className="pl-6">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-sm">#{dispute.order?.id.toString().slice(-8)}</span>
-                            <span className="text-[10px] font-mono text-muted-foreground uppercase">{dispute.order?.tracking_number}</span>
-                            <span className="text-[10px] text-primary font-bold mt-0.5">{dispute.order?.courier_name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs font-medium">
-                            {volumetricWeight ? `${volumetricWeight.toFixed(2)} kg` : "-"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium">{dispute.applied_weight}kg</span>
-                            <HugeiconsIcon icon={ArrowRight01Icon} size={10} className="text-muted-foreground" />
-                            <span className="text-xs font-bold text-destructive">{dispute.charged_weight}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {(() => {
-                            const diff = Number(dispute.applied_amount - dispute.charged_amount)
-                            return (
-                              <span
-                                className={`text-xs font-semibold ${diff > 0 ? "text-emerald-600" : "text-destructive"
-                                  }`}
-                              >
-                                {formatAmount(diff)}
-                              </span>
-                            )
-                          })()}
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(dispute.status)}
-                        </TableCell>
-                        <TableCell className="text-right pr-6">
-                          <div className="flex flex-col items-end">
-                            <span className="text-xs font-medium">{format(new Date(dispute.created_at), "dd MMM yyyy")}</span>
-                            <span className="text-[10px] text-muted-foreground">{format(new Date(dispute.created_at), "HH:mm")}</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-
-      </div>
-
     </div>
   );
 }
