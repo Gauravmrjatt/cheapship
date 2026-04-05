@@ -46,12 +46,13 @@ function initializeCronJobs(prisma) {
         return;
       }
 
-      // Check if scheduled time has passed (using IST)
+      // Check if scheduled time has passed
+      // scheduled_date from DB is already in UTC (frontend converts IST to UTC)
+      // Only convert current time to IST for comparison
       const scheduledDate = new Date(schedule.scheduled_date);
-      const scheduledIST = new Date(scheduledDate.getTime() + (5 * 60 + 30) * 60 * 1000);
 
-      if (nowIST < scheduledIST) {
-        console.log(`Security refund scheduled time not yet reached. Now IST: ${nowIST.toISOString()}, Scheduled IST: ${scheduledIST.toISOString()}`);
+      if (nowIST < scheduledDate) {
+        console.log(`Security refund scheduled time not yet reached. Now IST: ${nowIST.toISOString()}, Scheduled (UTC): ${scheduledDate.toISOString()}`);
         return;
       }
 
