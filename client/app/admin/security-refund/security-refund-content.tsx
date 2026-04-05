@@ -205,21 +205,7 @@ export default function SecurityManagementContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Security Management</h1>
-          <p className="text-muted-foreground">
-            Manage security deposits and refund schedules
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => {
-          refetchSchedule();
-          refetchDeposits();
-        }}>
-          <HugeiconsIcon icon={RefreshIcon} className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
-      </div>
+   
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>

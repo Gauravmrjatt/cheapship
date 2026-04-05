@@ -142,6 +142,6 @@ export const useUserSecurityDeposits = () => {
   const http = useHttp();
   return useQuery(http.get<SecurityDepositsResponse>(
     ["user-security-deposits"],
-    "/api/v1/users/security-deposits"
+    "/users/security-deposits"
   ));
 };
