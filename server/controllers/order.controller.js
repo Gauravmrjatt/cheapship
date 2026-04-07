@@ -112,7 +112,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
 
     // console.log(`[Commission Calc] Total referral commission: ${referralCommissionAmount.toFixed(2)}`);
 
-    const finalRate = parseFloat((baseRate + globalCommissionAmount + referralCommissionAmount).toFixed(2));
+    const finalRate = Math.ceil(baseRate + globalCommissionAmount + referralCommissionAmount);
 
     console.group(`[Global Commission] ${courier.courier_name}`);
     console.log('baseRate:', baseRate);
