@@ -181,6 +181,9 @@ function NavTrigger({ value, icon, label }: { value: string; icon: any; label: s
 function ProfileTab({ http }: { http: any }) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
+    upi_id: ""
+  });
+  const [displayData, setDisplayData] = useState({
     name: "",
     email: "",
     mobile: ""
@@ -192,10 +195,13 @@ function ProfileTab({ http }: { http: any }) {
 
   useEffect(() => {
     if (userData) {
-      setFormData({
+      setDisplayData({
         name: userData.name || "",
         email: userData.email || "",
         mobile: userData.mobile || ""
+      });
+      setFormData({
+        upi_id: userData.upi_id || ""
       });
     }
   }, [userData]);
@@ -225,57 +231,30 @@ function ProfileTab({ http }: { http: any }) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-medium">UUID</Label>
+            <Label htmlFor="uuid" className="text-sm font-medium">UUID</Label>
             <div className="relative group">
               <HugeiconsIcon icon={UserCircle02Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
               <Input
                 id="uuid"
                 value={userData?.id}
                 readOnly
-                className="pl-10"
+                className="pl-10 bg-muted"
                 placeholder="UUID"
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
-              <div className="relative group">
-                <HugeiconsIcon icon={UserCircle02Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="pl-10"
-                  placeholder="Deepak"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="mobile" className="text-sm font-medium">Mobile Number</Label>
-              <div className="relative group">
-                <HugeiconsIcon icon={SmartPhone01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-                <Input
-                  id="mobile"
-                  value={formData.mobile}
-                  onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                  className="pl-10"
-                  placeholder="9876543210"
-                />
-              </div>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
-              <div className="relative group">
-                <HugeiconsIcon icon={Mail01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-                <Input
-                  id="email"
-                  value={formData.email}
-                  readOnly
-                  className="pl-10 bg-muted"
-                  placeholder="hello@example.com"
-                />
-              </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="upi_id" className="text-sm font-medium">UPI ID (for COD payouts)</Label>
+            <div className="relative group">
+              <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
+              <Input
+                id="upi_id"
+                value={formData.upi_id}
+                onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
+                className="pl-10"
+                placeholder="yourname@upi"
+              />
             </div>
           </div>
 
