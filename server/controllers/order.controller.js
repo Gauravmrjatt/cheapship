@@ -71,6 +71,12 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
   }, {});
 
   const globalCommissionRate = globalSetting ? parseFloat(globalSetting.value) : 0;
+
+  console.group(`[Global Commission] Fetching setting for user ${userId}`);
+  console.log('globalSetting:', globalSetting);
+  console.log('globalCommissionRate:', globalCommissionRate);
+  console.groupEnd();
+
   const franchiseCommissionRate = user?.commission_rate ? parseFloat(user.commission_rate.toString()) : (user?.referred_by ? 5 : 0);
   const activeDiscountRate = user?.active_discount ? parseFloat(user.active_discount.toString()) : 0;
   const assignedRates = user?.assigned_rates || {};
@@ -127,9 +133,14 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
 
     const finalRate = parseFloat((baseRate + globalCommissionAmount + referralCommissionAmount).toFixed(2));
 
-    // console.log(`[Commission Calc] ${courier.courier_name}: base=${baseRate}, global=${globalCommissionAmount} (${globalCommissionRate}%), referralChain=${referralChain.length} levels, referralAmt=${referralCommissionAmount}, final=${finalRate}`);
-
-    // console.log(`[Price Calc] ${courier.courier_name}: base=${baseRate}, global=${globalCommissionAmount}, franchise=${franchiseCommissionAmount}, final=${finalRate}`);
+    console.group(`[Global Commission] ${courier.courier_name}`);
+    console.log('baseRate:', baseRate);
+    console.log('globalCommissionRate %:', finalGlobalCommRate);
+    console.log('globalCommissionAmount:', globalCommissionAmount.toFixed(2));
+    console.log('franchiseCommissionAmount:', franchiseCommissionAmount.toFixed(2));
+    console.log('referralCommissionAmount:', referralCommissionAmount.toFixed(2));
+    console.log('finalRate:', finalRate);
+    console.groupEnd();
 
     const dbConfig = courierConfigMap[courier.courier_company_id] || {};
 
@@ -247,6 +258,7 @@ const calculateRates = async (req, res) => {
         mode: mode !== 'undefined' ? mode : undefined
       }),
     ]);
+    
     if (!serviceabilityData || serviceabilityData.status !== 200) {
       return res.status(serviceabilityData?.status || 400).json({
         success: false,
@@ -259,8 +271,6 @@ const calculateRates = async (req, res) => {
 
     const filteredCourierIds = [217];
     availableCouriers = availableCouriers.filter(courier => !filteredCourierIds.includes(courier.courier_company_id));
-
-
 
     let serviceableCouriers = await calculateFinalRates(
       prisma,
