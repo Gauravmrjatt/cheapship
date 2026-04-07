@@ -181,12 +181,10 @@ function NavTrigger({ value, icon, label }: { value: string; icon: any; label: s
 function ProfileTab({ http }: { http: any }) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    upi_id: ""
-  });
-  const [displayData, setDisplayData] = useState({
     name: "",
     email: "",
-    mobile: ""
+    mobile: "",
+    upi_id: ""
   });
 
   const { data: userData, isLoading } = useQuery<UserData>(
@@ -195,12 +193,10 @@ function ProfileTab({ http }: { http: any }) {
 
   useEffect(() => {
     if (userData) {
-      setDisplayData({
+      setFormData({
         name: userData.name || "",
         email: userData.email || "",
-        mobile: userData.mobile || ""
-      });
-      setFormData({
+        mobile: userData.mobile || "",
         upi_id: userData.upi_id || ""
       });
     }
@@ -244,17 +240,58 @@ function ProfileTab({ http }: { http: any }) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="upi_id" className="text-sm font-medium">UPI ID (for COD payouts)</Label>
-            <div className="relative group">
-              <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-              <Input
-                id="upi_id"
-                value={formData.upi_id}
-                onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
-                className="pl-10"
-                placeholder="yourname@upi"
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
+              <div className="relative group">
+                <HugeiconsIcon icon={UserCircle02Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
+                <Input
+                  id="name"
+                  value={formData.name}
+                  readOnly
+                  className="pl-10 bg-muted"
+                  placeholder="Your Name"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mobile" className="text-sm font-medium">Mobile Number</Label>
+              <div className="relative group">
+                <HugeiconsIcon icon={SmartPhone01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
+                <Input
+                  id="mobile"
+                  value={formData.mobile}
+                  readOnly
+                  className="pl-10 bg-muted"
+                  placeholder="9876543210"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
+              <div className="relative group">
+                <HugeiconsIcon icon={Mail01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
+                <Input
+                  id="email"
+                  value={formData.email}
+                  readOnly
+                  className="pl-10 bg-muted"
+                  placeholder="hello@example.com"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="upi_id" className="text-sm font-medium">UPI ID (for COD payouts)</Label>
+              <div className="relative group">
+                <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
+                <Input
+                  id="upi_id"
+                  value={formData.upi_id}
+                  onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
+                  className="pl-10"
+                  placeholder="yourname@upi"
+                />
+              </div>
             </div>
           </div>
 
