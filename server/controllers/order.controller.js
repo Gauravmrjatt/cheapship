@@ -116,7 +116,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
 
     console.group(`[Global Commission] ${courier.courier_name}`);
     console.log('baseRate:', baseRate);
-    console.log('globalCommissionRate %:', finalGlobalCommRate);
+    console.log('globalCommissionRate %:', globalCommissionRate);
     console.log('globalCommissionAmount:', globalCommissionAmount.toFixed(2));
     console.log('franchiseCommissionAmount:', franchiseCommissionAmount.toFixed(2));
     console.log('referralCommissionAmount:', referralCommissionAmount.toFixed(2));
