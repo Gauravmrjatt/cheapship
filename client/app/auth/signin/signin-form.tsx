@@ -58,11 +58,11 @@ export default function SignInForm() {
     step: 1 as 1 | 2,
     email: "",
     countdown: 0,
-    redirectTo: "/",
+    redirectTo: "/dashboard",
   });
 
   useEffect(() => {
-    const redirect = searchParams.get("redirect") || "/";
+    const redirect = searchParams.get("redirect") || "/dashboard";
     setState(prev => ({ ...prev, redirectTo: redirect }));
   }, [searchParams]);
 
