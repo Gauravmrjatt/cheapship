@@ -275,17 +275,10 @@ const verifyRazorpayPayment = async (req, res) => {
         const bonusAmount = newDiscount ? (amountNumber * Number(newDiscount)) / 100 : 0;
         const totalCredit = amountNumber + bonusAmount;
 
-        // 3. Update user wallet balance (and active_discount if the new discount is higher)
-        const user = await tx.user.findUnique({ where: { id: userId }, select: { active_discount: true } });
-        const updateData = { wallet_balance: { increment: totalCredit } };
-
-        if (newDiscount && Number(newDiscount) > Number(user.active_discount || 0)) {
-          updateData.active_discount = newDiscount;
-        }
-
+        // 3. Update user wallet balance
         await tx.user.update({
           where: { id: userId },
-          data: updateData
+          data: { wallet_balance: { increment: totalCredit } }
         });
 
         // Update transaction description to include bonus info

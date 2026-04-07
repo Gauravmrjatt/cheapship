@@ -54,7 +54,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
   const [user, globalSetting, courierConfigs, levelSetting] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { commission_rate: true, assigned_rates: true, referred_by: true, active_discount: true }
+      select: { commission_rate: true, assigned_rates: true, referred_by: true }
     }),
     prisma.systemSetting.findUnique({
       where: { key: 'global_commission_rate' }
@@ -78,7 +78,6 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
   console.groupEnd();
 
   const franchiseCommissionRate = user?.commission_rate ? parseFloat(user.commission_rate.toString()) : (user?.referred_by ? 5 : 0);
-  const activeDiscountRate = user?.active_discount ? parseFloat(user.active_discount.toString()) : 0;
   const assignedRates = user?.assigned_rates || {};
   const maxReferralLevels = levelSetting ? parseInt(levelSetting.value) : 0;
 
@@ -93,26 +92,8 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
 
     const baseRate = parseFloat(courier.rate);
 
-    let finalGlobalCommRate = globalCommissionRate;
-    let finalFranchiseCommRate = markupPercent;
-
-    if (activeDiscountRate > 0) {
-      if (activeDiscountRate >= (finalGlobalCommRate + finalFranchiseCommRate)) {
-        finalGlobalCommRate = 0;
-        finalFranchiseCommRate = 0;
-      } else {
-        if (activeDiscountRate <= finalGlobalCommRate) {
-          finalGlobalCommRate -= activeDiscountRate;
-        } else {
-          const remainder = activeDiscountRate - finalGlobalCommRate;
-          finalGlobalCommRate = 0;
-          finalFranchiseCommRate -= remainder;
-        }
-      }
-    }
-
-    const globalCommissionAmount = (baseRate * finalGlobalCommRate) / 100;
-    const franchiseCommissionAmount = (baseRate * finalFranchiseCommRate) / 100;
+    const globalCommissionAmount = (baseRate * globalCommissionRate) / 100;
+    const franchiseCommissionAmount = (baseRate * markupPercent) / 100;
 
     let referralCommissionAmount = 0;
 
