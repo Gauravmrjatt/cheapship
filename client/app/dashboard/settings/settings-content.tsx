@@ -183,8 +183,7 @@ function ProfileTab({ http }: { http: any }) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    mobile: "",
-    upi_id: ""
+    mobile: ""
   });
 
   const { data: userData, isLoading } = useQuery<UserData>(
@@ -196,8 +195,7 @@ function ProfileTab({ http }: { http: any }) {
       setFormData({
         name: userData.name || "",
         email: userData.email || "",
-        mobile: userData.mobile || "",
-        upi_id: userData.upi_id || ""
+        mobile: userData.mobile || ""
       });
     }
   }, [userData]);
@@ -273,22 +271,9 @@ function ProfileTab({ http }: { http: any }) {
                 <Input
                   id="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="pl-10"
+                  readOnly
+                  className="pl-10 bg-muted"
                   placeholder="hello@example.com"
-                />
-              </div>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="upi_id" className="text-sm font-medium">UPI ID (for COD payouts)</Label>
-              <div className="relative group">
-                <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={18} />
-                <Input
-                  id="upi_id"
-                  value={formData.upi_id}
-                  onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
-                  className="pl-10"
-                  placeholder="yourname@upi"
                 />
               </div>
             </div>
