@@ -386,7 +386,7 @@ export default function SignUpForm() {
             </Field>
             <Field>
               <FieldLabel htmlFor="signup-email">Email Address</FieldLabel>
-              <Input id="signup-email" placeholder="hello@example.com" type="email" {...detailsForm.register("email")} readOnly className="bg-muted" />
+              <Input id="signup-email" placeholder="hello@example.com" type="email" {...detailsForm.register("email")} />
               <p className="text-[10px] text-muted-foreground mt-1">
                 Your email will be linked to +91 {state.mobile}
               </p>
