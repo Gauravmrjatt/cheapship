@@ -605,48 +605,27 @@ const createOrder = async (req, res) => {
         throw new Error(`Insufficient wallet balance. Required: ₹${totalDeduction.toFixed(2)}, Available Wallet Balance: ₹${Number(user.wallet_balance).toFixed(2)}`);
       }
 
-      // 2. Debit wallet (2x order amount - 1x for shipping, 1x as security hold)
+      // 2. Debit wallet (2x order amount - 1x for shipping, 1x as security hold) & transfer to security deposit (atomic)
       await tx.user.update({
         where: { id: userId },
         data: {
-          wallet_balance: { decrement: totalDeduction }
-        }
-      });
-
-      // 3. Transfer to security deposit (1x order amount)
-      await tx.user.update({
-        where: { id: userId },
-        data: {
+          wallet_balance: { decrement: totalDeduction },
           security_deposit: { increment: securityDepositAmount }
         }
       });
 
-      // 3.1 Create SecurityDeposit record for tracking
-      await tx.securityDeposit.create({
-        data: {
-          user_id: userId,
-          order_id: orderId,
-          amount: securityDepositAmount,
-          used_amount: 0,
-          remaining: securityDepositAmount,
-          status: 'ACTIVE'
-        }
-      });
-
-      // Get updated balances after deductions
-      const updatedUser = await tx.user.findUnique({
-        where: { id: userId },
-        select: { wallet_balance: true, security_deposit: true }
-      });
+      // Calculate closing balances programmatically (transaction ensures atomicity)
+      const closingWalletBalance = Number(user.wallet_balance) - totalDeduction;
+      const closingSecurityDeposit = (user.security_deposit || 0) + securityDepositAmount;
 
       // 4. Create transaction record for order payment (DEBIT)
       // 5. Create transaction record for security deposit (CREDIT to security)
       const [orderPaymentTransaction, securityDepositTransaction] = await Promise.all([
-        await tx.transaction.create({
+        tx.transaction.create({
           data: {
             user_id: userId,
             amount: orderAmount,
-            closing_balance: Number(updatedUser.wallet_balance),
+            closing_balance: closingWalletBalance,
             type: 'DEBIT',
             category: 'ORDER_PAYMENT',
             status: 'SUCCESS',
@@ -657,7 +636,7 @@ const createOrder = async (req, res) => {
           data: {
             user_id: userId,
             amount: securityDepositAmount,
-            closing_balance: Number(updatedUser.security_deposit),
+            closing_balance: closingSecurityDeposit,
             type: 'CREDIT',
             category: 'SECURITY_DEPOSIT',
             status: 'SUCCESS',
@@ -751,6 +730,18 @@ const createOrder = async (req, res) => {
           cod_amount: payment_mode === 'COD' ? Math.round(parseFloat(cod_amount) * 100) / 100 : null,
           remittance_status: payment_mode === 'COD' ? 'PENDING' : 'NOT_APPLICABLE',
           pickup_location: pickup_location || null
+        }
+      });
+
+      // 3.1 Create SecurityDeposit record for tracking (after Order exists)
+      await tx.securityDeposit.create({
+        data: {
+          user_id: userId,
+          order_id: orderId,
+          amount: securityDepositAmount,
+          used_amount: 0,
+          remaining: securityDepositAmount,
+          status: 'ACTIVE'
         }
       });
 
