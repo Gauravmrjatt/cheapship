@@ -67,6 +67,16 @@ export default function SignUpForm() {
   const http = useHttp();
   const { setToken, setUser } = useAuth();
   const firebaseOtp = useFirebaseOtp();
+
+  // Pre-load reCAPTCHA on mount for faster OTP sending
+  useEffect(() => {
+    if (typeof window !== "undefined" && firebaseOtp.isConfigValid) {
+      const container = document.getElementById("recaptcha-container");
+      if (container) {
+        container.style.display = "block";
+      }
+    }
+  }, [firebaseOtp.isConfigValid]);
   
   const [state, setState] = useState({
     step: 1 as 1 | 2 | 3,
