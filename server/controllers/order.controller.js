@@ -239,7 +239,7 @@ const calculateRates = async (req, res) => {
         mode: mode !== 'undefined' ? mode : undefined
       }),
     ]);
-    
+
     if (!serviceabilityData || serviceabilityData.status !== 200) {
       return res.status(serviceabilityData?.status || 400).json({
         success: false,
@@ -425,7 +425,7 @@ const createOrder = async (req, res) => {
 
     if (is_draft) {
       let draftedOrder;
-      
+
       // If draft_id is provided, update existing draft; otherwise create new
       if (draft_id) {
         // Update existing draft
@@ -572,7 +572,7 @@ const createOrder = async (req, res) => {
 
     const serverShippingCharge = chosenCourier.rate;
     const serverBaseCharge = chosenCourier.base_rate;
-
+    const orderId = generateOrderId();
     const newOrder = await prisma.$transaction(async (tx) => {
       // 1. Check wallet balance with new formula
       const user = await tx.user.findUnique({
@@ -625,7 +625,7 @@ const createOrder = async (req, res) => {
       await tx.securityDeposit.create({
         data: {
           user_id: userId,
-          order_id: order.id,
+          order_id: orderId,
           amount: securityDepositAmount,
           used_amount: 0,
           remaining: securityDepositAmount,
@@ -640,31 +640,31 @@ const createOrder = async (req, res) => {
       });
 
       // 4. Create transaction record for order payment (DEBIT)
-      const orderPaymentTransaction = await tx.transaction.create({
-        data: {
-          user_id: userId,
-          amount: orderAmount,
-          closing_balance: Number(updatedUser.wallet_balance),
-          type: 'DEBIT',
-          category: 'ORDER_PAYMENT',
-          status: 'SUCCESS',
-          description: `Shipping charge for Order ${order_type}`,
-        }
-      });
-
       // 5. Create transaction record for security deposit (CREDIT to security)
-      const securityDepositTransaction = await tx.transaction.create({
-        data: {
-          user_id: userId,
-          amount: securityDepositAmount,
-          closing_balance: Number(updatedUser.security_deposit),
-          type: 'CREDIT',
-          category: 'SECURITY_DEPOSIT',
-          status: 'SUCCESS',
-          description: `Security deposit held for Order ${order_type}`,
-        }
-      });
-
+      const [orderPaymentTransaction, securityDepositTransaction] = await Promise.all([
+        await tx.transaction.create({
+          data: {
+            user_id: userId,
+            amount: orderAmount,
+            closing_balance: Number(updatedUser.wallet_balance),
+            type: 'DEBIT',
+            category: 'ORDER_PAYMENT',
+            status: 'SUCCESS',
+            description: `Shipping charge for Order ${order_type}`,
+          }
+        }),
+        tx.transaction.create({
+          data: {
+            user_id: userId,
+            amount: securityDepositAmount,
+            closing_balance: Number(updatedUser.security_deposit),
+            type: 'CREDIT',
+            category: 'SECURITY_DEPOSIT',
+            status: 'SUCCESS',
+            description: `Security deposit held for Order ${order_type}`,
+          }
+        })
+      ]);
       // Save addresses if requested - check if address already exists first
       if (save_pickup_address) {
         // Check if similar address already exists (match on phone, pincode, and address)
@@ -726,7 +726,7 @@ const createOrder = async (req, res) => {
 
       const order = await tx.order.create({
         data: {
-          id: generateOrderId(),
+          id: orderId,
           user_id: userId,
           order_type,
           shipment_status: 'PENDING',
@@ -1157,7 +1157,7 @@ const cancelOrder = async (req, res) => {
 
     // Allow cancellation if status is PENDING, PROCESSING, MANIFESTED or if it's a draft
     const isCancellable = (order.shipment_status === 'PENDING' || order.shipment_status === 'PROCESSING' || order.shipment_status === 'MANIFESTED' || order.is_draft);
-    
+
     if (!isCancellable) {
       return res.status(400).json({
         message: 'Order can only be cancelled if status is PENDING, PROCESSING, or MANIFESTED',
