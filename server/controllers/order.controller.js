@@ -625,7 +625,7 @@ const createOrder = async (req, res) => {
       await tx.securityDeposit.create({
         data: {
           user_id: userId,
-          order_id: newOrder.id,
+          order_id: order.id,
           amount: securityDepositAmount,
           used_amount: 0,
           remaining: securityDepositAmount,
