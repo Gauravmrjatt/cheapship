@@ -44,6 +44,7 @@ import {
   DeliveryTruck01Icon,
   Money03Icon,
   MoneyReceiveCircleIcon,
+  LockPasswordIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -56,6 +57,7 @@ interface UsersTableProps {
   onColumnVisibilityChange: (visibility: VisibilityState) => void;
   onOpenBoundsSheet: (userId: string, userName: string, currentMin?: number, currentMax?: number) => void;
   onOpenCustomRatesSheet: (userId: string, userName: string, currentRates?: any) => void;
+  onOpenPasswordSheet: (userId: string, userName: string) => void;
 }
 
 export function UsersTable({
@@ -66,6 +68,7 @@ export function UsersTable({
   onColumnVisibilityChange,
   onOpenBoundsSheet,
   onOpenCustomRatesSheet,
+  onOpenPasswordSheet,
 }: UsersTableProps) {
   const router = useRouter();
   const isMounted = React.useRef(true);
@@ -228,12 +231,16 @@ export function UsersTable({
                 <HugeiconsIcon icon={DeliveryTruck01Icon} size={14} className="mr-2" />
                 View Orders
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onOpenPasswordSheet(row.original.id, row.original.name)}>
+                <HugeiconsIcon icon={LockPasswordIcon} size={14} className="mr-2" />
+                Change Password
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       ),
     },
-  ], [toggleStatusMutation, onOpenBoundsSheet, onOpenCustomRatesSheet, router]);
+  ], [toggleStatusMutation, onOpenBoundsSheet, onOpenCustomRatesSheet, onOpenPasswordSheet, router]);
 
   const table = useReactTable({
     data,

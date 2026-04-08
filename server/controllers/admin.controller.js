@@ -371,6 +371,30 @@ const toggleUserStatus = async (req, res) => {
   }
 };
 
+const changeUserPassword = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { userId } = req.params;
+  const { new_password } = req.body;
+
+  if (!new_password || new_password.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 const getAllOrders = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const {
@@ -1786,6 +1810,7 @@ module.exports = {
   getDashboardStats,
   getUsers,
   toggleUserStatus,
+  changeUserPassword,
   getAllOrders,
   getWithdrawals,
   processWithdrawal,

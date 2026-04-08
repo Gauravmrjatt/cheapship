@@ -40,6 +40,7 @@ import { VisibilityState } from "@tanstack/react-table";
 import { UsersTable } from "./users-table";
 import { CommissionBoundsSheet } from "./commission-bounds-sheet";
 import { CustomRatesSheet } from "./custom-rates-sheet";
+import { PasswordSheet } from "./password-sheet";
 
 export default function AdminUsersPage() {
   const [page, setPage] = React.useState(1);
@@ -53,6 +54,7 @@ export default function AdminUsersPage() {
   // Sheet states
   const [boundsSheetOpen, setBoundsSheetOpen] = React.useState(false);
   const [customRatesSheetOpen, setCustomRatesSheetOpen] = React.useState(false);
+  const [passwordSheetOpen, setPasswordSheetOpen] = React.useState(false);
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = React.useState<string>("");
   const [selectedUserBounds, setSelectedUserBounds] = React.useState({ min: 0, max: 100 });
@@ -70,6 +72,12 @@ export default function AdminUsersPage() {
     setSelectedUserName(userName);
     setSelectedUserCustomRates(currentRates || {});
     setCustomRatesSheetOpen(true);
+  };
+
+  const handleOpenPasswordSheet = (userId: string, userName: string) => {
+    setSelectedUserId(userId);
+    setSelectedUserName(userName);
+    setPasswordSheetOpen(true);
   };
 
   const handleStatusChange = (status: string | null) => {
@@ -199,6 +207,7 @@ export default function AdminUsersPage() {
             onColumnVisibilityChange={setColumnVisibility}
             onOpenBoundsSheet={handleOpenBoundsSheet}
             onOpenCustomRatesSheet={handleOpenCustomRatesSheet}
+            onOpenPasswordSheet={handleOpenPasswordSheet}
           />
 
           <div className="flex items-center justify-between px-4">
@@ -258,6 +267,13 @@ export default function AdminUsersPage() {
         userId={selectedUserId}
         userName={selectedUserName}
         initialRates={selectedUserCustomRates}
+      />
+
+      <PasswordSheet 
+        open={passwordSheetOpen}
+        onOpenChange={setPasswordSheetOpen}
+        userId={selectedUserId}
+        userName={selectedUserName}
       />
     </div>
   );

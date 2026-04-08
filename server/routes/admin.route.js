@@ -22,6 +22,8 @@ router.post(
   ],
   adminController.resetAdminPassword
 );
+// Public endpoint for users to get active plans
+router.get('/wallet-plans/active', adminController.getActiveWalletPlans);
 
 // Protect all remaining routes with auth and admin check
 router.use(authMiddleware, adminMiddleware);
@@ -32,6 +34,7 @@ router.get('/dashboard', adminController.getDashboardStats);
 // Users
 router.get('/users', adminController.getUsers);
 router.patch('/users/:userId/status', adminController.toggleUserStatus);
+router.patch('/users/:userId/password', adminController.changeUserPassword);
 
 // KYC
 router.get('/kyc', adminController.getKycUsers);
@@ -104,7 +107,5 @@ router.post('/wallet-plans', adminController.createWalletPlan);
 router.put('/wallet-plans/:id', adminController.updateWalletPlan);
 router.delete('/wallet-plans/:id', adminController.deleteWalletPlan);
 
-// Public endpoint for users to get active plans
-router.get('/wallet-plans/active', adminController.getActiveWalletPlans);
 
 module.exports = router;
