@@ -56,6 +56,8 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    if (!isConfigValid) return;
+
     const app = getFirebaseApp();
     if (!app) return;
 
@@ -84,7 +86,7 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
         recaptchaVerifier.clear();
       }
     };
-  }, []);
+  }, [isConfigValid]);
 
   const sendOtp = async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigValid) {

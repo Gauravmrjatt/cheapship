@@ -70,13 +70,13 @@ export default function SignUpForm() {
 
   // Pre-load reCAPTCHA on mount for faster OTP sending
   useEffect(() => {
-    if (typeof window !== "undefined" && firebaseOtp.isConfigValid) {
+    if (typeof window !== "undefined") {
       const container = document.getElementById("recaptcha-container");
       if (container) {
         container.style.display = "block";
       }
     }
-  }, [firebaseOtp.isConfigValid]);
+  }, []);
   
   const [state, setState] = useState({
     step: 1 as 1 | 2 | 3,
@@ -451,7 +451,7 @@ export default function SignUpForm() {
         </form>
       )}
       
-      <div id="recaptcha-container" />
+      <div id="recaptcha-container" style={{ position: "absolute", left: "-9999px" }} />
 
       {/* Digital Agreement Dialog */}
       <Dialog open={state.showAgreementDialog} onOpenChange={(open) => !open && handleAgreementDeclined()}>
