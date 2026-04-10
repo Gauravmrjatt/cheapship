@@ -5,17 +5,17 @@ import { useMutation } from "@tanstack/react-query";
 import { useHttp } from "@/lib/hooks/use-http";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { 
+import {
   Loading03Icon,
   MailSendIcon,
 } from "@hugeicons/core-free-icons";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle, 
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SheetDescription,
-  SheetFooter 
+  SheetFooter
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,7 @@ interface EmailSheetProps {
   userId: string | null;
   userName: string;
   currentEmail: string;
+  onSuccess?: () => void;
 }
 
 export function EmailSheet({
@@ -35,6 +36,7 @@ export function EmailSheet({
   userId,
   userName,
   currentEmail,
+  onSuccess,
 }: EmailSheetProps) {
   const http = useHttp();
   const [email, setEmail] = React.useState("");
@@ -49,6 +51,7 @@ export function EmailSheet({
         setEmail("");
         setError("");
         onOpenChange(false);
+        onSuccess?.();
       },
       onError: (err: any) => {
         setError(err.message || "Failed to update email");
@@ -122,24 +125,18 @@ export function EmailSheet({
           )}
         </div>
 
-        <SheetFooter className="p-6 border-t mt-auto">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
+        <SheetFooter className="border-t ">
           <Button
             onClick={handleSave}
             disabled={changeEmailMutation.isPending || !email}
-            className="flex-1"
+           
           >
             {changeEmailMutation.isPending ? (
-              <HugeiconsIcon icon={Loading03Icon} className="animate-spin mr-2" size={16} />
+              <HugeiconsIcon icon={Loading03Icon} className="animate-spin" size={16} />
             ) : null}
             Save Email
           </Button>
+
         </SheetFooter>
       </SheetContent>
     </Sheet>

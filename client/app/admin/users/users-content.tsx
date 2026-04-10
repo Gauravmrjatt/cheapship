@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAdminUsers } from "@/lib/hooks/use-admin";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +52,7 @@ export default function AdminUsersPage() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
 
   const { data, isLoading } = useAdminUsers(page, pageSize, search, statusFilter);
+  const queryClient = useQueryClient();
 
   // Sheet states
   const [boundsSheetOpen, setBoundsSheetOpen] = React.useState(false);
@@ -293,6 +295,7 @@ export default function AdminUsersPage() {
         userId={selectedUserId}
         userName={selectedUserName}
         currentEmail={selectedUserEmail}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["admin-users"] })}
       />
     </div>
   );
