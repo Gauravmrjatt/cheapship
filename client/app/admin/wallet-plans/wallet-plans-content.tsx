@@ -421,12 +421,14 @@ export default function WalletPlansContent() {
             <Button
               variant="outline"
               onClick={() => {
-                deleteMutation.mutate({ id: selectedPlan?.id, permanent: false }, {
-                  onSuccess: () => {
-                    setIsDeleteOpen(false);
-                    resetForm();
-                  }
-                });
+                if (selectedPlan?.id) {
+                  deleteMutation.mutate({ id: selectedPlan.id, permanent: false }, {
+                    onSuccess: () => {
+                      setIsDeleteOpen(false);
+                      resetForm();
+                    }
+                  });
+                }
               }}
               disabled={deleteMutation.isPending}
               className="w-full justify-start"
@@ -437,12 +439,14 @@ export default function WalletPlansContent() {
             <Button
               variant="destructive"
               onClick={() => {
-                deleteMutation.mutate({ id: selectedPlan?.id, permanent: true }, {
-                  onSuccess: () => {
-                    setIsDeleteOpen(false);
-                    resetForm();
-                  }
-                });
+                if (selectedPlan?.id) {
+                  deleteMutation.mutate({ id: selectedPlan.id, permanent: true }, {
+                    onSuccess: () => {
+                      setIsDeleteOpen(false);
+                      resetForm();
+                    }
+                  });
+                }
               }}
               disabled={deleteMutation.isPending}
               className="w-full justify-start"

@@ -615,8 +615,8 @@ const createOrder = async (req, res) => {
       });
 
       // Calculate closing balances programmatically (transaction ensures atomicity)
-      const closingWalletBalance = Number(user.wallet_balance) - totalDeduction;
-      const closingSecurityDeposit = (user.security_deposit || 0) + securityDepositAmount;
+      const closingWalletBalance = Number(user.wallet_balance) - orderAmount;
+      const closingSecurityDeposit = Number(user.wallet_balance) - totalDeduction;
 
       // 4. Create transaction record for order payment (DEBIT)
       // 5. Create transaction record for security deposit (CREDIT to security)
@@ -637,7 +637,7 @@ const createOrder = async (req, res) => {
             user_id: userId,
             amount: securityDepositAmount,
             closing_balance: closingSecurityDeposit,
-            type: 'CREDIT',
+            type: 'DEBIT',
             category: 'SECURITY_DEPOSIT',
             status: 'SUCCESS',
             description: `Security deposit held for Order ${order_type}`,

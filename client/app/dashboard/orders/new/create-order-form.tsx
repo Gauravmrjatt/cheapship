@@ -2148,7 +2148,7 @@ function AddressFormCard({ prefix, title, icon: Icon, savedAddresses, onSelect, 
             </Field>
           </div>
           <Field data-invalid={!!fieldErrors?.email}>
-            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Email (Optional)</FieldLabel>
+            <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Email</FieldLabel>
             <div className="relative">
               <HugeiconsIcon icon={Mail01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
               <Input placeholder="m@example.com" {...form.register(`${prefix}.email`)} aria-invalid={!!fieldErrors?.email} className="pl-9" />

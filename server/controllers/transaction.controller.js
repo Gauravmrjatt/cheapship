@@ -140,15 +140,24 @@ const createRazorpayOrder = async (req, res) => {
 const verifyRazorpayPayment = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, category = 'WALLET_TOPUP' } = req.body;
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    amount,
+    category = 'WALLET_TOPUP'
+  } = req.body;
 
-  // Validate required fields
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !amount) {
-    console.error('Missing required payment fields:', { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount });
+    console.error('Missing required payment fields:', {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      amount
+    });
     return res.status(400).json({ message: 'Missing required payment information.' });
   }
 
-  // Validate amount is a valid number
   const amountNumber = parseFloat(amount);
   if (isNaN(amountNumber) || amountNumber <= 0) {
     return res.status(400).json({ message: 'Invalid amount format' });
@@ -159,17 +168,14 @@ const verifyRazorpayPayment = async (req, res) => {
     return res.status(500).json({ message: 'Payment configuration error. Please contact support.' });
   }
 
-  // Move isSecurityDeposit outside transaction block (Issue 3 fix)
   const isSecurityDeposit = category === 'SECURITY_DEPOSIT';
 
-  // Generate signature for verification
   const key_secret = process.env.RAZORPAY_KEY_SECRET;
   const generated_signature = crypto
     .createHmac('sha256', key_secret)
     .update(razorpay_order_id + '|' + razorpay_payment_id)
     .digest('hex');
 
-  // Sanitized logging - don't log sensitive data (Issue 4 fix)
   console.log('Payment verification attempt:', {
     received_order_id: razorpay_order_id,
     received_payment_id: razorpay_payment_id,
@@ -184,7 +190,6 @@ const verifyRazorpayPayment = async (req, res) => {
   }
 
   try {
-    // Verify amount from Razorpay order (Critical Issue 1 fix)
     const razorpayOrder = await razorpay.orders.fetch(razorpay_order_id);
     if (!razorpayOrder) {
       console.error('Razorpay order not found:', { razorpay_order_id });
@@ -197,7 +202,6 @@ const verifyRazorpayPayment = async (req, res) => {
       return res.status(400).json({ message: 'Amount mismatch - possible tampering detected' });
     }
 
-    // Verify payment status (Issue 6 fix)
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
     if (!payment) {
       console.error('Razorpay payment not found:', { razorpay_payment_id });
@@ -209,49 +213,34 @@ const verifyRazorpayPayment = async (req, res) => {
       return res.status(400).json({ message: 'Payment not captured' });
     }
 
-    // Payment replay attack prevention (Critical Issue 2 fix)
     const existingTransaction = await prisma.transaction.findFirst({
       where: { reference_id: razorpay_payment_id }
     });
+
     if (existingTransaction) {
       console.error('Payment already processed:', { razorpay_payment_id });
       return res.status(400).json({ message: 'Payment already processed' });
     }
 
     const transaction = await prisma.$transaction(async (tx) => {
-      // Get current wallet balance before transaction
-      const currentUser = await tx.user.findUnique({ 
-        where: { id: userId }, 
-        select: { wallet_balance: true, security_deposit: true } 
+      const currentUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: { wallet_balance: true, security_deposit: true }
       });
 
-      // User not found check (Issue 8 fix)
       if (!currentUser) {
         console.error('User not found during verification:', { userId });
         throw new Error('User not found');
       }
-      
-      const currentBalance = isSecurityDeposit 
+
+      const currentBalance = isSecurityDeposit
         ? Number(currentUser.security_deposit || 0)
         : Number(currentUser.wallet_balance || 0);
-      const closingBalance = currentBalance + amountNumber;
 
-      // 1. Create transaction record with closing_balance
-      const newTransaction = await tx.transaction.create({
-        data: {
-          user_id: userId,
-          amount: amountNumber,
-          closing_balance: closingBalance,
-          type: 'CREDIT',
-          category: category,
-          status: 'SUCCESS',
-          description: isSecurityDeposit ? 'Security Deposit via Razorpay' : 'Wallet Top-up via Razorpay',
-          reference_id: razorpay_payment_id
-        }
-      });
+      let bonusAmount = 0;
+      let totalCredit = amountNumber;
 
       if (isSecurityDeposit) {
-        // Update security deposit
         await tx.user.update({
           where: { id: userId },
           data: {
@@ -259,7 +248,6 @@ const verifyRazorpayPayment = async (req, res) => {
           }
         });
       } else {
-        // 2. Check for matching WalletPlan based on recharge amount
         const applicablePlans = await tx.walletPlan.findMany({
           where: {
             is_active: true,
@@ -271,33 +259,48 @@ const verifyRazorpayPayment = async (req, res) => {
           take: 1
         });
 
-        const newDiscount = applicablePlans.length > 0 ? applicablePlans[0].discount_percentage : null;
-        const bonusAmount = newDiscount ? (amountNumber * Number(newDiscount)) / 100 : 0;
-        const totalCredit = amountNumber + bonusAmount;
+        const newDiscount =
+          applicablePlans.length > 0 ? applicablePlans[0].discount_percentage : null;
 
-        // 3. Update user wallet balance
+        bonusAmount = newDiscount
+          ? (amountNumber * Number(newDiscount)) / 100
+          : 0;
+
+        totalCredit = amountNumber + bonusAmount;
+
         await tx.user.update({
           where: { id: userId },
           data: { wallet_balance: { increment: totalCredit } }
         });
-
-        // Update transaction description to include bonus info
-        if (bonusAmount > 0) {
-          await tx.transaction.update({
-            where: { id: newTransaction.id },
-            data: {
-              description: `Wallet Top-up via Razorpay (₹${amountNumber} + ₹${bonusAmount.toFixed(2)} bonus)`,
-              amount: totalCredit
-            }
-          });
-        }
       }
+
+      const closingBalance = currentBalance + totalCredit;
+
+      // ✅ FIX: create transaction AFTER calculations (no update needed later)
+      const newTransaction = await tx.transaction.create({
+        data: {
+          user_id: userId,
+          amount: totalCredit,
+          closing_balance: closingBalance,
+          type: 'CREDIT',
+          category: category,
+          status: 'SUCCESS',
+          description: isSecurityDeposit
+            ? 'Security Deposit via Razorpay'
+            : bonusAmount > 0
+              ? `Wallet Top-up via Razorpay (₹${amountNumber} + ₹${bonusAmount.toFixed(2)} bonus)`
+              : 'Wallet Top-up via Razorpay',
+          reference_id: razorpay_payment_id
+        }
+      });
 
       return newTransaction;
     });
 
-    res.json({ 
-      message: isSecurityDeposit ? 'Security deposit paid' : 'Payment verified and wallet topped up', 
+    res.json({
+      message: isSecurityDeposit
+        ? 'Security deposit paid'
+        : 'Payment verified and wallet topped up',
       transaction,
       amount: amountNumber
     });
@@ -309,12 +312,14 @@ const verifyRazorpayPayment = async (req, res) => {
       razorpay_payment_id,
       userId
     });
-    
+
     if (error.message === 'User not found') {
       return res.status(404).json({ message: 'User not found' });
     }
-    
-    res.status(500).json({ message: 'Payment verification failed. Please contact support.' });
+
+    res.status(500).json({
+      message: 'Payment verification failed. Please contact support.'
+    });
   }
 };
 
