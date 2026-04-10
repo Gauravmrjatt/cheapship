@@ -41,6 +41,7 @@ import { UsersTable } from "./users-table";
 import { CommissionBoundsSheet } from "./commission-bounds-sheet";
 import { CustomRatesSheet } from "./custom-rates-sheet";
 import { PasswordSheet } from "./password-sheet";
+import { EmailSheet } from "./email-sheet";
 
 export default function AdminUsersPage() {
   const [page, setPage] = React.useState(1);
@@ -55,8 +56,10 @@ export default function AdminUsersPage() {
   const [boundsSheetOpen, setBoundsSheetOpen] = React.useState(false);
   const [customRatesSheetOpen, setCustomRatesSheetOpen] = React.useState(false);
   const [passwordSheetOpen, setPasswordSheetOpen] = React.useState(false);
+  const [emailSheetOpen, setEmailSheetOpen] = React.useState(false);
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = React.useState<string>("");
+  const [selectedUserEmail, setSelectedUserEmail] = React.useState<string>("");
   const [selectedUserBounds, setSelectedUserBounds] = React.useState({ min: 0, max: 100 });
   const [selectedUserCustomRates, setSelectedUserCustomRates] = React.useState<any>({});
 
@@ -78,6 +81,13 @@ export default function AdminUsersPage() {
     setSelectedUserId(userId);
     setSelectedUserName(userName);
     setPasswordSheetOpen(true);
+  };
+
+  const handleOpenEmailSheet = (userId: string, userName: string, currentEmail: string) => {
+    setSelectedUserId(userId);
+    setSelectedUserName(userName);
+    setSelectedUserEmail(currentEmail);
+    setEmailSheetOpen(true);
   };
 
   const handleStatusChange = (status: string | null) => {
@@ -208,6 +218,7 @@ export default function AdminUsersPage() {
             onOpenBoundsSheet={handleOpenBoundsSheet}
             onOpenCustomRatesSheet={handleOpenCustomRatesSheet}
             onOpenPasswordSheet={handleOpenPasswordSheet}
+            onOpenEmailSheet={handleOpenEmailSheet}
           />
 
           <div className="flex items-center justify-between px-4">
@@ -274,6 +285,14 @@ export default function AdminUsersPage() {
         onOpenChange={setPasswordSheetOpen}
         userId={selectedUserId}
         userName={selectedUserName}
+      />
+
+      <EmailSheet 
+        open={emailSheetOpen}
+        onOpenChange={setEmailSheetOpen}
+        userId={selectedUserId}
+        userName={selectedUserName}
+        currentEmail={selectedUserEmail}
       />
     </div>
   );

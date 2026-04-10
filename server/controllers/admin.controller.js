@@ -185,9 +185,9 @@ const getDashboardStats = async (req, res) => {
     const monthlyGrowthRaw = lastMonthOrders > 0 ? ((totalOrders - lastMonthOrders) / lastMonthOrders) * 100 : 100;
     const monthlyGrowth = `${monthlyGrowthRaw > 0 ? '+' : ''}${monthlyGrowthRaw.toFixed(1)}%`;
 
-    // Pending Disputes
-    const weightDisputeOrders = await prisma.weightDispute.count({ where: { status: 'PENDING' } });
-    const rtoDisputeOrders = await prisma.rTODispute.count({ where: { status: 'PENDING' } });
+    // Pending Disputes - count ALL disputes (no status filter)
+    const weightDisputeOrders = await prisma.weightDispute.count();
+    const rtoDisputeOrders = await prisma.rTODispute.count();
     const actionRequired = weightDisputeOrders + rtoDisputeOrders;
 
     // 30-day graph data
@@ -385,10 +385,41 @@ const changeUserPassword = async (req, res) => {
     
     await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword }
+      data: { password_hash: hashedPassword }
     });
 
     res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const changeUserEmail = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { userId } = req.params;
+  const { email } = req.body;
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    return res.status(400).json({ message: 'Please provide a valid email address' });
+  }
+
+  try {
+    const existingUser = await prisma.user.findFirst({
+      where: { email: email.toLowerCase() }
+    });
+
+    if (existingUser && existingUser.id !== userId) {
+      return res.status(400).json({ message: 'Email already in use by another user' });
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { email: email.toLowerCase() }
+    });
+
+    res.json({ message: 'Email updated successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -1839,5 +1870,6 @@ module.exports = {
   getSecurityRefundSchedule,
   setSecurityRefundSchedule,
   getAllSecurityDeposits,
-  getSecurityDepositByOrder
+  getSecurityDepositByOrder,
+  changeUserEmail
 };

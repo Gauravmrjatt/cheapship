@@ -35,6 +35,7 @@ router.get('/dashboard', adminController.getDashboardStats);
 router.get('/users', adminController.getUsers);
 router.patch('/users/:userId/status', adminController.toggleUserStatus);
 router.patch('/users/:userId/password', adminController.changeUserPassword);
+router.patch('/users/:userId/email', adminController.changeUserEmail);
 
 // KYC
 router.get('/kyc', adminController.getKycUsers);

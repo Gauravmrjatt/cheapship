@@ -58,6 +58,7 @@ interface UsersTableProps {
   onOpenBoundsSheet: (userId: string, userName: string, currentMin?: number, currentMax?: number) => void;
   onOpenCustomRatesSheet: (userId: string, userName: string, currentRates?: any) => void;
   onOpenPasswordSheet: (userId: string, userName: string) => void;
+  onOpenEmailSheet: (userId: string, userName: string, currentEmail: string) => void;
 }
 
 export function UsersTable({
@@ -69,6 +70,7 @@ export function UsersTable({
   onOpenBoundsSheet,
   onOpenCustomRatesSheet,
   onOpenPasswordSheet,
+  onOpenEmailSheet,
 }: UsersTableProps) {
   const router = useRouter();
   const isMounted = React.useRef(true);
@@ -235,12 +237,16 @@ export function UsersTable({
                 <HugeiconsIcon icon={LockPasswordIcon} size={14} className="mr-2" />
                 Change Password
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onOpenEmailSheet(row.original.id, row.original.name, row.original.email)}>
+                <HugeiconsIcon icon={LockPasswordIcon} size={14} className="mr-2" />
+                Change Email
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       ),
     },
-  ], [toggleStatusMutation, onOpenBoundsSheet, onOpenCustomRatesSheet, onOpenPasswordSheet, router]);
+  ], [toggleStatusMutation, onOpenBoundsSheet, onOpenCustomRatesSheet, onOpenPasswordSheet, onOpenEmailSheet, router]);
 
   const table = useReactTable({
     data,
