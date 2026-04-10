@@ -73,11 +73,8 @@ export const ActionsCell = ({
     <DropdownMenu>
       <ButtonGroup>
         {row.original.is_draft ? (
-
           <Button render={<Link href={`/dashboard/orders/new?id=${row.original.id}`} />} variant="secondary" className="font-bold text-primary"> <HugeiconsIcon className="bg-muted mr-1" icon={PackageSentIcon} strokeWidth={2} /> Ship Now</Button>
-
-
-        ) : (<Button render={<Link href={`/dashboard/orders/${row.original.id}`} />} variant="secondary" className="font-bold text-primary"><HugeiconsIcon className="" icon={DeliveryView01Icon} strokeWidth={2} />View Now</Button>
+        ) : (<Button render={<Link href={`/dashboard/orders/${row.original.id}`} />} variant="secondary" className="font-bold text-primary"><HugeiconsIcon className="" icon={DeliveryView01Icon} strokeWidth={2} />{row.original.pickup_scheduled_date !== "" ? "View Now" : "Schedule Pickup"}</Button>
         )}
         <ButtonGroupSeparator />
         <DropdownMenuTrigger

@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import copy from "copy-to-clipboard";
+import { sileo } from "sileo";
 import {
   flexRender,
   getCoreRowModel,
@@ -48,6 +50,8 @@ import {
   Loading03Icon,
   Cancel01Icon,
   ArrowRightIcon,
+  LinkCircle02Icon,
+  CopyIcon,
 } from "@hugeicons/core-free-icons"
 import Link from "next/link"
 
@@ -59,7 +63,9 @@ export type WeightDispute = {
   applied_amount: number;
   charged_amount: number;
   status: string;
+  tracking_number?: string;
   created_at: string;
+
   order?: {
     id: string;
     tracking_number: string;
@@ -169,10 +175,52 @@ export function WeightDisputesDataTable({
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-bold text-sm">#{row.original.order?.id?.toString().slice(-8)}</span>
-          <span className="text-[10px] font-mono text-muted-foreground uppercase">{row.original.order?.tracking_number}</span>
+          {/* <span className="text-[10px] font-mono text-muted-foreground uppercase">{row.original.order?.tracking_number}</span> */}
           <span className="text-[10px] text-primary font-bold mt-0.5">{row.original.order?.courier_name}</span>
         </div>
       ),
+    },
+    {
+      accessorKey: "tracking_number",
+      header: "AWB",
+      cell: ({ row }) => {
+        const tracking = row.original.order?.tracking_number;
+
+        return (
+          <div className="flex flex-col gap-2">
+            {tracking ? (
+              <div className="flex items-center gap-1">
+                <a
+                  href={`https://shiprocket.co/tracking/${tracking}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="
+                  inline-flex items-center
+                  text-xs font-mono font-medium
+                  text-primary
+                  bg-muted
+                  hover:bg-primary/10
+                  hover:text-primary
+                  transition-colors
+                  px-3 py-2.5
+                  rounded-md
+                  
+                "
+                >
+                  {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
+                </a>
+                <Button size="icon" className="bg-muted rounded-md" variant="outline" onClick={() => { copy(tracking); sileo.success({ title: "Copied to clipboard", description: "Tracking number copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
+
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-left text-xs">-</span>
+              // <></>
+            )}
+
+
+          </div>
+        );
+      },
     },
     {
       id: "volumetric_weight",

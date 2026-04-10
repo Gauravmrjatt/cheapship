@@ -46,30 +46,39 @@ import {
   SearchIcon,
   ArrowRight01Icon,
   ArrowLeft01Icon,
-  DeliveryReturnIcon,
+  WeightScale01Icon,
   Loading03Icon,
   Cancel01Icon,
   Clock01Icon,
   CheckmarkCircle02Icon,
   LinkCircle02Icon,
-  CopyIcon
+  CopyIcon,
 } from "@hugeicons/core-free-icons"
-import Link from "next/link"
 
-export type RTODispute = {
+export type AdminWeightDispute = {
   id: string;
   order_id: string;
-  reason: string;
+  applied_weight: number;
+  charged_weight: number;
+  difference_amount: number;
+
+  user?: {
+    name?: string;
+    mobile?: string;
+  };
   status: string;
   created_at: string;
   order?: {
     tracking_number?: string;
-    courier_name?: string;
+    weight?: number;
+    length?: number | null;
+    width?: number | null;
+    height?: number | null;
   };
 }
 
-interface RTODisputesDataTableProps {
-  data: RTODispute[]
+interface AdminWeightDisputesDataTableProps {
+  data: AdminWeightDispute[]
   isLoading?: boolean
   pagination?: {
     currentPage: number
@@ -99,6 +108,11 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+const calculateVolumetricWeight = (length: number | null | undefined, width: number | null | undefined, height: number | null | undefined) => {
+  if (!length || !width || !height) return null;
+  return (Number(length) * Number(width) * Number(height)) / 5000;
+};
+
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -107,7 +121,7 @@ const formatDate = (dateString: string) => {
   });
 };
 
-export function RTODisputesDataTable({
+export function AdminWeightDisputesDataTable({
   data,
   isLoading,
   pagination,
@@ -115,7 +129,7 @@ export function RTODisputesDataTable({
   onPageChange,
   onPageSizeChange,
   onFilterChange,
-}: RTODisputesDataTableProps) {
+}: AdminWeightDisputesDataTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [isMounted, setIsMounted] = React.useState(false)
@@ -142,7 +156,7 @@ export function RTODisputesDataTable({
     ([key, value]) => value && value !== "ALL" && key !== "search"
   ).length
 
-  const columns = React.useMemo<ColumnDef<RTODispute>[]>(() => [
+  const columns = React.useMemo<ColumnDef<AdminWeightDispute>[]>(() => [
     {
       accessorKey: "order_id",
       header: "Order ID",
@@ -193,17 +207,46 @@ export function RTODisputesDataTable({
       },
     },
     {
-      accessorKey: "order",
-      header: "Courier",
+      accessorKey: "user",
+      header: "User",
       cell: ({ row }) => (
-        <span className="text-sm">{row.original.order?.courier_name || "N/A"}</span>
+        <div>
+          <div className="font-medium">{row.original.user?.name}</div>
+          <div className="text-xs text-muted-foreground">{row.original.user?.mobile}</div>
+        </div>
       ),
     },
     {
-      accessorKey: "reason",
-      header: "Reason",
+      id: "volumetric_weight",
+      header: "Volumetric Wt",
+      cell: ({ row }) => {
+        const volumetricWeight = calculateVolumetricWeight(
+          row.original.order?.length,
+          row.original.order?.width,
+          row.original.order?.height
+        );
+        return (
+          <span>{volumetricWeight ? `${volumetricWeight.toFixed(2)} kg` : "-"}</span>
+        );
+      },
+    },
+    {
+      accessorKey: "applied_weight",
+      header: "Weight (kg)",
       cell: ({ row }) => (
-        <span className="text-sm">{row.original.reason}</span>
+        <div className="text-sm">
+          <div>Applied: {row.original.applied_weight} kg</div>
+          <div className="text-muted-foreground">Charged: {row.original.charged_weight} kg</div>
+        </div>
+      ),
+    },
+    {
+      id: "difference",
+      header: "Difference",
+      cell: ({ row }) => (
+        <span className={row.original.difference_amount >= 0 ? "text-red-600" : "text-green-600"}>
+          {row.original.difference_amount >= 0 ? "-" : "+"}₹{row.original.difference_amount}
+        </span>
       ),
     },
     {
@@ -216,17 +259,6 @@ export function RTODisputesDataTable({
       header: "Date",
       cell: ({ row }) => (
         <span className="text-muted-foreground">{formatDate(row.original.created_at)}</span>
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      cell: ({ row }) => (
-        <Link href={`/dashboard/rto/${row.original.id}`}>
-          <Button variant="ghost" size="sm" className="h-8">
-            View <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="ml-1" />
-          </Button>
-        </Link>
       ),
     },
   ], []);
@@ -254,7 +286,7 @@ export function RTODisputesDataTable({
 
   return (
     <div className="w-full flex flex-col gap-6">
-      <div className="flex items-center justify-between px-4 lg:px-6">
+      <div className="flex items-center justify-between ">
         <div className="flex items-center gap-4">
           <Label htmlFor="status-filter" className="sr-only">
             Status
@@ -285,7 +317,7 @@ export function RTODisputesDataTable({
           <div className="relative hidden w-64 lg:block">
             <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="Search RTO..."
+              placeholder="Search disputes..."
               className="pl-9 h-8"
               value={filters?.search ?? ""}
               onChange={(e) => handleFilterUpdate("search", e.target.value)}
@@ -332,7 +364,7 @@ export function RTODisputesDataTable({
       )}
 
       <div
-        className="relative flex flex-col gap-4 px-4 rounded-2xl lg:px-6"
+        className="relative flex flex-col gap-4  rounded-2xl "
       >
         <div className="overflow-x-auto border rounded-2xl">
           <Table className="min-w-[640px]">
@@ -373,11 +405,11 @@ export function RTODisputesDataTable({
                   <TableCell colSpan={columns.length} className="h-24 text-center">
                     <div className="flex flex-col items-center justify-center py-8 text-center">
                       <div className="p-3 bg-muted rounded-full mb-4">
-                        <HugeiconsIcon icon={DeliveryReturnIcon} size={24} className="text-muted-foreground" />
+                        <HugeiconsIcon icon={WeightScale01Icon} size={24} className="text-muted-foreground" />
                       </div>
-                      <h3 className="font-semibold">No RTO Records</h3>
+                      <h3 className="font-semibold">No Disputes</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        No RTO records found
+                        No weight disputes found
                       </p>
                     </div>
                   </TableCell>

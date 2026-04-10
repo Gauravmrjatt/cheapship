@@ -107,6 +107,10 @@ interface AdminOrderFilters {
   to: string;
 }
 
+const formatPrice = (price: number | string) => {
+  return parseFloat(String(price)).toFixed(2);
+};
+
 import { ShipmentStatus } from "@/components/ui/status-chip"
 function OrdersContent() {
   const searchParams = useSearchParams();
@@ -413,11 +417,16 @@ function OrdersContent() {
     {
       accessorKey: "total_amount",
       header: () => <div className="text-right">Amount</div>,
-      cell: ({ row }) => (
-        <div className="text-right tabular-nums font-bold text-xs">
-          ₹{Number(row.original.total_amount).toLocaleString("en-IN")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const status = row.original.shipment_status.toLowerCase();
+        return (
+          <div className="text-right tabular-nums">
+            {status !== "draft" ? (
+              <>₹{formatPrice(row.original.total_amount)}</>
+            ) : (<>-</>)}
+          </div>
+        )
+      },
     },
     {
       accessorKey: "cod_amount",

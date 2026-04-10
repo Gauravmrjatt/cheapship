@@ -1740,13 +1740,13 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
         <Button onClick={() => router.push('/dashboard/orders')} className="w-32">My Orders</Button>
         <Button variant="outline" onClick={() => window.location.reload()} className="w-32">Ship Another</Button>
       </div>
-      <div className="pt-6 border-t mt-8 space-y-3">
+      {/* <div className="pt-6 border-t mt-8 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground">Ready to hand over your package?</p>
         <Button onClick={() => router.push(`/dashboard/orders/${createdOrderId}`)} size="lg" className="gap-2 font-bold w-full max-w-sm mx-auto shadow-md">
           <HugeiconsIcon icon={ShippingTruck01Icon} size={18} />
           Schedule Pickup Now
         </Button>
-      </div>
+      </div> */}
     </div>
   );
 

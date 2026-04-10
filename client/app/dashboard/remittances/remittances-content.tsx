@@ -27,31 +27,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ShipmentStatus } from "@/components/ui/status-chip"
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  CheckmarkCircle01Icon,
   Loading03Icon,
   Search01Icon,
-  Calendar01Icon,
-  LeftToRightListBulletIcon,
-  ArrowDown01Icon,
-  SearchIcon,
   Location01Icon,
+  CopyIcon,
+  Download02Icon,
+  LinkCircle02Icon
 } from "@hugeicons/core-free-icons";
 import { useHttp } from "@/lib/hooks/use-http";
 import { DateRangePicker } from "@/components/ui/date-picker";
 import { DataTablePagination } from "@/components/orders-table-components";
 import { cn } from "@/lib/utils";
+import copy from "copy-to-clipboard";
+import { sileo } from "sileo";
 
+import Link from "next/link";
 interface RemittanceSummary {
   totalCODCollected: number;
   pendingRemittanceAmount: number;
@@ -69,6 +62,11 @@ interface RemittanceOrder {
   remitted_at?: string;
   remittance_ref_id?: string;
   created_at: string;
+  updated_at: string;
+  track_url?: string;
+  tracking_number?: string;
+  shiprocket_order_id?: string;
+  shiprocket_shipment_id?: string;
   order_receiver_address?: {
     name: string;
     city: string;
@@ -144,12 +142,73 @@ export default function RemittancesPage() {
     },
     {
       accessorKey: "id",
-      header: "Order ID",
+      header: "Shipment ID",
       cell: ({ row }) => (
-        <span className="text-foreground font-medium uppercase">
-          #{row.original.id.toString().slice(0, 8)}
-        </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex gap-3 items-center">
+            <Link
+              href={`/dashboard/orders/${row.original.id}`}
+              className="text-foreground hover:underline font-medium"
+            >
+              #{row.original.id}
+            </Link>
+            <Button size="icon" variant="outline" onClick={() => { copy(row.original.id); sileo.success({ title: "Copied to clipboard", description: "Order ID copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
+          </div>
+          {row.original.shiprocket_order_id && (<span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_order_id ? `OID :   ${row.original.shiprocket_order_id}` : "-"}
+          </span>)}
+          {row.original.shiprocket_shipment_id && (<span className="text-[10px]  tabular-nums">
+            {row.original.shiprocket_shipment_id ? `Shipment ID :  ${row.original.shiprocket_shipment_id}` : "-"}
+          </span>)}
+          <span className="text-[10px]  tabular-nums">
+            {row.original.created_at ? new Date(row.original.created_at).toLocaleString() : "-"}
+          </span>
+
+        </div>
       ),
+      enableHiding: false,
+    },
+    {
+      accessorKey: "tracking_number",
+      header: "AWB",
+      cell: ({ row }) => {
+        const tracking = row.original.tracking_number;
+
+        return (
+          <div className="flex flex-col gap-2">
+            {tracking ? (
+              <div className="flex items-center gap-1">
+                <a
+                  href={`https://shiprocket.co/tracking/${tracking}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="
+                  inline-flex items-center
+                  text-xs font-mono font-medium
+                  text-primary
+                  bg-muted
+                  hover:bg-primary/10
+                  hover:text-primary
+                  transition-colors
+                  px-3 py-2.5
+                  rounded-md
+             
+                "
+                >
+                  {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
+                </a>
+                <Button size="icon" className="bg-muted rounded-md" variant="outline" onClick={() => { copy(tracking); sileo.success({ title: "Copied to clipboard", description: "Tracking number copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
+
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-left text-xs">-</span>
+              // <></>
+            )}
+
+
+          </div>
+        );
+      },
     },
     {
       id: "receiver",
@@ -199,12 +258,13 @@ export default function RemittancesPage() {
       {
         accessorKey: "shipment_status",
         header: "Status",
-        cell: ({ row }: any) => (
-          <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize gap-1.5 border-amber-200 bg-amber-50/50">
-            <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="animate-spin size-3 text-amber-600" />
-            {row.original.shipment_status?.toLowerCase().replace(/_/g, " ")}
-          </Badge>
-        ),
+        cell: ({ row }: any) => {
+           const order = row.original;
+        const status = order.shipment_status.toLowerCase();
+        return (
+          <ShipmentStatus status={status} />
+        );
+        }
       }
     ]),
     {
@@ -239,7 +299,7 @@ export default function RemittancesPage() {
   return (
     <div className="w-full space-y-6 animate-in p-5 fade-in duration-500 overflow-hidden">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        
+
         <div className="rounded-xl border bg-card p-4">
           <p className="text-sm font-medium text-muted-foreground">Pending Remittance</p>
           {isLoadingSummary ? <div className="h-7 w-32 bg-muted animate-pulse rounded mt-1" /> : (
@@ -263,7 +323,7 @@ export default function RemittancesPage() {
           {/* {isLoadingSummary ? <div className="h-7 w-32 bg-muted animate-pulse rounded mt-1" /> : (
             <p className="text-2xl font-bold text-primary">{formatCurrency(summary?.totalCODCollected || 0)}</p>
           )} */}
-             <DateRangePicker 
+          <DateRangePicker
             fromDate={fromDate}
             toDate={toDate}
             onFromDateChange={setFromDate}

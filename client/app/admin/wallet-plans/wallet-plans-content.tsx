@@ -104,16 +104,6 @@ export default function WalletPlansContent() {
     });
   };
 
-  const handleDelete = () => {
-    if (!selectedPlan) return;
-    deleteMutation.mutate(selectedPlan.id, {
-      onSuccess: () => {
-        setIsDeleteOpen(false);
-        resetForm();
-      }
-    });
-  };
-
   const openEditDialog = (plan: WalletPlan) => {
     setSelectedPlan(plan);
     setFormData({
@@ -424,21 +414,45 @@ export default function WalletPlansContent() {
           <DialogHeader>
             <DialogTitle>Delete Wallet Plan</DialogTitle>
           </DialogHeader>
-          <p className="py-4">
-            Are you sure you want to delete this wallet plan? This action will deactivate the plan but existing users will keep their earned discounts.
+          <p className="py-2">
+            Choose how you want to delete this wallet plan:
           </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancel</Button>
+          <div className="flex flex-col gap-3 py-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                deleteMutation.mutate({ id: selectedPlan?.id, permanent: false }, {
+                  onSuccess: () => {
+                    setIsDeleteOpen(false);
+                    resetForm();
+                  }
+                });
+              }}
+              disabled={deleteMutation.isPending}
+              className="w-full justify-start"
+            >
+              <HugeiconsIcon icon={RefreshIcon} className="mr-2 size-4" />
+              Deactivate (Can be activated again)
+            </Button>
             <Button
               variant="destructive"
-              onClick={handleDelete}
+              onClick={() => {
+                deleteMutation.mutate({ id: selectedPlan?.id, permanent: true }, {
+                  onSuccess: () => {
+                    setIsDeleteOpen(false);
+                    resetForm();
+                  }
+                });
+              }}
               disabled={deleteMutation.isPending}
+              className="w-full justify-start"
             >
-              {deleteMutation.isPending ? (
-                <HugeiconsIcon icon={Loading03Icon} className="mr-2 size-4 animate-spin" />
-              ) : null}
-              Delete Plan
+              <HugeiconsIcon icon={Delete02Icon} className="mr-2 size-4" />
+              Delete Permanently
             </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

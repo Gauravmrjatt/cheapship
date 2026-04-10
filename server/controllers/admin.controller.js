@@ -1791,6 +1791,7 @@ const updateWalletPlan = async (req, res) => {
 const deleteWalletPlan = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { id } = req.params;
+  const { permanent } = req.query;
 
   try {
     const existingPlan = await prisma.walletPlan.findUnique({
@@ -1801,12 +1802,20 @@ const deleteWalletPlan = async (req, res) => {
       return res.status(404).json({ message: 'Wallet plan not found' });
     }
 
-    await prisma.walletPlan.update({
-      where: { id },
-      data: { is_active: false }
-    });
-
-    res.json({ message: 'Wallet plan deactivated successfully' });
+    // If permanent=true, actually delete from database
+    if (permanent === 'true') {
+      await prisma.walletPlan.delete({
+        where: { id }
+      });
+      res.json({ message: 'Wallet plan deleted permanently' });
+    } else {
+      // Default: soft delete (deactivate)
+      await prisma.walletPlan.update({
+        where: { id },
+        data: { is_active: false }
+      });
+      res.json({ message: 'Wallet plan deactivated successfully' });
+    }
   } catch (error) {
     console.error('Delete wallet plan error:', error);
     res.status(500).json({ message: 'Internal Server Error' });

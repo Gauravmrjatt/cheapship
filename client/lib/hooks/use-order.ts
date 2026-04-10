@@ -3,11 +3,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHttp } from "./use-http";
 import { sileo } from "sileo";
+import { useAuthStore } from "../store/auth";
 
 export const useOrder = (orderId: string) => {
   const { get } = useHttp();
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.user_type === "ADMIN";
+  const endpoint = isAdmin ? `/admin/orders/${orderId}` : `/orders/${orderId}`;
+  const queryKey = isAdmin ? ["admin-order", orderId] : ["order", orderId];
 
-  return useQuery(get(["order", orderId], `/orders/${orderId}`, !!orderId));
+  return useQuery(get(queryKey, endpoint, !!orderId));
 };
 
 export const useAssignAWB = () => {

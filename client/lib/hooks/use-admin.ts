@@ -646,9 +646,12 @@ export const useDeleteWalletPlan = (isMounted?: React.MutableRefObject<boolean>)
   const queryClient = useQueryClient();
   const http = useHttp();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, permanent = false }: { id: string; permanent?: boolean }) => {
       const token = localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : '';
-      const response = await fetch(`${BASE_URL}/api/v1/admin/wallet-plans/${id}`, {
+      const url = permanent 
+        ? `${BASE_URL}/api/v1/admin/wallet-plans/${id}?permanent=true`
+        : `${BASE_URL}/api/v1/admin/wallet-plans/${id}`;
+      const response = await fetch(url, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -658,9 +661,9 @@ export const useDeleteWalletPlan = (isMounted?: React.MutableRefObject<boolean>)
       if (!response.ok) throw new Error('Failed to delete wallet plan');
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       if (isMounted?.current === false) return;
-      sileo.success({ title: "Wallet plan deactivated" });
+      sileo.success({ title: variables.permanent ? "Wallet plan deleted permanently" : "Wallet plan deactivated" });
       queryClient.invalidateQueries({ queryKey: ["wallet-plans"] });
       queryClient.invalidateQueries({ queryKey: ["active-wallet-plans"] });
     },

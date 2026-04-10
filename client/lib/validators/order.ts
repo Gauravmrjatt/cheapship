@@ -3,12 +3,11 @@ import { z } from "zod";
 export const addressSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().min(10, "Phone number must be at least 10 characters"),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  email: z.string().optional().or(z.literal("")),
   address: z.string().min(1, "Address is required"),
   city: z.string().min(1, "City is required"),
   state: z.string().min(1, "State is required"),
   pincode: z.string().min(6, "Pincode must be at least 6 characters"),
-
 });
 
 export const productSchema = z.object({

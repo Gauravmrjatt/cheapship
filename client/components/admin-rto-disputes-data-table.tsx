@@ -52,24 +52,26 @@ import {
   Clock01Icon,
   CheckmarkCircle02Icon,
   LinkCircle02Icon,
-  CopyIcon
+  CopyIcon,
 } from "@hugeicons/core-free-icons"
-import Link from "next/link"
 
-export type RTODispute = {
+export type AdminRTODispute = {
   id: string;
   order_id: string;
   reason: string;
   status: string;
   created_at: string;
+  user?: {
+    name?: string;
+    mobile?: string;
+  };
   order?: {
     tracking_number?: string;
-    courier_name?: string;
   };
 }
 
-interface RTODisputesDataTableProps {
-  data: RTODispute[]
+interface AdminRTODisputesDataTableProps {
+  data: AdminRTODispute[]
   isLoading?: boolean
   pagination?: {
     currentPage: number
@@ -107,7 +109,7 @@ const formatDate = (dateString: string) => {
   });
 };
 
-export function RTODisputesDataTable({
+export function AdminRTODisputesDataTable({
   data,
   isLoading,
   pagination,
@@ -115,7 +117,7 @@ export function RTODisputesDataTable({
   onPageChange,
   onPageSizeChange,
   onFilterChange,
-}: RTODisputesDataTableProps) {
+}: AdminRTODisputesDataTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [isMounted, setIsMounted] = React.useState(false)
@@ -142,7 +144,7 @@ export function RTODisputesDataTable({
     ([key, value]) => value && value !== "ALL" && key !== "search"
   ).length
 
-  const columns = React.useMemo<ColumnDef<RTODispute>[]>(() => [
+  const columns = React.useMemo<ColumnDef<AdminRTODispute>[]>(() => [
     {
       accessorKey: "order_id",
       header: "Order ID",
@@ -174,7 +176,7 @@ export function RTODisputesDataTable({
                   transition-colors
                   px-3 py-2.5
                   rounded-md
-                  
+                  w-full
                 "
                 >
                   {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
@@ -193,10 +195,13 @@ export function RTODisputesDataTable({
       },
     },
     {
-      accessorKey: "order",
-      header: "Courier",
+      accessorKey: "user",
+      header: "User",
       cell: ({ row }) => (
-        <span className="text-sm">{row.original.order?.courier_name || "N/A"}</span>
+        <div>
+          <div className="font-medium">{row.original.user?.name}</div>
+          <div className="text-xs text-muted-foreground">{row.original.user?.mobile}</div>
+        </div>
       ),
     },
     {
@@ -216,17 +221,6 @@ export function RTODisputesDataTable({
       header: "Date",
       cell: ({ row }) => (
         <span className="text-muted-foreground">{formatDate(row.original.created_at)}</span>
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      cell: ({ row }) => (
-        <Link href={`/dashboard/rto/${row.original.id}`}>
-          <Button variant="ghost" size="sm" className="h-8">
-            View <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="ml-1" />
-          </Button>
-        </Link>
       ),
     },
   ], []);
@@ -254,7 +248,7 @@ export function RTODisputesDataTable({
 
   return (
     <div className="w-full flex flex-col gap-6">
-      <div className="flex items-center justify-between px-4 lg:px-6">
+      <div className="flex items-center justify-between ">
         <div className="flex items-center gap-4">
           <Label htmlFor="status-filter" className="sr-only">
             Status
@@ -332,7 +326,7 @@ export function RTODisputesDataTable({
       )}
 
       <div
-        className="relative flex flex-col gap-4 px-4 rounded-2xl lg:px-6"
+        className="relative flex flex-col gap-4 rounded-2xl "
       >
         <div className="overflow-x-auto border rounded-2xl">
           <Table className="min-w-[640px]">

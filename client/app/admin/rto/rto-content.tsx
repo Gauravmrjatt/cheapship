@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { useAdminRTODisputes, useSearchOrdersForRTO, useCreateAdminRTODispute, AdminOrderForRTO, AdminRTODispute, CreateRTOPayload } from "@/lib/hooks/use-admin-dispute";
+import { useAdminRTODisputes, useSearchOrdersForRTO, useCreateAdminRTODispute, AdminOrderForRTO, CreateRTOPayload } from "@/lib/hooks/use-admin-dispute";
+import { AdminRTODisputesDataTable } from "@/components/admin-rto-disputes-data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,17 +41,15 @@ import {
   Loading03Icon,
   DeliveryReturnIcon,
   CheckmarkCircle02Icon,
-  Clock01Icon,
-  Cancel01Icon
 } from "@hugeicons/core-free-icons";
 
 function Rtocontent() {
   const [activeTab, setActiveTab] = useState("create");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   const [selectedOrder, setSelectedOrder] = useState<AdminOrderForRTO | null>(null);
   const [showOrderSheet, setShowOrderSheet] = useState(false);
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
@@ -59,7 +58,7 @@ function Rtocontent() {
 
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
-  
+
   const [isFormSubmitted, setIsFormSubmitted] = useState(false);
 
   React.useEffect(() => {
@@ -72,6 +71,12 @@ function Rtocontent() {
   const { data: searchResults, isLoading: isSearchingOrders } = useSearchOrdersForRTO(debouncedSearch);
   const { data: rtoData, isLoading: isLoadingRTO } = useAdminRTODisputes(page, pageSize, statusFilter, searchQuery);
   const createRTO = useCreateAdminRTODispute();
+
+  const handleFilterChange = (newFilters: { status?: string; search?: string }) => {
+    setStatusFilter(newFilters.status || "ALL");
+    setSearchQuery(newFilters.search || "");
+    setPage(1);
+  };
 
   const handleSelectOrder = (order: AdminOrderForRTO) => {
     setSelectedOrder(order);
@@ -106,19 +111,6 @@ function Rtocontent() {
     setSelectedOrder(null);
     setAmount("");
     setReason("");
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><HugeiconsIcon icon={Clock01Icon} className="w-3 h-3 mr-1" /> Pending</Badge>;
-      case "ACCEPTED":
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><HugeiconsIcon icon={CheckmarkCircle02Icon} className="w-3 h-3 mr-1" /> Accepted</Badge>;
-      case "REJECTED":
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><HugeiconsIcon icon={Cancel01Icon} className="w-3 h-3 mr-1" /> Rejected</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
   };
 
   return (
@@ -239,93 +231,22 @@ function Rtocontent() {
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>RTO History</CardTitle>
-              <CardDescription>View all RTO records</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4 mb-4">
-                <Input
-                  placeholder="Search by order ID, user name, email, or mobile..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-md"
-                />
-                <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Status</SelectItem>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="ACCEPTED">Accepted</SelectItem>
-                    <SelectItem value="REJECTED">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoadingRTO ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
-                          <HugeiconsIcon icon={Loading03Icon} className="w-6 h-6 mx-auto animate-spin text-muted-foreground" />
-                        </TableCell>
-                      </TableRow>
-                    ) : rtoData?.data && rtoData.data.length > 0 ? (
-                      rtoData.data.map((rto: AdminRTODispute) => (
-                        <TableRow key={rto.id}>
-                          <TableCell className="font-medium">{rto.order_id}</TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{rto.user?.name}</div>
-                              <div className="text-xs text-muted-foreground">{rto.user?.mobile}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{rto.reason}</TableCell>
-                          <TableCell>{getStatusBadge(rto.status)}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {new Date(rto.created_at).toLocaleDateString()}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          No RTO records found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+          <AdminRTODisputesDataTable
+            data={rtoData?.data ?? []}
+            isLoading={isLoadingRTO}
+            filters={{ status: statusFilter, search: searchQuery }}
+            onFilterChange={handleFilterChange}
+            pagination={{
+              currentPage: page,
+              pageSize,
+              totalPages: rtoData?.pagination?.totalPages ?? 1,
+              total: rtoData?.pagination?.total ?? 0,
+            }}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
 
-              {rtoData?.pagination && rtoData.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-end space-x-2 py-4">
-                  <Button variant="outline" size="sm" onClick={() => setPage(page - 1)} disabled={page === 1}>
-                    Previous
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Page {page} of {rtoData.pagination.totalPages}
-                  </span>
-                  <Button variant="outline" size="sm" onClick={() => setPage(page + 1)} disabled={page >= rtoData.pagination.totalPages}>
-                    Next
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 
@@ -385,8 +306,8 @@ function Rtocontent() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant={order.rto_dispute ? "secondary" : "default"}
                             onClick={() => handleSelectOrder(order)}
                             disabled={!!order.rto_dispute}
@@ -424,7 +345,7 @@ function Rtocontent() {
               Please review before submitting
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
@@ -440,7 +361,7 @@ function Rtocontent() {
                 <p className="font-medium">₹{amount}</p>
               </div>
             </div>
-            
+
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
               ₹{amount} will be deducted from user's security deposit (first) or wallet balance.
             </div>
