@@ -174,7 +174,7 @@ function DisputeCards({ data, isLoading }: { data: DashboardStats | undefined; i
       </div>
 
       <p className="text-xs mt-1 text-amber-700/80 dark:text-amber-300/70">
-        Pending review from logistics
+        Weight Disputes from logistics
       </p>
     </CardContent>
   </Card>
@@ -196,7 +196,7 @@ function DisputeCards({ data, isLoading }: { data: DashboardStats | undefined; i
       </div>
 
       <p className="text-xs mt-1 text-red-700/80 dark:text-red-300/70">
-        Requires immediate attention
+        RTO Disputes from logistics
       </p>
     </CardContent>
   </Card>
@@ -218,7 +218,7 @@ function DisputeCards({ data, isLoading }: { data: DashboardStats | undefined; i
       </div>
 
       <p className="text-xs mt-1 text-blue-700/80 dark:text-blue-300/70">
-        Total pending operational tasks
+        Total tasks
       </p>
     </CardContent>
   </Card>
@@ -462,7 +462,7 @@ export default function AdminDashboard() {
 
       {/* Dispute Cards */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground px-1">Pending Disputes</h3>
+        <h3 className="text-sm font-medium text-muted-foreground px-1">Total Disputes</h3>
         <DisputeCards data={data} isLoading={isLoading} />
       </div>
 

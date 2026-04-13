@@ -79,6 +79,10 @@ router.post('/settings/global-commission', adminController.updateGlobalSettings)
 router.get('/settings/security-refund', adminController.getSecurityRefundSchedule);
 router.post('/settings/security-refund', adminController.setSecurityRefundSchedule);
 
+// Security Refund Days (days after which security is refunded)
+router.get('/settings/security-refund-days', adminController.getSecurityRefundDays);
+router.post('/settings/security-refund-days', adminController.updateSecurityRefundDays);
+
 // Security Deposits
 router.get('/settings/security-deposits', adminController.getAllSecurityDeposits);
 router.get('/settings/security-deposits/:orderId', adminController.getSecurityDepositByOrder);

@@ -1,6 +1,13 @@
 const cron = require('node-cron');
 const moment = require('moment-timezone');
 
+async function getSecurityRefundDays(prisma) {
+  const setting = await prisma.systemSetting.findUnique({
+    where: { key: 'security_refund_days' }
+  });
+  return setting ? parseInt(setting.value) : 30; // Default 30 days
+}
+
 function initializeCronJobs(prisma) {
   console.log('Initializing cron jobs...');
 
@@ -43,27 +50,27 @@ function initializeCronJobs(prisma) {
 
       console.log('Starting security deposit refund process...');
 
-      // Get all security deposits with remaining amount > 0 for delivered orders
+      // Get configured days from system settings (default 30 days)
+      const refundDays = await getSecurityRefundDays(prisma);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - refundDays);
+
+      console.log(`Using ${refundDays} days threshold. Cutoff date: ${cutoffDate.toISOString()}`);
+
+      // Get all security deposits older than configured days with remaining amount > 0
       const securityDeposits = await prisma.securityDeposit.findMany({
         where: {
           remaining: { gt: 0 },
-          status: { in: ['ACTIVE', 'PARTIAL'] }
-        },
-        include: {
-          order: {
-            select: { shipment_status: true }
-          }
+          status: { in: ['ACTIVE', 'PARTIAL'] },
+          created_at: { lte: cutoffDate }
         }
       });
 
-      // Filter to only delivered orders
-      const eligibleDeposits = securityDeposits.filter(sd => sd.order && sd.order.shipment_status === 'DELIVERED');
-
-      console.log(`Found ${eligibleDeposits.length} eligible security deposits to refund`);
+      console.log(`Found ${securityDeposits.length} eligible security deposits to refund`);
 
       // Group by user for batch processing
       const userRefundMap = new Map();
-      for (const deposit of eligibleDeposits) {
+      for (const deposit of securityDeposits) {
         const current = userRefundMap.get(deposit.user_id) || { totalRefund: 0, deposits: [] };
         current.totalRefund += Number(deposit.remaining);
         current.deposits.push(deposit);

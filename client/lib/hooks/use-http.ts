@@ -3,6 +3,7 @@
 import { useMutation, QueryKey } from "@tanstack/react-query";
 import { sileo } from "sileo";
 import { useAuth } from "./use-auth";
+import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL + "/api/v1" || "http://localhost:3000";
 
@@ -25,7 +26,14 @@ const getHeaders = (token: string | null) => {
 };
 
 export const useHttp = () => {
-  const { token } = useAuth();
+  const { token, setToken, setUser } = useAuth();
+  const router = useRouter();
+
+  const handleUnauthorized = () => {
+    setToken(null);
+    setUser(null);
+    router.push("/auth/signin");
+  };
 
   const get = <TData>(queryKey: QueryKey, endpoint: string, enabled: boolean = true, options?: GetOptions<TData>) => {
     return {
@@ -34,6 +42,10 @@ export const useHttp = () => {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
           headers: getHeaders(token),
         });
+        if (response.status === 401) {
+          handleUnauthorized();
+          throw new Error("Session expired");
+        }
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || "Failed to fetch data");
@@ -58,6 +70,10 @@ export const useHttp = () => {
           headers: getHeaders(token),
           body: JSON.stringify(variables),
         });
+        if (response.status === 401) {
+          handleUnauthorized();
+          throw new Error("Session expired");
+        }
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || "API request failed");
@@ -91,6 +107,10 @@ export const useHttp = () => {
           headers: getHeaders(token),
           body,
         });
+        if (response.status === 401) {
+          handleUnauthorized();
+          throw new Error("Session expired");
+        }
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || "API request failed");
@@ -116,6 +136,10 @@ export const useHttp = () => {
           headers: getHeaders(token),
           body: JSON.stringify(variables),
         });
+        if (response.status === 401) {
+          handleUnauthorized();
+          throw new Error("Session expired");
+        }
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || "API request failed");
@@ -144,6 +168,10 @@ export const useHttp = () => {
           method: "DELETE",
           headers: getHeaders(token),
         });
+        if (response.status === 401) {
+          handleUnauthorized();
+          throw new Error("Session expired");
+        }
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || "API request failed");

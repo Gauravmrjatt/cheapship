@@ -744,6 +744,46 @@ const updateGlobalSettings = async (req, res) => {
   }
 };
 
+// Get security refund days setting
+const getSecurityRefundDays = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: 'security_refund_days' }
+    });
+    res.json({ days: setting ? parseInt(setting.value) : 30 });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Update security refund days setting
+const updateSecurityRefundDays = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { days } = req.body;
+
+  if (!days || days < 1 || days > 365) {
+    return res.status(400).json({ message: 'Days must be between 1 and 365' });
+  }
+
+  try {
+    const setting = await prisma.systemSetting.upsert({
+      where: { key: 'security_refund_days' },
+      update: { value: days.toString() },
+      create: {
+        key: 'security_refund_days',
+        value: days.toString(),
+        description: 'Number of days after which security deposit is refunded'
+      }
+    });
+    res.json({ days: parseInt(setting.value) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 const getSecurityRefundSchedule = async (req, res) => {
   const prisma = req.app.locals.prisma;
   try {
@@ -1878,6 +1918,8 @@ module.exports = {
   getActiveWalletPlans,
   getSecurityRefundSchedule,
   setSecurityRefundSchedule,
+  getSecurityRefundDays,
+  updateSecurityRefundDays,
   getAllSecurityDeposits,
   getSecurityDepositByOrder,
   changeUserEmail

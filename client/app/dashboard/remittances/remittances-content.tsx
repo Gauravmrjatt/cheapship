@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
+import { useState, useDeferredValue } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   flexRender,
@@ -81,20 +81,23 @@ export default function RemittancesPage() {
   const [activeTab, setActiveTab] = useState("pending");
   const [search, setSearch] = useState("");
 
+  const deferredFromDate = useDeferredValue(fromDate);
+  const deferredToDate = useDeferredValue(toDate);
+
   const queryParams = new URLSearchParams();
-  if (fromDate) queryParams.append("fromDate", fromDate.toISOString());
-  if (toDate) queryParams.append("toDate", toDate.toISOString());
+  if (deferredFromDate) queryParams.append("fromDate", deferredFromDate.toISOString());
+  if (deferredToDate) queryParams.append("toDate", deferredToDate.toISOString());
 
   const { data: summary, isLoading: isLoadingSummary } = useQuery<RemittanceSummary>(
-    http.get(["remittances", "summary", fromDate, toDate], `/orders/remittances/summary?${queryParams.toString()}`)
+    http.get(["remittances", "summary", deferredFromDate, deferredToDate], `/orders/remittances/summary?${queryParams.toString()}`)
   );
 
   const { data: pendingData, isLoading: isLoadingPending } = useQuery<{ orders: RemittanceOrder[]; totalPending: number }>(
-    http.get(["remittances", "pending", fromDate, toDate], `/orders/remittances/pending?${queryParams.toString()}`)
+    http.get(["remittances", "pending", deferredFromDate, deferredToDate], `/orders/remittances/pending?${queryParams.toString()}`)
   );
 
   const { data: historyData, isLoading: isLoadingHistory } = useQuery<RemittanceOrder[]>(
-    http.get(["remittances", "history", fromDate, toDate], `/orders/remittances/history?${queryParams.toString()}`)
+    http.get(["remittances", "history", deferredFromDate, deferredToDate], `/orders/remittances/history?${queryParams.toString()}`)
   );
 
   const tableData = activeTab === "pending" ? (pendingData?.orders || []) : (historyData || []);

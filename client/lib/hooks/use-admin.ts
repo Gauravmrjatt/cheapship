@@ -704,6 +704,28 @@ export const useSetSecurityRefundSchedule = () => {
   });
 };
 
+// Security Refund Days Setting
+export const useSecurityRefundDays = () => {
+  const http = useHttp();
+  return useQuery(http.get<{ days: number }>(["security-refund-days"], "/admin/settings/security-refund-days"));
+};
+
+export const useUpdateSecurityRefundDays = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    ...http.post<{ days: number }, { days: number }>("/admin/settings/security-refund-days", {
+      onSuccess: () => {
+        sileo.success({ title: "Security refund days updated" });
+        queryClient.invalidateQueries({ queryKey: ["security-refund-days"] });
+      },
+      onError: (err: any) => {
+        sileo.error({ title: "Failed to update days", description: err.message });
+      }
+    })
+  });
+};
+
 // Admin Security Deposits
 export interface AdminSecurityDeposit {
   id: string;

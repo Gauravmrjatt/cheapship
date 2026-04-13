@@ -7,7 +7,9 @@ import {
   useReferralLevelSetting,
   useUpdateReferralLevelSetting,
   useCommissionLimits,
-  useUpdateCommissionLimits
+  useUpdateCommissionLimits,
+  useSecurityRefundDays,
+  useUpdateSecurityRefundDays
 } from "@/lib/hooks/use-admin";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,23 +21,27 @@ import {
   PercentIcon, 
   Loading03Icon,
   Layers01Icon,
-  SlidersHorizontalIcon
+  SlidersHorizontalIcon,
+  Calendar02Icon
 } from "@hugeicons/core-free-icons";
 
 export default function AdminSettingsPage() {
   const { data: settings, isLoading } = useGlobalSettings();
   const { data: levelSetting, isLoading: levelsLoading } = useReferralLevelSetting();
   const { data: commissionLimits, isLoading: limitsLoading } = useCommissionLimits();
+  const { data: refundDaysData, isLoading: refundDaysLoading } = useSecurityRefundDays();
   const updateSettingsMutation = useUpdateGlobalSettings();
   const updateLevelSettingMutation = useUpdateReferralLevelSetting();
   const updateLimitsMutation = useUpdateCommissionLimits();
+  const updateRefundDaysMutation = useUpdateSecurityRefundDays();
 
   const [rate, setRate] = useState<number>(0);
   const [maxLevels, setMaxLevels] = useState<number>(3);
   const [minRate, setMinRate] = useState<number>(0);
   const [maxRate, setMaxRate] = useState<number>(100);
+  const [refundDays, setRefundDays] = useState<number>(30);
 
-  const initialized = useRef({ rate: false, levels: false, limits: false });
+  const initialized = useRef({ rate: false, levels: false, limits: false, refundDays: false });
 
   useEffect(() => {
     if (settings?.rate !== undefined && !initialized.current.rate) {
@@ -59,6 +65,13 @@ export default function AdminSettingsPage() {
     }
   }, [commissionLimits]);
 
+  useEffect(() => {
+    if (refundDaysData?.days && !initialized.current.refundDays) {
+      setRefundDays(refundDaysData.days);
+      initialized.current.refundDays = true;
+    }
+  }, [refundDaysData]);
+
   const handleUpdateGlobal = () => {
     updateSettingsMutation.mutate({ rate });
   };
@@ -69,6 +82,10 @@ export default function AdminSettingsPage() {
 
   const handleUpdateLimits = () => {
     updateLimitsMutation.mutate({ min_rate: minRate, max_rate: maxRate });
+  };
+
+  const handleUpdateRefundDays = () => {
+    updateRefundDaysMutation.mutate({ days: refundDays });
   };
 
   return (
@@ -220,6 +237,51 @@ export default function AdminSettingsPage() {
                 </>
               ) : (
                 "Update Limits"
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Security Refund Days Card */}
+        <Card className="rounded-2xl border-none shadow-sm bg-card/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={Calendar02Icon} className="size-5" />
+              Security Refund Days
+            </CardTitle>
+            <CardDescription>
+              Number of days after which security deposit is refunded automatically.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="refund-days">Days</Label>
+              <Input 
+                id="refund-days"
+                type="number" 
+                value={refundDays} 
+                onChange={(e) => setRefundDays(parseInt(e.target.value) || 30)}
+                className="font-bold text-lg h-12"
+                placeholder="30"
+                min={1}
+                max={365}
+              />
+              <p className="text-xs text-muted-foreground">
+                Security deposits will be refunded after this many days (1-365 days).
+              </p>
+            </div>
+            <Button 
+              className="w-full h-11 font-bold" 
+              onClick={handleUpdateRefundDays}
+              disabled={refundDaysLoading || updateRefundDaysMutation.isPending}
+            >
+              {updateRefundDaysMutation.isPending ? (
+                <>
+                  <HugeiconsIcon icon={Loading03Icon} className="mr-2 size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Update Days"
               )}
             </Button>
           </CardContent>
