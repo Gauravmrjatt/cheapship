@@ -220,7 +220,7 @@ export default function OrderDetailsPage({
           <p className="text-muted-foreground">Order ID: #{orderId}</p>
         </div>
         <div className="flex gap-2">
-          {isPending && order.tracking_number && (
+          {isPending && !order.tracking_number && (
             <Button
               onClick={handleAssignAWB}
               disabled={assignAWBMutation.isPending}
