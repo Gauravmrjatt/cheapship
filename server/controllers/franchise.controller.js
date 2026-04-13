@@ -176,8 +176,10 @@ const withdrawCommission = async (req, res) => {
     return sum;
   }, 0);
 
+  // Only count withdrawals for THIS specific franchise (same franchise_id)
   const total_withdrawn = franchise.withdrawals.reduce((sum, w) => {
-    if (w.status === 'COMPLETED' || w.status === 'APPROVED' || w.status === 'PENDING') {
+    // Only count if this withdrawal is for the same franchise
+    if (w.franchise_id === franchiseId && ['COMPLETED', 'APPROVED', 'PENDING'].includes(w.status)) {
       return sum + parseFloat(w.amount || 0);
     }
     return sum;

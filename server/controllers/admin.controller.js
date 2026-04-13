@@ -566,7 +566,7 @@ const getWithdrawals = async (req, res) => {
         orderBy: { created_at: 'desc' },
         include: {
           user: {
-            select: { name: true, email: true, wallet_balance: true }
+            select: { name: true, email: true, wallet_balance: true, upi_id: true }
           }
         }
       }),
@@ -597,7 +597,7 @@ const getWithdrawals = async (req, res) => {
 const processWithdrawal = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, reference_id } = req.body;
 
   if (!['APPROVED', 'REJECTED'].includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
@@ -613,14 +613,19 @@ const processWithdrawal = async (req, res) => {
       if (withdrawal.status !== 'PENDING') throw new Error('Withdrawal already processed');
 
       // Update withdrawal status
+      const updateData = { status };
+      if (status === 'APPROVED' && reference_id) {
+        updateData.reference_id = reference_id;
+      }
+
       const updatedWithdrawal = await tx.commissionWithdrawal.update({
         where: { id },
-        data: { status }
+        data: updateData
       });
 
       // Funds were already debited from wallet when the withdrawal request was created (franchise.controller.js withdrawCommission).
-      // APPROVE -> funds stay withheld (payout goes out), just create DEBIT transaction record
-      // REJECT -> refund back to wallet
+      // APPROVE -> funds stay withheld (payout goes out via UPI), create DEBIT transaction record
+      // REJECT -> just mark as rejected, funds stay debited (user can withdraw again from available balance)
 
       if (status === 'APPROVED') {
         // If it's a franchise withdrawal, consume the orders
@@ -674,31 +679,8 @@ const processWithdrawal = async (req, res) => {
           }
         });
       } else if (status === 'REJECTED') {
-        // Refund back to wallet
-        await tx.user.update({
-          where: { id: withdrawal.user_id },
-          data: {
-            wallet_balance: { increment: withdrawal.amount }
-          }
-        });
-
-        const updatedUser = await tx.user.findUnique({
-          where: { id: withdrawal.user_id },
-          select: { wallet_balance: true }
-        });
-
-        await tx.transaction.create({
-          data: {
-            user_id: withdrawal.user_id,
-            amount: withdrawal.amount,
-            closing_balance: Number(updatedUser.wallet_balance),
-            type: 'CREDIT',
-            category: 'COMMISSION',
-            status: 'SUCCESS',
-            description: 'Withdrawal request rejected — funds returned to wallet',
-            reference_id: withdrawal.id
-          }
-        });
+        // Just mark as rejected - no wallet credit, funds stay debited
+        // User can withdraw again from their available balance
       }
       return updatedWithdrawal;
     });

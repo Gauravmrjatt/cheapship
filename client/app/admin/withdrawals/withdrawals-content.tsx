@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import {
   flexRender,
   getCoreRowModel,
@@ -47,6 +48,15 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { 
   Loading03Icon, 
@@ -58,9 +68,11 @@ import {
   ArrowRightDoubleIcon,
   FilterIcon,
   LeftToRightListBulletIcon,
-  ArrowDown01Icon
+  ArrowDown01Icon,
+  MoneySend01Icon
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
+import { sileo } from "sileo";
 
 export default function AdminWithdrawalsPage() {
   const [status, setStatus] = React.useState("ALL");
@@ -72,13 +84,54 @@ export default function AdminWithdrawalsPage() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
+  const [selectedWithdrawal, setSelectedWithdrawal] = React.useState<Withdrawal | null>(null);
+  const [showDialog, setShowDialog] = React.useState(false);
+  const [withdrawalForm, setWithdrawalForm] = React.useState({
+    status: "APPROVED",
+    reference_id: ""
+  });
+
   const tableData = React.useMemo(() => data?.data || [], [data?.data]);
 
-  const handleProcess = (id: string, action: 'APPROVED' | 'REJECTED') => {
-    if (confirm(`Are you sure you want to ${action.toLowerCase()} this withdrawal?`)) {
-      processMutation.mutate({ id, status: action });
-    }
+  const openDialog = (withdrawal: Withdrawal) => {
+    setSelectedWithdrawal(withdrawal);
+    setWithdrawalForm({
+      status: "APPROVED",
+      reference_id: withdrawal.reference_id || ""
+    });
+    setShowDialog(true);
   };
+
+  const handleUpdate = () => {
+    if (!selectedWithdrawal) return;
+    processMutation.mutate(
+      { 
+        id: selectedWithdrawal.id, 
+        status: withdrawalForm.status as 'APPROVED' | 'REJECTED',
+        reference_id: withdrawalForm.reference_id || undefined
+      },
+      {
+        onSuccess: () => {
+          setShowDialog(false);
+          setSelectedWithdrawal(null);
+        },
+        onError: (error: Error) => {
+          sileo.error({ title: "Error", description: error.message || "Failed to process withdrawal" });
+        }
+      }
+    );
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+    }).format(amount);
+  };
+
+  const qrUrl = selectedWithdrawal?.user?.upi_id 
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`upi://pay?pa=${selectedWithdrawal.user.upi_id}&am=${selectedWithdrawal.amount}`)}`
+    : null;
 
   const columns = React.useMemo<ColumnDef<Withdrawal>[]>(() => [
     {
@@ -162,26 +215,15 @@ export default function AdminWithdrawalsPage() {
       cell: ({ row }) => (
         <div className="text-right pr-6">
           {row.original.status === "PENDING" ? (
-            <div className="flex justify-end gap-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="h-7 text-[10px] font-bold text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200 rounded-lg px-3"
-                onClick={() => handleProcess(row.original.id, 'APPROVED')}
-                disabled={processMutation.isPending}
-              >
-                Approve
-              </Button>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="h-7 text-[10px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-lg px-3"
-                onClick={() => handleProcess(row.original.id, 'REJECTED')}
-                disabled={processMutation.isPending}
-              >
-                Reject
-              </Button>
-            </div>
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="h-7 text-[10px] font-bold rounded-lg px-3"
+              onClick={() => openDialog(row.original)}
+              disabled={processMutation.isPending}
+            >
+              Update
+            </Button>
           ) : (
             <div className="text-[10px] text-muted-foreground italic">Processed</div>
           )}
@@ -363,6 +405,78 @@ export default function AdminWithdrawalsPage() {
           </div>
         </div>
       </Tabs>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={MoneySend01Icon} size={20} />
+              Process Withdrawal
+            </DialogTitle>
+            <DialogDescription>
+              {selectedWithdrawal?.user?.name} - Requested: {formatCurrency(selectedWithdrawal?.amount || 0)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedWithdrawal?.user?.upi_id && (
+              <div className="p-4 bg-muted/50 rounded-lg flex flex-col items-center justify-center gap-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pay via UPI</p>
+                <Image
+                  src={qrUrl || ""}
+                  alt="UPI QR Code"
+                  width={150}
+                  height={150}
+                  className="rounded-md shadow-sm bg-white p-2 object-contain mix-blend-multiply"
+                />
+                <p className="text-xs font-medium text-center">{selectedWithdrawal.user.upi_id}</p>
+                <p className="text-[10px] text-muted-foreground text-center">Scan to pay exactly {formatCurrency(selectedWithdrawal.amount)}</p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={withdrawalForm.status}
+                onValueChange={(v) => v && setWithdrawalForm(prev => ({ ...prev, status: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {withdrawalForm.status === "APPROVED" && (
+              <div className="space-y-2">
+                <Label>Reference ID (Optional)</Label>
+                <Input
+                  value={withdrawalForm.reference_id}
+                  onChange={(e) => setWithdrawalForm(prev => ({ ...prev, reference_id: e.target.value }))}
+                  placeholder="Transaction reference ID"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate} disabled={processMutation.isPending}>
+              {processMutation.isPending ? (
+                <>
+                  <HugeiconsIcon icon={Loading03Icon} className="animate-spin mr-2" size={16} />
+                  Processing...
+                </>
+              ) : (
+                "Update Status"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

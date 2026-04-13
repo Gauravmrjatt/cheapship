@@ -18,10 +18,12 @@ export interface Withdrawal {
   amount: number;
   status: string;
   created_at: string;
+  reference_id?: string;
   user?: {
     name: string;
     email: string;
     wallet_balance?: number;
+    upi_id?: string;
   };
 }
 
@@ -314,9 +316,9 @@ export const useProcessWithdrawal = () => {
   const queryClient = useQueryClient();
   const http = useHttp();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string, status: 'APPROVED' | 'REJECTED' }) => {
-      const mutator = http.post<unknown, { status: string }>(`/admin/withdrawals/${id}/process`).mutationFn;
-      return mutator({ status });
+    mutationFn: async ({ id, status, reference_id }: { id: string, status: 'APPROVED' | 'REJECTED', reference_id?: string }) => {
+      const mutator = http.post<unknown, { status: string; reference_id?: string }>(`/admin/withdrawals/${id}/process`).mutationFn;
+      return mutator({ status, reference_id });
     },
     onSuccess: () => {
       sileo.success({ title: "Withdrawal processed" });
