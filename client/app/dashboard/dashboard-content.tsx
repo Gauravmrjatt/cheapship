@@ -55,7 +55,7 @@ export default function Dashboard() {
                 </div>
                 <Button 
                   className={`shrink-0 ${kycStatus === "REJECTED" ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"} text-white border-none rounded-xl flex items-center gap-2`}
-                  onClick={() => router.push("/dashboard/settings?tab=profile")}
+                  onClick={() => router.push("/dashboard/settings?tab=kyc")}
                 >
                   {kycStatus === "REJECTED" ? "Resubmit KYC" : "Verify Now"}
                   <HugeiconsIcon icon={ArrowRight01Icon} size={16} />

@@ -345,8 +345,8 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     if (preSelectedPaymentMode && (preSelectedPaymentMode === "COD" || preSelectedPaymentMode === "PREPAID")) {
       form.setValue("payment_mode", preSelectedPaymentMode);
       if (preSelectedPaymentMode === "COD") {
-        const codAmount = preSelectedDeclaredValue !== null && preSelectedDeclaredValue !== undefined 
-          ? preSelectedDeclaredValue 
+        const codAmount = preSelectedDeclaredValue !== null && preSelectedDeclaredValue !== undefined
+          ? preSelectedDeclaredValue
           : form.getValues("total_amount") || 0;
         form.setValue("cod_amount", codAmount);
       }
@@ -392,7 +392,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   const handleLoadDraft = (refreshRates: boolean) => {
     const data = draftToLoad;
     console.log("Draft data:", JSON.stringify(data.order_pickup_address, null, 2));
-    
+
     // Check if receiver is same as pickup
     const isSameAsPickup = (
       data.order_receiver_address?.name === data.order_pickup_address?.name &&
@@ -611,7 +611,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     //   onSuccess: (data: any) => {
     //     if (data.success && data.verified) {
 
-          createOrderMutation(orderDataWithWeight as any);
+    createOrderMutation(orderDataWithWeight as any);
     //     }
     //     else { setPendingOrderData(orderDataWithWeight); sendOtpMutation({ phone: values.pickup_address.phone }, { onSuccess: () => setOpenOtpDialog(true) } as any); }
     //   },
@@ -1276,7 +1276,10 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               <Field data-invalid={!!errors.weight}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Dead Weight (g)</FieldLabel>
                 <div className="relative">
                   <HugeiconsIcon icon={Package01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
-                  <Input type="number" step="1" max={1000000} {...form.register("weight", { valueAsNumber: true })} aria-invalid={!!errors.weight} className="h-11 font-bold text-lg pl-10" />
+                  <Input type="number" onFocus={(e) => {
+                    form.onFocus?.(e);
+                    e.target.select();
+                  }} step="1" max={1000000} {...form.register("weight", { valueAsNumber: true })} aria-invalid={!!errors.weight} className="h-11 font-bold text-lg pl-10" />
                 </div>
                 <FieldError errors={[errors.weight]} className="text-[10px] font-bold uppercase" />
               </Field>

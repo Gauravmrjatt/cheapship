@@ -211,7 +211,7 @@ export default function LandingPage() {
             </div>
             <span className="text-xl font-bold">CheapShip</span>
           </div>
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-8">
             <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Features
             </Link>
@@ -226,7 +226,7 @@ export default function LandingPage() {
             </Link>
           </nav>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 hidden md:flex">
               <a href="tel:+919509698208" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
                 <HugeiconsIcon icon={CallIcon} size={14} className="text-green-500" />
                 <span className="hidden sm:inline">9509698208</span>
@@ -248,14 +248,14 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="min-h-dvh flex flex-col justify-around">
-         <div className="absolute inset-0 mt-15">
-            <WorldMap
-            />
-          </div>
-           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/20 pointer-events-none" />
+        <div className="absolute inset-0 mt-15">
+          <WorldMap
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/20 pointer-events-none" />
         <section className="relative pb-20 md:p-32 w-full h-full ">
-         
-         
+
+
           <div className="container mx-auto px-4 relative">
             <div className="max-w-3xl mx-auto text-center">
               <Badge variant="secondary" className="mb-6">
@@ -291,6 +291,16 @@ export default function LandingPage() {
                   <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="text-green-500" />
                   Free forever plan
                 </span>
+              </div>
+              <div className="flex items-center justify-center gap-2 flex md:hidden mt-5">
+                <a href="tel:+919509698208" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <HugeiconsIcon icon={CallIcon} size={14} className="text-green-500" />
+                  <span className="">9509698208</span>
+                </a>
+                <span className="text-muted-foreground/30">|</span>
+                <a href="tel:+919251220521" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <span className="">9251220521</span>
+                </a>
               </div>
             </div>
           </div>

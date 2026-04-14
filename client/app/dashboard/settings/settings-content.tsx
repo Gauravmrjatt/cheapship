@@ -349,9 +349,9 @@ function KycTab({ http }: { http: any }) {
       } else {
         setPanError("Invalid PAN format. Use: AAAAA1234A");
       }
-    } else if (upperValue.length > 0) {
-      setPanError("");
-    }
+    } else if (upperValue === '') {
+      setPanError("Please enter a valid PAN number.");
+    } 
   };
 
   const { mutate: updateKyc, isPending: isUpdating } = useMutation(
@@ -369,6 +369,10 @@ function KycTab({ http }: { http: any }) {
 
     if (formData.pan_number && !validatePanNumber(formData.pan_number)) {
       setPanError("Invalid PAN format. Use: AAAAA1234A");
+      return;
+    }
+    if (formData.pan_number === '') {
+      setPanError("Please enter a valid PAN number.");
       return;
     }
 
