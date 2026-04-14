@@ -12,7 +12,9 @@ import {
   PackageSentIcon,
   DeliveryView01Icon,
   PackageOutOfStockIcon,
-  Download02Icon
+  Download02Icon,
+  DashboardSquareAddIcon,
+  PrinterIcon
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,16 +36,7 @@ import { Label } from "@/components/ui/label";
 import { useQueryClient } from "@tanstack/react-query";
 import { sileo } from "sileo";
 import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group"
-const generateManifest = async (orderId: string) => {
-  const res = await fetch(`${BASE_URL}/api/v1/orders/${orderId}/manifest`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    }
-  });
-  if (!res.ok) throw new Error('Failed to generate manifest');
-  return res.json();
-};
+import { useGenerateManifest } from "@/lib/hooks/use-orders";
 
 export const ActionsCell = ({
   row,
@@ -52,11 +45,10 @@ export const ActionsCell = ({
   row: any,
   handleCancelOrder: (id: string) => Promise<void>
 }) => {
-  const [isGeneratingManifest, setIsGeneratingManifest] = React.useState(false);
+  const generateManifest = useGenerateManifest();
   const queryClient = useQueryClient();
 
   const handleGenerateManifest = async () => {
-    setIsGeneratingManifest(true);
     try {
       await generateManifest(row.original.id);
       sileo.success({ title: "Manifest generated successfully" });
@@ -64,8 +56,6 @@ export const ActionsCell = ({
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to generate manifest";
       sileo.error({ title: message });
-    } finally {
-      setIsGeneratingManifest(false);
     }
   };
 
@@ -121,12 +111,14 @@ export const ActionsCell = ({
           </DropdownMenuItem>
         )} */}
         {row.original.shipment_status === "MANIFESTED" && !row.original.manifest_url && (
-          <DropdownMenuItem onClick={handleGenerateManifest} disabled={isGeneratingManifest}>
-            {isGeneratingManifest ? "Generating..." : "Generate Manifest"}
+          <DropdownMenuItem onClick={handleGenerateManifest} disabled={generateManifest.isPending}>
+            <HugeiconsIcon icon={DashboardSquareAddIcon} strokeWidth={2} />
+            {generateManifest.isPending ? "Generating..." : "Generate Manifest"}
           </DropdownMenuItem>
         )}
         {row.original.manifest_url && (
           <DropdownMenuItem>
+            <HugeiconsIcon icon={PrinterIcon} strokeWidth={2} />
             <a href={row.original.manifest_url} target="_blank" rel="noopener noreferrer" className="w-full">
               Print Manifest
             </a>

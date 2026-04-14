@@ -1710,7 +1710,7 @@ const getOrderTracking = async (req, res) => {
 const getLiveOrderStatus = async (req, res) => {
   const { id } = req.params;
   const prisma = req.app.locals.prisma;
-  const userId = req.user.id;
+  // const userId = req.user.id;
 
   try {
     const order = await prisma.order.findUnique({
@@ -1721,7 +1721,7 @@ const getLiveOrderStatus = async (req, res) => {
       }
     });
 
-    if (!order || order.user_id !== userId) {
+    if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
 

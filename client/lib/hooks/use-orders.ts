@@ -56,6 +56,20 @@ export const useCancelOrder = () => {
   return React.useCallback((orderId: string) => mutation.mutateAsync(`${orderId}/cancel`), [mutation]);
 };
 
+export const useGenerateManifest = () => {
+  const { post } = useHttp();
+  const mutation = useMutation(post(({orderId}: {orderId: string}) => `/orders/${orderId}/manifest`));
+  
+  const mutate = React.useCallback((orderId: string) => mutation.mutateAsync({orderId}), [mutation]);
+  
+  const wrapped = Object.assign(mutate, {
+    isPending: mutation.isPending,
+    mutateAsync: mutate,
+  });
+  
+  return wrapped;
+};
+
 export const useCheckPhoneVerification = (phone: string, enabled: boolean = false) => {
   const { get } = useHttp();
   

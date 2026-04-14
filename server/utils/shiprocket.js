@@ -404,7 +404,6 @@ const printManifest = async (orderIds) => {
 
 const getShipmentTracking = async (shipmentId) => {
   const token = await getShiprocketToken();
-  console.log("shipmentId", shipmentId)
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/track/shipment/${shipmentId}`, {
       method: 'GET',
