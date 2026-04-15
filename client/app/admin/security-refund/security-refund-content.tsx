@@ -41,7 +41,7 @@ export default function SecurityManagementContent() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [filters, setFilters] = useState({ status: "", search: "" });
-  const { data: depositsData, isLoading: depositsLoading, refetch: refetchDeposits } = useAdminSecurityDeposits(page, pageSize, filters.status);
+  const { data: depositsData, isLoading: depositsLoading, refetch: refetchDeposits } = useAdminSecurityDeposits(page, pageSize, filters.status, filters.search);
 
   useEffect(() => {
     if (schedule) {

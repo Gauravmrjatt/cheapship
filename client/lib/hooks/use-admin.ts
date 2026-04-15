@@ -302,14 +302,15 @@ export const useAdminTransactions = (page: number = 1, pageSize: number = 10, ty
   return useQuery(http.get<AdminTransactionsResponse>(["admin-transactions", page, pageSize, type, category, search, userId, fromDate, toDate], `/admin/transactions?${queryParams.toString()}`));
 };
 
-export const useAdminWithdrawals = (page: number = 1, pageSize: number = 10, status: string = "ALL") => {
+export const useAdminWithdrawals = (page: number = 1, pageSize: number = 10, status: string = "ALL", search?: string) => {
   const http = useHttp();
   const queryParams = new URLSearchParams({
     page: page.toString(),
     pageSize: pageSize.toString(),
     status
   });
-  return useQuery(http.get<AdminWithdrawalResponse>(["admin-withdrawals", page, pageSize, status], `/admin/withdrawals?${queryParams.toString()}`));
+  if (search) queryParams.append("search", search);
+  return useQuery(http.get<AdminWithdrawalResponse>(["admin-withdrawals", page, pageSize, status, search], `/admin/withdrawals?${queryParams.toString()}`));
 };
 
 export const useProcessWithdrawal = () => {
@@ -762,11 +763,14 @@ export interface AdminSecurityDepositsResponse {
   };
 }
 
-export const useAdminSecurityDeposits = (page: number = 1, pageSize: number = 20, status: string = "") => {
+export const useAdminSecurityDeposits = (page: number = 1, pageSize: number = 20, status: string = "", search?: string) => {
   const http = useHttp();
+  let queryParams = `page=${page}&pageSize=${pageSize}`;
+  if (status) queryParams += `&status=${status}`;
+  if (search) queryParams += `&search=${encodeURIComponent(search)}`;
   return useQuery(http.get<AdminSecurityDepositsResponse>(
-    ["admin-security-deposits", page, pageSize, status],
-    `/admin/settings/security-deposits?page=${page}&pageSize=${pageSize}${status ? `&status=${status}` : ""}`
+    ["admin-security-deposits", page, pageSize, status, search],
+    `/admin/settings/security-deposits?${queryParams}`
   ));
 };
 

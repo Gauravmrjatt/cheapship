@@ -387,22 +387,39 @@ const getAllWeightDisputes = async (req, res) => {
         }
 
         if (search) {
-            const isNumeric = /^\d+$/.test(search);
+            const searchTerm = search.trim();
+            const isNumeric = /^\d+$/.test(searchTerm);
             const orConditions = [];
 
             if (isNumeric) {
                 try {
-                    orConditions.push({ order_id: { equals: BigInt(search) } });
+                    orConditions.push({ order_id: { equals: BigInt(searchTerm) } });
                 } catch (e) {
                     // Invalid number
                 }
             }
 
             orConditions.push(
-                { user: { mobile: { contains: search } } },
-                { user: { email: { contains: search } } },
-                { user: { name: { contains: search } } }
+                { user: { mobile: { contains: searchTerm } } },
+                { user: { email: { contains: searchTerm } } },
+                { user: { name: { contains: searchTerm } } }
             );
+
+            const matchingUsers = await prisma.user.findMany({
+                where: {
+                    OR: [
+                        { name: { contains: searchTerm, mode: 'insensitive' } },
+                        { email: { contains: searchTerm, mode: 'insensitive' } },
+                        { mobile: { contains: searchTerm } }
+                    ]
+                },
+                select: { id: true }
+            });
+            
+            if (matchingUsers.length > 0) {
+                const userIds = matchingUsers.map(u => u.id);
+                orConditions.push({ user_id: { in: userIds } });
+            }
 
             where.OR = orConditions;
         }
@@ -764,22 +781,39 @@ const getAllRTODisputes = async (req, res) => {
         }
 
         if (search) {
-            const isNumeric = /^\d+$/.test(search);
+            const searchTerm = search.trim();
+            const isNumeric = /^\d+$/.test(searchTerm);
             const orConditions = [];
 
             if (isNumeric) {
                 try {
-                    orConditions.push({ order_id: { equals: BigInt(search) } });
+                    orConditions.push({ order_id: { equals: BigInt(searchTerm) } });
                 } catch (e) {
                     // Invalid number
                 }
             }
 
             orConditions.push(
-                { user: { mobile: { contains: search } } },
-                { user: { email: { contains: search } } },
-                { user: { name: { contains: search } } }
+                { user: { mobile: { contains: searchTerm } } },
+                { user: { email: { contains: searchTerm } } },
+                { user: { name: { contains: searchTerm } } }
             );
+
+            const matchingUsers = await prisma.user.findMany({
+                where: {
+                    OR: [
+                        { name: { contains: searchTerm, mode: 'insensitive' } },
+                        { email: { contains: searchTerm, mode: 'insensitive' } },
+                        { mobile: { contains: searchTerm } }
+                    ]
+                },
+                select: { id: true }
+            });
+            
+            if (matchingUsers.length > 0) {
+                const userIds = matchingUsers.map(u => u.id);
+                orConditions.push({ user_id: { in: userIds } });
+            }
 
             where.OR = orConditions;
         }

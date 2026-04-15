@@ -38,7 +38,7 @@ const submitFeedback = async (req, res) => {
  */
 const getFeedbacks = async (req, res) => {
     const prisma = req.app.locals.prisma;
-    const { page = 1, pageSize = 10, type } = req.query;
+    const { page = 1, pageSize = 10, type, search } = req.query;
 
     const pageNum = Math.max(1, parseInt(page, 10));
     const pageSizeNum = parseInt(pageSize, 10);
@@ -47,6 +47,35 @@ const getFeedbacks = async (req, res) => {
     try {
         const where = {};
         if (type) where.type = type;
+
+        if (search) {
+            const searchTerm = search.trim();
+            const matchingUsers = await prisma.user.findMany({
+                where: {
+                    OR: [
+                        { name: { contains: searchTerm, mode: 'insensitive' } },
+                        { email: { contains: searchTerm, mode: 'insensitive' } },
+                        { mobile: { contains: searchTerm } }
+                    ]
+                },
+                select: { id: true }
+            });
+            
+            if (matchingUsers.length > 0) {
+                const userIds = matchingUsers.map(u => u.id);
+                where.user_id = { in: userIds };
+            } else {
+                return res.json({
+                    data: [],
+                    pagination: {
+                        total: 0,
+                        totalPages: 0,
+                        currentPage: pageNum,
+                        pageSize: pageSizeNum
+                    }
+                });
+            }
+        }
 
         const [feedbacks, total] = await prisma.$transaction([
             prisma.feedback.findMany({

@@ -296,12 +296,19 @@ const getUsers = async (req, res) => {
   }
 
   if (search) {
+    const searchTerm = search.trim();
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isUuid = uuidRegex.test(searchTerm);
+    
     where.OR = [
-      { id: search },
-      { name: { contains: search, mode: 'insensitive' } },
-      { email: { contains: search, mode: 'insensitive' } },
-      { mobile: { contains: search, mode: 'insensitive' } }
-    ];
+      { id: isUuid ? searchTerm : undefined },
+      { name: { contains: searchTerm, mode: 'insensitive' } },
+      { email: { contains: searchTerm, mode: 'insensitive' } },
+      { mobile: { contains: searchTerm } }
+    ].filter(condition => {
+      const keys = Object.keys(condition);
+      return keys.length > 0 && condition[keys[0]] !== undefined;
+    });
   }
 
   try {
@@ -483,7 +490,7 @@ const getAllOrders = async (req, res) => {
     const searchTerm = search.trim();
     const searchNum = parseInt(searchTerm, 10);
 
-    where.OR = [
+    const orConditions = [
       { id: isNaN(searchNum) ? undefined : BigInt(searchNum) },
       { shiprocket_order_id: { contains: searchTerm, mode: 'insensitive' } },
       { shiprocket_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
@@ -497,6 +504,26 @@ const getAllOrders = async (req, res) => {
       const keys = Object.keys(condition);
       return keys.length > 0 && condition[keys[0]] !== undefined;
     });
+
+    const matchingUsers = await prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: searchTerm, mode: 'insensitive' } },
+          { email: { contains: searchTerm, mode: 'insensitive' } },
+          { mobile: { contains: searchTerm } }
+        ]
+      },
+      select: { id: true }
+    });
+    
+    if (matchingUsers.length > 0) {
+      const userIds = matchingUsers.map(u => u.id);
+      orConditions.push({ user_id: { in: userIds } });
+    }
+
+    if (orConditions.length > 0) {
+      where.OR = orConditions;
+    }
   }
 
   try {
@@ -546,7 +573,7 @@ const getAllOrders = async (req, res) => {
 
 const getWithdrawals = async (req, res) => {
   const prisma = req.app.locals.prisma;
-  const { status, page = 1, pageSize = 10 } = req.query;
+  const { status, page = 1, pageSize = 10, search } = req.query;
 
   const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
@@ -555,6 +582,34 @@ const getWithdrawals = async (req, res) => {
   const where = {};
   if (status && status !== 'ALL') {
     where.status = status;
+  }
+
+  if (search) {
+    const searchTerm = search.trim();
+    const matchingUsers = await prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: searchTerm, mode: 'insensitive' } },
+          { email: { contains: searchTerm, mode: 'insensitive' } },
+          { mobile: { contains: searchTerm } }
+        ]
+      },
+      select: { id: true }
+    });
+    const userIds = matchingUsers.map(u => u.id);
+    if (userIds.length > 0) {
+      where.user_id = { in: userIds };
+    } else {
+      return res.json({
+        data: [],
+        pagination: {
+          total: 0,
+          totalPages: 0,
+          currentPage: pageNum,
+          pageSize: pageSizeNum
+        }
+      });
+    }
   }
 
   try {
@@ -570,7 +625,7 @@ const getWithdrawals = async (req, res) => {
           }
         }
       }),
-      prisma.user.count({ where })
+      prisma.commissionWithdrawal.count({ where })
     ]);
 
     const usersData = withdrawals.map(user => ({
@@ -837,6 +892,34 @@ const getAllSecurityDeposits = async (req, res) => {
       where.user_id = userId;
     }
 
+    if (search) {
+        const searchTerm = search.trim();
+        const matchingUsers = await prisma.user.findMany({
+          where: {
+            OR: [
+              { name: { contains: searchTerm, mode: 'insensitive' } },
+              { email: { contains: searchTerm, mode: 'insensitive' } },
+              { mobile: { contains: searchTerm } }
+            ]
+          },
+          select: { id: true }
+        });
+        const userIds = matchingUsers.map(u => u.id);
+        if (userIds.length > 0) {
+          where.user_id = { in: userIds };
+        } else {
+          return res.json({
+            data: [],
+            pagination: {
+              total: 0,
+              totalPages: 0,
+              currentPage: pageNum,
+              pageSize: pageSizeNum
+            }
+          });
+        }
+      }
+
     const [deposits, total] = await Promise.all([
       prisma.securityDeposit.findMany({
         where,
@@ -951,12 +1034,32 @@ const getAllTransactions = async (req, res) => {
   }
 
   if (search) {
-    where.OR = [
-      { id: { contains: search, mode: 'insensitive' } },
-      { reference_id: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } },
-      { user: { name: { contains: search, mode: 'insensitive' } } }
-    ];
+    const searchTerm = search.trim();
+    const matchingUsers = await prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: searchTerm, mode: 'insensitive' } },
+          { email: { contains: searchTerm, mode: 'insensitive' } },
+          { mobile: { contains: searchTerm } }
+        ]
+      },
+      select: { id: true }
+    });
+    
+    if (matchingUsers.length > 0) {
+      const userIds = matchingUsers.map(u => u.id);
+      where.user_id = { in: userIds };
+    } else {
+      return res.json({
+        data: [],
+        pagination: {
+          total: 0,
+          totalPages: 0,
+          currentPage: pageNum,
+          pageSize: pageSizeNum
+        }
+      });
+    }
   }
 
   try {
@@ -1289,7 +1392,7 @@ const getAllCODOrders = async (req, res) => {
     const searchTerm = search.trim();
     const searchNum = parseInt(searchTerm, 10);
 
-    where.OR = [
+    const orConditions = [
       { id: isNaN(searchNum) ? undefined : BigInt(searchNum) },
       { shiprocket_order_id: { contains: searchTerm, mode: 'insensitive' } },
       { shiprocket_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
@@ -1303,6 +1406,26 @@ const getAllCODOrders = async (req, res) => {
       const keys = Object.keys(condition);
       return keys.length > 0 && condition[keys[0]] !== undefined;
     });
+
+    const matchingUsers = await prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: searchTerm, mode: 'insensitive' } },
+          { email: { contains: searchTerm, mode: 'insensitive' } },
+          { mobile: { contains: searchTerm } }
+        ]
+      },
+      select: { id: true }
+    });
+    
+    if (matchingUsers.length > 0) {
+      const userIds = matchingUsers.map(u => u.id);
+      orConditions.push({ user_id: { in: userIds } });
+    }
+
+    if (orConditions.length > 0) {
+      where.OR = orConditions;
+    }
   }
 
   try {

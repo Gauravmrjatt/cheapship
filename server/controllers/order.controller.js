@@ -72,10 +72,10 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
 
   const globalCommissionRate = globalSetting ? parseFloat(globalSetting.value) : 0;
 
-  console.group(`[Global Commission] Fetching setting for user ${userId}`);
-  console.log('globalSetting:', globalSetting);
-  console.log('globalCommissionRate:', globalCommissionRate);
-  console.groupEnd();
+  // console.group(`[Global Commission] Fetching setting for user ${userId}`);
+  // console.log('globalSetting:', globalSetting);
+  // console.log('globalCommissionRate:', globalCommissionRate);
+  // console.groupEnd();
 
   const franchiseCommissionRate = user?.commission_rate ? parseFloat(user.commission_rate.toString()) : (user?.referred_by ? 5 : 0);
   const assignedRates = user?.assigned_rates || {};
@@ -114,14 +114,14 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
 
     const finalRate = Math.ceil(baseRate + globalCommissionAmount + referralCommissionAmount);
 
-    console.group(`[Global Commission] ${courier.courier_name}`);
-    console.log('baseRate:', baseRate);
-    console.log('globalCommissionRate %:', globalCommissionRate);
-    console.log('globalCommissionAmount:', globalCommissionAmount.toFixed(2));
-    console.log('franchiseCommissionAmount:', franchiseCommissionAmount.toFixed(2));
-    console.log('referralCommissionAmount:', referralCommissionAmount.toFixed(2));
-    console.log('finalRate:', finalRate);
-    console.groupEnd();
+    // console.group(`[Global Commission] ${courier.courier_name}`);
+    // console.log('baseRate:', baseRate);
+    // console.log('globalCommissionRate %:', globalCommissionRate);
+    // console.log('globalCommissionAmount:', globalCommissionAmount.toFixed(2));
+    // console.log('franchiseCommissionAmount:', franchiseCommissionAmount.toFixed(2));
+    // console.log('referralCommissionAmount:', referralCommissionAmount.toFixed(2));
+    // console.log('finalRate:', finalRate);
+    // console.groupEnd();
 
     const dbConfig = courierConfigMap[courier.courier_company_id] || {};
 

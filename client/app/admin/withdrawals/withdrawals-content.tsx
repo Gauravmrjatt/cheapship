@@ -69,16 +69,18 @@ import {
   FilterIcon,
   LeftToRightListBulletIcon,
   ArrowDown01Icon,
-  MoneySend01Icon
+  MoneySend01Icon,
+  Search01Icon
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { sileo } from "sileo";
 
 export default function AdminWithdrawalsPage() {
   const [status, setStatus] = React.useState("ALL");
+  const [search, setSearch] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
-  const { data, isLoading } = useAdminWithdrawals(page, pageSize, status);
+  const { data, isLoading } = useAdminWithdrawals(page, pageSize, status, search);
   const processMutation = useProcessWithdrawal();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -294,6 +296,16 @@ export default function AdminWithdrawalsPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <HugeiconsIcon icon={Search01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by user..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="pl-9 w-48 lg:w-64"
+              />
+            </div>
+
             <Button variant="outline" size="sm">
               <HugeiconsIcon icon={FilterIcon} strokeWidth={2} />
               <span className="hidden lg:inline">Filters</span>

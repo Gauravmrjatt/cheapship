@@ -49,12 +49,41 @@ const getMyTickets = async (req, res) => {
 
 const getAllTickets = async (req, res) => {
     const prisma = req.app.locals.prisma;
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, page = 1, limit = 20, search } = req.query;
 
     try {
         const where = {};
         if (status && status !== 'ALL') {
             where.status = status;
+        }
+
+        if (search) {
+            const searchTerm = search.trim();
+            const matchingUsers = await prisma.user.findMany({
+                where: {
+                    OR: [
+                        { name: { contains: searchTerm, mode: 'insensitive' } },
+                        { email: { contains: searchTerm, mode: 'insensitive' } },
+                        { mobile: { contains: searchTerm } }
+                    ]
+                },
+                select: { id: true }
+            });
+            
+            if (matchingUsers.length > 0) {
+                const userIds = matchingUsers.map(u => u.id);
+                where.user_id = { in: userIds };
+            } else {
+                return res.json({
+                    data: [],
+                    pagination: {
+                        page: parseInt(page),
+                        limit: parseInt(limit),
+                        total: 0,
+                        totalPages: 0
+                    }
+                });
+            }
         }
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
