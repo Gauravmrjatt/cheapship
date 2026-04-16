@@ -82,7 +82,8 @@ import {
   SmartPhone01Icon,
   AlertCircleIcon,
   CopyIcon,
-  Download02Icon
+  Download02Icon,
+  DateTimeIcon
 } from "@hugeicons/core-free-icons"
 import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
 import { useAuth } from "@/lib/hooks/use-auth"
@@ -93,6 +94,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { ActionsCell, DataTablePagination } from "./orders-table-components"
 import copy from 'copy-to-clipboard';
 import { ShipmentStatus } from "@/components/ui/status-chip"
+import { formatDateOnly } from "@/lib/date";
 export type Order = {
   id: string
   order_type: string
@@ -111,6 +113,7 @@ export type Order = {
   manifest_url?: string
   cod_amount?: number
   is_draft?: boolean
+  pickup_scheduled_date?: string
   shiprocket_order_id?: string
   order_pickup_address?: {
     name: string;
@@ -310,7 +313,7 @@ export function OrdersDataTable({
     },
     {
       id: "addresses",
-      header: "Routing",
+      header: () => <div className="text-center">Routing</div>,
       cell: ({ row }) => {
         const pickup = row.original.order_pickup_address;
         const receiver = row.original.order_receiver_address;
@@ -318,6 +321,7 @@ export function OrdersDataTable({
           !receiver) return <span className="text-muted-foreground text-xs">-</span>;
         return (
           <div className="flex flex-col-reverse gap-2">
+
             <Popover>
               <PopoverTrigger render={
                 <div className="flex flex-col items-center cursor-help hover:text-primary transition-colors max-w-[150px] text-center">
@@ -357,7 +361,7 @@ export function OrdersDataTable({
             </Popover>
             {row.original?.pickup_location && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 className="text-primary gap-1 h-7 px-2 mt-1"
                 onClick={() => handleOpenPickupDialog(row.original.pickup_location!)}
@@ -385,11 +389,27 @@ export function OrdersDataTable({
         return (
           <div className="text-right tabular-nums">
             {status !== "draft" ? (
-              <>₹{formatPrice(row.original.total_amount) }</>
+              <>₹{formatPrice(row.original.total_amount)}</>
             ) : (<>-</>)}
           </div>
         )
       },
+    },
+    {
+      accessorKey: "pickup",
+      header: () => <div className="text-center">Pickup</div>,
+      cell: ({ row }) => (
+        <div className="text-center flex justify-center flex-col w-full px-5">
+          {row.original?.pickup_scheduled_date ? (
+            <span className="text-xs text-primary font-medium flex  gap-1 justify-center items-center ">
+              <span>
+                <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" />
+              </span>
+              <p className="font-semibold text-primary">{formatDateOnly(row.original?.pickup_scheduled_date)}</p>
+            </span>
+          ) : (<Button render={<Link href={`/dashboard/orders/${row.original.id}`} />} variant="secondary" className="font-bold text-green-500">   <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" /> Schedule Now</Button>)}
+        </div>
+      ),
     },
     {
       accessorKey: "cod_amount",

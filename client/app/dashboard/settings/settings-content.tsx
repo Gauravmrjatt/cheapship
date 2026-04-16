@@ -344,14 +344,14 @@ function KycTab({ http }: { http: any }) {
     setFormData({ ...formData, pan_number: upperValue });
 
     if (upperValue.length === 10) {
-      if (validatePanNumber(upperValue)) {
-        setPanError("");
-      } else {
+      if (!validatePanNumber(upperValue)) {
         setPanError("Invalid PAN format. Use: AAAAA1234A");
+      } else {
+        setPanError("");
       }
     } else if (upperValue === '') {
-      setPanError("Please enter a valid PAN number.");
-    } 
+      setPanError("");
+    }
   };
 
   const { mutate: updateKyc, isPending: isUpdating } = useMutation(
@@ -360,6 +360,7 @@ function KycTab({ http }: { http: any }) {
         sileo.success({ title: "KYC details updated successfully" });
         queryClient.invalidateQueries({ queryKey: ["kyc-status"] });
         queryClient.invalidateQueries({ queryKey: ["me"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       }
     })
   );
@@ -371,8 +372,9 @@ function KycTab({ http }: { http: any }) {
       setPanError("Invalid PAN format. Use: AAAAA1234A");
       return;
     }
-    if (formData.pan_number === '') {
-      setPanError("Please enter a valid PAN number.");
+
+    if (formData.aadhaar_number === '') {
+      setPanError("Aadhaar number is required.");
       return;
     }
 
@@ -451,7 +453,7 @@ function KycTab({ http }: { http: any }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between ml-1">
-                      <Label htmlFor="pan_number" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">PAN Number</Label>
+                      <Label htmlFor="pan_number" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">PAN Number (Optional)</Label>
                       {kycData && getFieldStatus(kycData.pan_number, kycData.pan_verified)}
                     </div>
                     <Input
@@ -470,7 +472,7 @@ function KycTab({ http }: { http: any }) {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between ml-1">
-                      <Label htmlFor="aadhaar_number" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Aadhaar (Optional)</Label>
+                      <Label htmlFor="aadhaar_number" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Aadhaar *</Label>
                       {kycData && getFieldStatus(kycData.aadhaar_number, kycData.aadhaar_verified)}
                     </div>
                     <Input
@@ -485,7 +487,7 @@ function KycTab({ http }: { http: any }) {
 
                   <div className="space-y-2 md:col-span-2">
                     <div className="flex items-center justify-between ml-1">
-                      <Label htmlFor="gst_number" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">GSTIN Number</Label>
+                      <Label htmlFor="gst_number" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">GSTIN (Optional)</Label>
                       {kycData && getFieldStatus(kycData.gst_number, kycData.gst_verified)}
                     </div>
                     <Input

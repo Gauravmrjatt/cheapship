@@ -3,6 +3,10 @@ const updateKyc = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
 
+  if (!aadhaar_number || aadhaar_number.trim() === '') {
+    return res.status(400).json({ message: 'Aadhaar number is required' });
+  }
+
   try {
     if (pan_number !== undefined && pan_number !== null && pan_number !== '') {
       const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;

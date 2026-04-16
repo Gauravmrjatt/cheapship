@@ -53,7 +53,7 @@ import {
 import copy from "copy-to-clipboard";
 import { sileo } from "sileo";
 import { ShipmentStatus } from "@/components/ui/status-chip";
-
+import { formatDate, formatDateForPickup } from "@/lib/date";
 const statusColors: Record<string, string> = {
   PENDING: "bg-yellow-500",
   MANIFESTED: "bg-blue-500",
@@ -66,16 +66,6 @@ const statusColors: Record<string, string> = {
   RTO: "bg-red-700",
 };
 
-const formatDate = (date: string | null) => {
-  if (!date) return "-";
-  return new Date(date).toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
 
 interface TrackingActivity {
   status: string;
@@ -176,13 +166,6 @@ export default function OrderDetailsPage({
     setSelectedPickupDate(undefined);
   };
 
-  function formatDateForPickup(date: Date): string {
-    const year: number = date.getFullYear();
-    const month: string = String(date.getMonth() + 1).padStart(2, "0");
-    const day: string = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-  }
 
   const handleGenerateLabel = () => {
     generateLabelMutation.mutate({ orderId });
@@ -476,43 +459,43 @@ export default function OrderDetailsPage({
             </CardHeader>
             <CardContent className="space-y-4">
               {liveStatus?.history && liveStatus.history.length > 0 && (
-               
-                    <div className="relative pl-4 border-l-2 p-0 m-0 border-dotted border-muted-foreground/20 max-h-[500px] overflow-scroll ">
-                      {liveStatus.history
-                        .filter((item: ShipmentHistory, idx: number, arr: ShipmentHistory[]) => {
-                          const firstIndex = arr.findIndex(h =>
-                            h.status_date === item.status_date && h.shipment_status === item.shipment_status
-                          );
-                          return firstIndex === idx;
-                        })
-                        .map((history: ShipmentHistory, index: number) => {
-                          const date = new Date(history.status_date);
-                          const day = date.getDate();
-                          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                          const month = monthNames[date.getMonth()];
-                          const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-                          return (
-                            <div key={history.id || index} className="relative pb-9  last:pb-0">
-                              <div className="absolute -left-[28px] top-[10px] h-6 w-6 rounded-full bg-primary border-2 border-background" />
-                              <div className="flex gap-4">
-                                <div className="text-center flex-1">
+                <div className="relative pl-4 border-l-2 p-0 m-0 border-dotted border-muted-foreground/20 max-h-[500px] overflow-scroll ">
+                  {liveStatus.history
+                    .filter((item: ShipmentHistory, idx: number, arr: ShipmentHistory[]) => {
+                      const firstIndex = arr.findIndex(h =>
+                        h.status_date === item.status_date && h.shipment_status === item.shipment_status
+                      );
+                      return firstIndex === idx;
+                    })
+                    .map((history: ShipmentHistory, index: number) => {
+                      const date = new Date(history.status_date);
+                      const day = date.getDate();
+                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      const month = monthNames[date.getMonth()];
+                      const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-                                  <p className="text-xl font-medium">{day} {month}</p>
-                                  <p className="text-xs text-muted-foreground">{time}</p>
-                                  
-                                </div>
-                                <div className="flex-3 flex justify-center flex-col">
-                                  <p className="font-medium text-sm">{history.activity}</p>
-                                  {history.location && <p className="text-xs text-muted-foreground mt-1 mb-2">{history.location}</p>}
-                                  <ShipmentStatus status={history.shipment_status} />
-                                </div>
-                              </div>
+                      return (
+                        <div key={history.id || index} className="relative pb-9  last:pb-0">
+                          <div className="absolute -left-[28px] top-[10px] h-6 w-6 rounded-full bg-primary border-2 border-background" />
+                          <div className="flex gap-4">
+                            <div className="text-center flex-1">
+
+                              <p className="text-xl font-medium">{day} {month}</p>
+                              <p className="text-xs text-muted-foreground">{time}</p>
+
                             </div>
-                          );
-                        })}
-                    </div>
-                 
+                            <div className="flex-3 flex justify-center flex-col">
+                              <p className="font-medium text-sm">{history.activity}</p>
+                              {history.location && <p className="text-xs text-muted-foreground mt-1 mb-2">{history.location}</p>}
+                              <ShipmentStatus status={history.shipment_status} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+
               )}
 
               <div className="flex flex-wrap gap-3">
