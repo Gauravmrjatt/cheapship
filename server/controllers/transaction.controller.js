@@ -251,12 +251,8 @@ const verifyRazorpayPayment = async (req, res) => {
         const applicablePlans = await tx.walletPlan.findMany({
           where: {
             is_active: true,
-            recharge_amount: { lte: amountNumber }
-          },
-          orderBy: {
-            discount_percentage: 'desc'
-          },
-          take: 1
+            recharge_amount: { equals: amountNumber }
+          }
         });
 
         const newDiscount =

@@ -579,9 +579,9 @@ const getWithdrawals = async (req, res) => {
   const pageSizeNum = parseInt(pageSize, 10);
   const offset = (pageNum - 1) * pageSizeNum;
 
-  const where = {};
+  const baseWhere = {};
   if (status && status !== 'ALL') {
-    where.status = status;
+    baseWhere.status = status;
   }
 
   if (search) {
@@ -598,7 +598,7 @@ const getWithdrawals = async (req, res) => {
     });
     const userIds = matchingUsers.map(u => u.id);
     if (userIds.length > 0) {
-      where.user_id = { in: userIds };
+      baseWhere.user_id = { in: userIds };
     } else {
       return res.json({
         data: [],
@@ -613,32 +613,93 @@ const getWithdrawals = async (req, res) => {
   }
 
   try {
-    const [withdrawals, total] = await prisma.$transaction([
-      prisma.commissionWithdrawal.findMany({
-        where,
-        skip: offset,
-        take: pageSizeNum,
-        orderBy: { created_at: 'desc' },
-        include: {
-          user: {
-            select: { name: true, email: true, wallet_balance: true, upi_id: true }
+    const userIdsWithWithdrawals = await prisma.commissionWithdrawal.findMany({
+      where: baseWhere,
+      select: { user_id: true },
+      distinct: ['user_id']
+    });
+
+    const validUserIds = userIdsWithWithdrawals.map(w => w.user_id);
+
+    const userGroups = await prisma.user.findMany({
+      where: {
+        id: { in: validUserIds }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        wallet_balance: true,
+        upi_id: true,
+        mobile: true,
+        _count: {
+          select: {
+            commissionWithdrawal: {
+              where: baseWhere
+            }
           }
         }
-      }),
-      prisma.commissionWithdrawal.count({ where })
-    ]);
+      },
+      skip: offset,
+      take: pageSizeNum
+    });
 
-    const usersData = withdrawals.map(user => ({
-      ...user,
-      min_commission_rate: user.min_commission_rate ? parseFloat(user.min_commission_rate) : null,
-      max_commission_rate: user.max_commission_rate ? parseFloat(user.max_commission_rate) : null
-    }));
+    const userIds = userGroups.map(u => u.id);
+
+    const aggregatedData = await prisma.commissionWithdrawal.groupBy({
+      by: ['user_id', 'status'],
+      where: {
+        ...baseWhere,
+        user_id: { in: userIds }
+      },
+      _sum: {
+        amount: true
+      },
+      _count: true
+    });
+
+    const totalUsers = await prisma.user.count({
+      where: { id: { in: validUserIds } }
+    });
+
+    const groupedWithdrawals = userGroups.map(user => {
+      const userData = aggregatedData.filter(d => d.user_id === user.id);
+      
+      const pendingRequests = userData.find(d => d.status === 'PENDING');
+      const approvedRequests = userData.find(d => d.status === 'APPROVED');
+      const rejectedRequests = userData.find(d => d.status === 'REJECTED');
+
+      const totalPending = pendingRequests?._sum.amount || 0;
+      const totalApproved = approvedRequests?._sum.amount || 0;
+      const totalRejected = rejectedRequests?._sum.amount || 0;
+
+      const overallStatus = pendingRequests ? 'PENDING' : (approvedRequests ? 'APPROVED' : (rejectedRequests ? 'REJECTED' : 'PENDING'));
+
+      return {
+        id: user.id,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          upi_id: user.upi_id,
+          mobile: user.mobile,
+          wallet_balance: user.wallet_balance
+        },
+        request_count: user._count.commissionWithdrawal,
+        total_amount: totalPending + totalApproved + totalRejected,
+        pending_amount: totalPending,
+        approved_amount: totalApproved,
+        rejected_amount: totalRejected,
+        status: overallStatus,
+        created_at: new Date().toISOString()
+      };
+    });
 
     res.json({
-      data: usersData,
+      data: groupedWithdrawals,
       pagination: {
-        total,
-        totalPages: Math.ceil(total / pageSizeNum),
+        total: totalUsers,
+        totalPages: Math.ceil(totalUsers / pageSizeNum),
         currentPage: pageNum,
         pageSize: pageSizeNum
       }
@@ -741,6 +802,97 @@ const processWithdrawal = async (req, res) => {
     });
 
     res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ message: error.message || 'Internal Server Error' });
+  }
+};
+
+const processUserWithdrawals = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { userId } = req.params;
+  const { status, reference_id } = req.body;
+
+  if (!['APPROVED', 'REJECTED'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+
+  try {
+    const pendingWithdrawals = await prisma.commissionWithdrawal.findMany({
+      where: {
+        user_id: userId,
+        status: 'PENDING'
+      }
+    });
+
+    if (pendingWithdrawals.length === 0) {
+      return res.status(404).json({ message: 'No pending withdrawal requests found for this user' });
+    }
+
+    const totalPendingAmount = pendingWithdrawals.reduce((sum, w) => sum + Number(w.amount), 0);
+
+    if (status === 'APPROVED') {
+      await prisma.$transaction(async (tx) => {
+        for (const withdrawal of pendingWithdrawals) {
+          const updateData = { status: 'APPROVED' };
+          if (reference_id) {
+            updateData.reference_id = reference_id;
+          }
+
+          await tx.commissionWithdrawal.update({
+            where: { id: withdrawal.id },
+            data: updateData
+          });
+
+          if (withdrawal.franchise_id) {
+            await tx.order.updateMany({
+              where: {
+                user_id: withdrawal.franchise_id,
+                shipment_status: 'DELIVERED',
+                is_franchise_withdrawn: false
+              },
+              data: {
+                is_franchise_withdrawn: true,
+                franchise_commission_amount: 0
+              }
+            });
+          }
+
+          const currentUser = await tx.user.findUnique({
+            where: { id: withdrawal.user_id },
+            select: { wallet_balance: true }
+          });
+
+          await tx.transaction.create({
+            data: {
+              user_id: withdrawal.user_id,
+              amount: withdrawal.amount,
+              closing_balance: Number(currentUser.wallet_balance),
+              type: 'DEBIT',
+              category: 'COMMISSION',
+              status: 'SUCCESS',
+              description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
+              reference_id: withdrawal.id
+            }
+          });
+        }
+      });
+    } else if (status === 'REJECTED') {
+      await prisma.commissionWithdrawal.updateMany({
+        where: {
+          user_id: userId,
+          status: 'PENDING'
+        },
+        data: { status: 'REJECTED' }
+      });
+    }
+
+    res.json({ 
+      message: `Processed ${pendingWithdrawals.length} withdrawal requests`,
+      processed_count: pendingWithdrawals.length,
+      total_amount: totalPendingAmount,
+      status
+    });
   } catch (error) {
     console.error(error);
     res.status(400).json({ message: error.message || 'Internal Server Error' });
@@ -1367,45 +1519,28 @@ const getUserCommissionBounds = async (req, res) => {
 const getAllCODOrders = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { page = 1, pageSize = 10, remittance_status, search, order_source } = req.query;
-  const adminId = req.user.id; // Get the currently logged-in admin ID
+  const adminId = req.user.id;
 
   const pageNum = Math.max(1, parseInt(page, 10));
   const pageSizeNum = parseInt(pageSize, 10);
   const offset = (pageNum - 1) * pageSizeNum;
 
-  const where = {
-    payment_mode: 'COD'
+  const baseWhere = {
+    payment_mode: 'COD',
+    shipment_status: {
+      notIn: ['CANCELLED', 'DRAFT']
+    }
   };
 
-  // Filter based on whether it's the admin's own order or a standard user's order
   if (order_source === 'MY_ORDERS') {
-    where.user_id = adminId;
+    baseWhere.user_id = adminId;
   } else if (order_source === 'USER_ORDERS') {
-    where.user_id = { not: adminId };
-  }
-
-  if (remittance_status && remittance_status !== 'ALL') {
-    where.remittance_status = remittance_status;
+    baseWhere.user_id = { not: adminId };
   }
 
   if (search) {
     const searchTerm = search.trim();
     const searchNum = parseInt(searchTerm, 10);
-
-    const orConditions = [
-      { id: isNaN(searchNum) ? undefined : BigInt(searchNum) },
-      { shiprocket_order_id: { contains: searchTerm, mode: 'insensitive' } },
-      { shiprocket_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
-      { tracking_number: { contains: searchTerm, mode: 'insensitive' } },
-      { label_url: { contains: searchTerm, mode: 'insensitive' } },
-      { manifest_url: { contains: searchTerm, mode: 'insensitive' } },
-      { vyom_order_id: { contains: searchTerm, mode: 'insensitive' } },
-      { vyom_shipment_id: { contains: searchTerm, mode: 'insensitive' } },
-      { courier_name: { contains: searchTerm, mode: 'insensitive' } },
-    ].filter(condition => {
-      const keys = Object.keys(condition);
-      return keys.length > 0 && condition[keys[0]] !== undefined;
-    });
 
     const matchingUsers = await prisma.user.findMany({
       where: {
@@ -1418,54 +1553,148 @@ const getAllCODOrders = async (req, res) => {
       select: { id: true }
     });
     
-    if (matchingUsers.length > 0) {
-      const userIds = matchingUsers.map(u => u.id);
-      orConditions.push({ user_id: { in: userIds } });
+    const userIds = matchingUsers.map(u => u.id);
+    if (userIds.length > 0) {
+      baseWhere.user_id = { in: userIds };
     }
 
-    if (orConditions.length > 0) {
-      where.OR = orConditions;
+    if (!isNaN(searchNum)) {
+      const orderById = await prisma.order.findMany({
+        where: { id: BigInt(searchNum), ...baseWhere },
+        select: { user_id: true }
+      });
+      if (orderById.length > 0) {
+        const userIdFromOrder = orderById[0].user_id;
+        baseWhere.user_id = userIdFromOrder;
+      }
     }
   }
 
+  const statusWhere = remittance_status && remittance_status !== 'ALL' 
+    ? { remittance_status } 
+    : {};
+
   try {
-    const [orders, total, totalCODAmount, totalRemittedAmount] = await prisma.$transaction([
-      prisma.order.findMany({
-        where,
-        skip: offset,
-        take: pageSizeNum,
-        orderBy: { created_at: 'desc' },
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, upi_id: true }
-          },
-          order_receiver_address: {
-            select: { name: true, city: true, state: true }
+    const userGroups = await prisma.user.findMany({
+      where: {
+        id: {
+          in: await prisma.order.findMany({
+            where: baseWhere,
+            select: { user_id: true },
+            distinct: ['user_id']
+          }).then(results => results.map(r => r.user_id))
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        upi_id: true,
+        mobile: true,
+        _count: {
+          select: {
+            orders: {
+              where: {
+                ...baseWhere,
+                ...statusWhere,
+                payment_mode: 'COD',
+                shipment_status: { notIn: ['CANCELLED', 'DRAFT'] }
+              }
+            }
           }
         }
-      }),
-      prisma.order.count({ where }),
-      prisma.order.aggregate({
-        where: { ...where, remittance_status: 'PENDING' },
-        _sum: { cod_amount: true }
-      }),
-      prisma.order.aggregate({
-        where: { ...where, remittance_status: 'REMITTED' },
-        _sum: { remitted_amount: true }
-      })
-    ]);
+      },
+      skip: offset,
+      take: pageSizeNum,
+      orderBy: { created_at: 'desc' }
+    });
+
+    const userIds = userGroups.map(u => u.id);
+    
+    const aggregatedData = await prisma.order.groupBy({
+      by: ['user_id', 'remittance_status'],
+      where: {
+        ...baseWhere,
+        user_id: { in: userIds }
+      },
+      _sum: {
+        cod_amount: true,
+        remitted_amount: true
+      },
+      _count: true
+    });
+
+    const totalUsers = await prisma.user.count({
+      where: {
+        id: {
+          in: await prisma.order.findMany({
+            where: baseWhere,
+            select: { user_id: true },
+            distinct: ['user_id']
+          }).then(results => results.map(r => r.user_id))
+        }
+      }
+    });
+
+    const groupedOrders = userGroups.map(user => {
+      const userData = aggregatedData.filter(d => d.user_id === user.id);
+      
+      const pendingOrders = userData.find(d => d.remittance_status === 'PENDING');
+      const processingOrders = userData.find(d => d.remittance_status === 'PROCESSING');
+      const remittedOrders = userData.find(d => d.remittance_status === 'REMITTED');
+      const failedOrders = userData.find(d => d.remittance_status === 'FAILED');
+
+      const totalCOD = userData.reduce((sum, d) => sum + (d._sum.cod_amount || 0), 0);
+      const totalRemitted = userData.reduce((sum, d) => sum + (d._sum.remitted_amount || 0), 0);
+
+      const overallStatus = pendingOrders || processingOrders 
+        ? (processingOrders ? 'PROCESSING' : 'PENDING')
+        : (failedOrders ? 'FAILED' : (remittedOrders ? 'REMITTED' : 'PENDING'));
+
+      return {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          upi_id: user.upi_id,
+          mobile: user.mobile
+        },
+        order_count: user._count.orders,
+        total_cod_amount: totalCOD,
+        total_remitted_amount: totalRemitted,
+        pending_amount: pendingOrders?._sum.cod_amount || 0,
+        remittance_status: overallStatus,
+        orders: []
+      };
+    });
+
+    const summaryResult = await prisma.order.aggregate({
+      where: {
+        ...baseWhere,
+        remittance_status: { in: ['PENDING', 'PROCESSING'] }
+      },
+      _sum: { cod_amount: true }
+    });
+
+    const totalRemittedResult = await prisma.order.aggregate({
+      where: {
+        ...baseWhere,
+        remittance_status: 'REMITTED'
+      },
+      _sum: { remitted_amount: true }
+    });
 
     res.json({
-      data: orders,
+      data: groupedOrders,
       pagination: {
-        total,
-        totalPages: Math.ceil(total / pageSizeNum),
+        total: totalUsers,
+        totalPages: Math.ceil(totalUsers / pageSizeNum),
         currentPage: pageNum,
         pageSize: pageSizeNum
       },
       summary: {
-        totalPendingCOD: totalCODAmount._sum.cod_amount || 0,
-        totalRemitted: totalRemittedAmount._sum.remitted_amount || 0
+        totalPendingCOD: summaryResult._sum.cod_amount || 0,
+        totalRemitted: totalRemittedResult._sum.remitted_amount || 0
       }
     });
   } catch (error) {
@@ -1528,6 +1757,75 @@ const updateOrderRemittance = async (req, res) => {
     });
 
     res.json({ message: 'Remittance status updated', order: updatedOrder });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const updateUserCODRemittance = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { userId } = req.params;
+  const { remittance_status, remitted_amount, remittance_ref_id, payout_status } = req.body;
+
+  const adminId = req.user.id;
+
+  try {
+    const orders = await prisma.order.findMany({
+      where: {
+        user_id: userId,
+        payment_mode: 'COD',
+        shipment_status: {
+          notIn: ['CANCELLED', 'DRAFT']
+        },
+        remittance_status: { in: ['PENDING', 'PROCESSING', 'FAILED'] }
+      }
+    });
+
+    if (orders.length === 0) {
+      return res.status(404).json({ message: 'No eligible COD orders found for this user' });
+    }
+
+    const totalCODAmount = orders.reduce((sum, order) => sum + Number(order.cod_amount), 0);
+    const amountToRemit = remitted_amount !== undefined ? remitted_amount : totalCODAmount;
+
+    const updateData = {};
+    
+    if (remittance_status && ['NOT_APPLICABLE', 'PENDING', 'PROCESSING', 'REMITTED', 'FAILED'].includes(remittance_status)) {
+      if (remittance_status === 'REMITTED') {
+        updateData.remittance_status = remittance_status;
+        updateData.remitted_amount = amountToRemit;
+        updateData.remitted_at = new Date();
+        if (remittance_ref_id) {
+          updateData.remittance_ref_id = remittance_ref_id;
+        }
+      } else {
+        updateData.remittance_status = remittance_status;
+      }
+    }
+
+    if (payout_status && ['PENDING', 'COMPLETED'].includes(payout_status)) {
+      updateData.payout_status = payout_status;
+    }
+
+    const updatedOrders = await prisma.order.updateMany({
+      where: {
+        user_id: userId,
+        payment_mode: 'COD',
+        shipment_status: {
+          notIn: ['CANCELLED', 'DRAFT']
+        },
+        remittance_status: { in: ['PENDING', 'PROCESSING', 'FAILED'] }
+      },
+      data: updateData
+    });
+
+    res.json({ 
+      message: `Remittance status updated for ${updatedOrders.count} orders`,
+      updated_count: updatedOrders.count,
+      total_cod_amount: totalCODAmount,
+      remitted_amount: amountToRemit
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -2012,6 +2310,7 @@ module.exports = {
   setUserCustomRates,
   getAllCODOrders,
   updateOrderRemittance,
+  updateUserCODRemittance,
   getOrderById,
   getKycUsers,
   updateKycStatus,
@@ -2027,5 +2326,8 @@ module.exports = {
   updateSecurityRefundDays,
   getAllSecurityDeposits,
   getSecurityDepositByOrder,
-  changeUserEmail
+  changeUserEmail,
+  getWithdrawals,
+  processWithdrawal,
+  processUserWithdrawals
 };

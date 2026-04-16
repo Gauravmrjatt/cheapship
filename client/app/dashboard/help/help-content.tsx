@@ -209,7 +209,7 @@ export default function HelpPage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Phone</p>
-                  <p className="text-sm font-medium">+91-XXXXXXXXXX</p>
+                  <p className="text-sm font-medium">+91-9509698208</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl">

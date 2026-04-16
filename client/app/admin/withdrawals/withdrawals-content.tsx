@@ -13,7 +13,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useAdminWithdrawals, useProcessWithdrawal } from "@/lib/hooks/use-admin";
+import { useAdminWithdrawalUserGroups, useProcessUserWithdrawals, WithdrawalUserGroup } from "@/lib/hooks/use-admin";
 import { 
   Table, 
   TableBody, 
@@ -25,12 +25,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Withdrawal } from "@/lib/hooks/use-admin";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
@@ -44,7 +42,6 @@ import {
 } from "@/components/ui/select";
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
@@ -80,13 +77,13 @@ export default function AdminWithdrawalsPage() {
   const [search, setSearch] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
-  const { data, isLoading } = useAdminWithdrawals(page, pageSize, status, search);
-  const processMutation = useProcessWithdrawal();
+  const { data, isLoading } = useAdminWithdrawalUserGroups(page, pageSize, status, search);
+  const processMutation = useProcessUserWithdrawals();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const [selectedWithdrawal, setSelectedWithdrawal] = React.useState<Withdrawal | null>(null);
+  const [selectedUserGroup, setSelectedUserGroup] = React.useState<WithdrawalUserGroup | null>(null);
   const [showDialog, setShowDialog] = React.useState(false);
   const [withdrawalForm, setWithdrawalForm] = React.useState({
     status: "APPROVED",
@@ -95,30 +92,30 @@ export default function AdminWithdrawalsPage() {
 
   const tableData = React.useMemo(() => data?.data || [], [data?.data]);
 
-  const openDialog = (withdrawal: Withdrawal) => {
-    setSelectedWithdrawal(withdrawal);
+  const openDialog = (userGroup: WithdrawalUserGroup) => {
+    setSelectedUserGroup(userGroup);
     setWithdrawalForm({
       status: "APPROVED",
-      reference_id: withdrawal.reference_id || ""
+      reference_id: ""
     });
     setShowDialog(true);
   };
 
   const handleUpdate = () => {
-    if (!selectedWithdrawal) return;
+    if (!selectedUserGroup) return;
     processMutation.mutate(
       { 
-        id: selectedWithdrawal.id, 
+        userId: selectedUserGroup.user.id, 
         status: withdrawalForm.status as 'APPROVED' | 'REJECTED',
         reference_id: withdrawalForm.reference_id || undefined
       },
       {
         onSuccess: () => {
           setShowDialog(false);
-          setSelectedWithdrawal(null);
+          setSelectedUserGroup(null);
         },
         onError: (error: Error) => {
-          sileo.error({ title: "Error", description: error.message || "Failed to process withdrawal" });
+          sileo.error({ title: "Error", description: error.message || "Failed to process withdrawals" });
         }
       }
     );
@@ -131,11 +128,11 @@ export default function AdminWithdrawalsPage() {
     }).format(amount);
   };
 
-  const qrUrl = selectedWithdrawal?.user?.upi_id 
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`upi://pay?pa=${selectedWithdrawal.user.upi_id}&am=${selectedWithdrawal.amount}`)}`
+  const qrUrl = selectedUserGroup?.user?.upi_id 
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`upi://pay?pa=${selectedUserGroup.user.upi_id}&am=${selectedUserGroup.pending_amount}`)}`
     : null;
 
-  const columns = React.useMemo<ColumnDef<Withdrawal>[]>(() => [
+  const columns = React.useMemo<ColumnDef<WithdrawalUserGroup>[]>(() => [
     {
       id: "select",
       header: ({ table }) => (
@@ -160,12 +157,18 @@ export default function AdminWithdrawalsPage() {
       enableHiding: false,
     },
     {
-      accessorKey: "user.name",
+      id: "user",
       header: "User",
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium text-xs text-foreground">{row.original.user?.name}</span>
           <span className="text-[10px] text-muted-foreground">{row.original.user?.email}</span>
+          {row.original.user?.mobile && (
+            <span className="text-[10px] text-blue-600 font-medium">{row.original.user.mobile}</span>
+          )}
+          {row.original.user?.upi_id && (
+            <span className="text-[10px] text-green-600">{row.original.user.upi_id}</span>
+          )}
         </div>
       ),
     },
@@ -177,10 +180,31 @@ export default function AdminWithdrawalsPage() {
       ),
     },
     {
-      accessorKey: "amount",
-      header: "Requested Amount",
+      accessorKey: "request_count",
+      header: "Requests",
       cell: ({ row }) => (
-        <span className="text-xs font-bold tabular-nums">₹{Number(row.original.amount).toLocaleString("en-IN")}</span>
+        <span className="text-xs font-bold">{row.original.request_count} request{row.original.request_count !== 1 ? 's' : ''}</span>
+      ),
+    },
+    {
+      accessorKey: "total_amount",
+      header: "Total Amount",
+      cell: ({ row }) => (
+        <span className="text-xs font-bold tabular-nums">₹{Number(row.original.total_amount).toLocaleString("en-IN")}</span>
+      ),
+    },
+    {
+      accessorKey: "pending_amount",
+      header: "Pending",
+      cell: ({ row }) => (
+        <span className="text-xs font-medium tabular-nums text-yellow-600">₹{Number(row.original.pending_amount || 0).toLocaleString("en-IN")}</span>
+      ),
+    },
+    {
+      accessorKey: "approved_amount",
+      header: "Approved",
+      cell: ({ row }) => (
+        <span className="text-xs font-medium tabular-nums text-green-600">₹{Number(row.original.approved_amount || 0).toLocaleString("en-IN")}</span>
       ),
     },
     {
@@ -203,15 +227,6 @@ export default function AdminWithdrawalsPage() {
       },
     },
     {
-      accessorKey: "created_at",
-      header: "Date",
-      cell: ({ row }) => (
-        <span className="text-[10px] text-muted-foreground font-medium">
-          {new Date(row.original.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-        </span>
-      ),
-    },
-    {
       id: "actions",
       header: () => <div className="text-right pr-6">Actions</div>,
       cell: ({ row }) => (
@@ -224,7 +239,7 @@ export default function AdminWithdrawalsPage() {
               onClick={() => openDialog(row.original)}
               disabled={processMutation.isPending}
             >
-              Update
+              Process All
             </Button>
           ) : (
             <div className="text-[10px] text-muted-foreground italic">Processed</div>
@@ -335,7 +350,7 @@ export default function AdminWithdrawalsPage() {
 
         <div className="relative flex flex-col gap-4">
           <div className="overflow-x-auto border rounded-2xl">
-            <Table className="min-w-[640px]">
+            <Table className="min-w-[800px]">
               <TableHeader className="bg-muted sticky top-0 z-10 rounded-2xl">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
@@ -378,7 +393,7 @@ export default function AdminWithdrawalsPage() {
           <div className="flex items-center justify-between px-4">
             <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
               {table.getFilteredSelectedRowModel().rows.length} of{" "}
-              {data?.pagination?.total || 0} requests selected.
+              {data?.pagination?.total || 0} users selected.
             </div>
             <div className="flex w-full items-center gap-8 lg:w-fit">
               <div className="hidden items-center gap-2 lg:flex">
@@ -423,14 +438,14 @@ export default function AdminWithdrawalsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <HugeiconsIcon icon={MoneySend01Icon} size={20} />
-              Process Withdrawal
+              Process All Withdrawals
             </DialogTitle>
             <DialogDescription>
-              {selectedWithdrawal?.user?.name} - Requested: {formatCurrency(selectedWithdrawal?.amount || 0)}
+              {selectedUserGroup?.user?.name} - {selectedUserGroup?.request_count} requests - Pending: {formatCurrency(selectedUserGroup?.pending_amount || 0)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {selectedWithdrawal?.user?.upi_id && (
+            {selectedUserGroup?.user?.upi_id && (
               <div className="p-4 bg-muted/50 rounded-lg flex flex-col items-center justify-center gap-3">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pay via UPI</p>
                 <Image
@@ -440,8 +455,8 @@ export default function AdminWithdrawalsPage() {
                   height={150}
                   className="rounded-md shadow-sm bg-white p-2 object-contain mix-blend-multiply"
                 />
-                <p className="text-xs font-medium text-center">{selectedWithdrawal.user.upi_id}</p>
-                <p className="text-[10px] text-muted-foreground text-center">Scan to pay exactly {formatCurrency(selectedWithdrawal.amount)}</p>
+                <p className="text-xs font-medium text-center">{selectedUserGroup.user.upi_id}</p>
+                <p className="text-[10px] text-muted-foreground text-center">Scan to pay exactly {formatCurrency(selectedUserGroup.pending_amount)}</p>
               </div>
             )}
 
@@ -483,7 +498,7 @@ export default function AdminWithdrawalsPage() {
                   Processing...
                 </>
               ) : (
-                "Update Status"
+                "Process All Requests"
               )}
             </Button>
           </DialogFooter>

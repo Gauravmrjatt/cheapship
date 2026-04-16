@@ -258,7 +258,6 @@ export default function WalletPlansContent() {
               </TableHeader>
               <TableBody>
                 {plans.map((plan) => {
-                  const bonusAmount = (plan.recharge_amount * plan.discount_percentage) / 100;
                   const isUpdating = updatingPlanId === plan.id;
                   return (
                     <TableRow key={plan.id}>
@@ -266,11 +265,11 @@ export default function WalletPlansContent() {
                       <TableCell>₹{plan.recharge_amount.toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          +{plan.discount_percentage}%
+                          +₹{plan.discount_percentage.toLocaleString()}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-green-600 font-medium">
-                        +₹{bonusAmount.toLocaleString()}
+                      <TableCell className="text-muted-foreground">
+                        Equal to recharge amount
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

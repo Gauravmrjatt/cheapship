@@ -58,23 +58,17 @@ import {
 } from "@/components/ui/dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  MoreVerticalCircle01Icon,
+
   LayoutIcon,
   ArrowDown01Icon,
   Add01Icon,
-  ArrowLeftDoubleIcon,
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-  ArrowRightDoubleIcon,
-  CheckmarkCircle01Icon,
+
   Loading03Icon,
-  DeliveryTruck01Icon,
   SearchIcon,
   FilterIcon,
   Calendar01Icon,
   Cancel01Icon,
   MapPinIcon,
-  FileDownloadIcon,
   LinkCircle02Icon,
   Location01Icon,
   UserIcon,
@@ -83,7 +77,10 @@ import {
   AlertCircleIcon,
   CopyIcon,
   Download02Icon,
-  DateTimeIcon
+  DateTimeIcon,
+  ArrowDownDoubleIcon,
+  PackageSentIcon,
+  PackageReceiveIcon
 } from "@hugeicons/core-free-icons"
 import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
 import { useAuth } from "@/lib/hooks/use-auth"
@@ -324,9 +321,10 @@ export function OrdersDataTable({
 
             <Popover>
               <PopoverTrigger render={
-                <div className="flex flex-col items-center cursor-help hover:text-primary transition-colors max-w-[150px] text-center">
-                  <span className="font-semibold text-foreground text-xs truncate text-center">{pickup.city}, {pickup.state}</span>
-                  <span className="text-[10px] text-muted-foreground truncate text-center">to {receiver.city}, {receiver.state}</span>
+                <div className="flex flex-col items-center cursor-help hover:text-primary transition-colors  text-center">
+                  <span className="font-semibold flex text-foreground text-xs truncate text-center"> <HugeiconsIcon icon={PackageSentIcon} className="size-4 mr-1.5 text-orange-400" />{pickup.name}, {pickup.city} , {pickup.state} - {pickup.pincode}</span>
+                  <span className="text-[10px] flex items-center justify-center text-muted-foreground truncate text-center my-2"><HugeiconsIcon className="size-5 text-lime-400" icon={ArrowDownDoubleIcon} /></span>
+                  <span className="text-[10px] flex text-muted-foreground truncate text-center"> <HugeiconsIcon icon={PackageReceiveIcon} className="size-4 mr-1.5 text-violet-400" />{receiver.name}, {receiver.city} , {receiver.state} - {receiver.pincode}</span>
                 </div>
               } />
               <PopoverContent className="w-72 p-3" side="right">
@@ -398,18 +396,35 @@ export function OrdersDataTable({
     {
       accessorKey: "pickup",
       header: () => <div className="text-center">Pickup</div>,
-      cell: ({ row }) => (
-        <div className="text-center flex justify-center flex-col w-full px-5">
-          {row.original?.pickup_scheduled_date ? (
-            <span className="text-xs text-primary font-medium flex  gap-1 justify-center items-center ">
-              <span>
-                <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" />
-              </span>
-              <p className="font-semibold text-primary">{formatDateOnly(row.original?.pickup_scheduled_date)}</p>
-            </span>
-          ) : (<Button render={<Link href={`/dashboard/orders/${row.original.id}`} />} variant="secondary" className="font-bold text-green-500">   <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" /> Schedule Now</Button>)}
-        </div>
-      ),
+   cell: ({ row }) => {
+  const blockedStatuses = ["DRAFT", "CANCELLED"];
+
+  if (blockedStatuses.includes(row.original?.shipment_status)) {
+    return <>-</>;
+  }
+
+  return (
+    <div className="text-center flex justify-center flex-col w-full px-5">
+      {row.original?.pickup_scheduled_date ? (
+        <span className="text-xs text-primary font-medium flex gap-1 justify-center items-center">
+          <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" />
+          <p className="font-semibold text-primary">
+            {formatDateOnly(row.original.pickup_scheduled_date)}
+          </p>
+        </span>
+      ) : (
+        <Button
+          render={<Link href={`/dashboard/orders/${row.original.id}`} />}
+          variant="secondary"
+          className="font-bold text-green-500 flex gap-1 items-center justify-center"
+        >
+          <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" />
+          Schedule Now
+        </Button>
+      )}
+    </div>
+  );
+},
     },
     {
       accessorKey: "cod_amount",

@@ -70,6 +70,7 @@ router.get(
 // Withdrawals
 router.get('/withdrawals', adminController.getWithdrawals);
 router.post('/withdrawals/:id/process', adminController.processWithdrawal);
+router.post('/withdrawals/user/:userId/process', adminController.processUserWithdrawals);
 
 // Settings
 router.get('/settings/global-commission', adminController.getGlobalSettings);
@@ -105,6 +106,7 @@ router.post('/users/:userId/custom-rates', adminController.setUserCustomRates);
 // COD Remittance Management
 router.get('/cod-orders', adminController.getAllCODOrders);
 router.patch('/orders/:id/remittance', adminController.updateOrderRemittance);
+router.patch('/cod-orders/user/:userId/remittance', adminController.updateUserCODRemittance);
 
 // Wallet Plans (Recharge Discounts)
 router.get('/wallet-plans', adminController.getWalletPlans);

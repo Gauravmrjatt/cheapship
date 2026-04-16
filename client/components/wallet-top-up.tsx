@@ -56,8 +56,7 @@ export function WalletTopUp({ open, onOpenChange, category = 'WALLET_TOPUP', ini
     const amount = parseFloat(topUpAmount);
     if (isNaN(amount) || amount <= 0 || plans.length === 0) return null;
     
-    const sortedPlans = [...plans].sort((a, b) => b.recharge_amount - a.recharge_amount);
-    return sortedPlans.find(plan => amount >= plan.recharge_amount) || null;
+    return plans.find(plan => amount === plan.recharge_amount) || null;
   }, [topUpAmount, plans]);
 
   const bonusAmount = useMemo(() => {
@@ -218,7 +217,7 @@ export function WalletTopUp({ open, onOpenChange, category = 'WALLET_TOPUP', ini
                       <HugeiconsIcon icon={SparklesIcon} className="size-4 text-white" />
                     </div>
                     <span className="font-semibold text-green-700">
-                      {applicablePlan.discount_percentage}% Bonus Applied!
+                      ₹{applicablePlan.discount_percentage.toLocaleString()} Bonus Applied!
                     </span>
                   </div>
                   <Badge className="bg-green-500 text-white hover:bg-green-600">
@@ -269,9 +268,9 @@ export function WalletTopUp({ open, onOpenChange, category = 'WALLET_TOPUP', ini
                         key={plan.id}
                         className="flex items-center gap-1 px-3 py-1.5 bg-background rounded-full border text-sm"
                       >
-                        <span className="font-medium">₹{plan.recharge_amount.toLocaleString()}+</span>
+                        <span className="font-medium">₹{plan.recharge_amount.toLocaleString()}</span>
                         <HugeiconsIcon icon={ArrowRight01Icon} className="size-3 text-muted-foreground" />
-                        <span className="text-green-600 font-bold">+{plan.discount_percentage}%</span>
+                        <span className="text-green-600 font-bold">+₹{plan.discount_percentage.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>

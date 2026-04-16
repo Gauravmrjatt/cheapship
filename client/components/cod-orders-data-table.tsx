@@ -49,11 +49,14 @@ import {
   SearchIcon,
   Location01Icon,
   Calendar01Icon,
+  MoneyReceiveCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { DataTablePagination } from "./orders-table-components"
-import { CODStatsCards, RemittanceDialog } from "./cod-orders-table-components"
+import { CODStatsCards } from "./cod-orders-table-components"
 import Link from "next/link"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 export interface CODOrder {
   id: string
   order_type: string
@@ -81,6 +84,21 @@ export interface CODOrder {
     city: string
     state: string
   }
+}
+
+export interface CODUserGroup {
+  user: {
+    id: string
+    name: string
+    email: string
+    upi_id?: string
+    mobile?: string
+  }
+  order_count: number
+  total_cod_amount: number
+  total_remitted_amount: number
+  pending_amount: number
+  remittance_status: string
 }
 
 interface CODOrdersDataTableProps {
@@ -483,12 +501,420 @@ export function CODOrdersDataTable({
       <RemittanceDialog
         open={showDialog}
         onOpenChange={setShowDialog}
-        selectedOrder={selectedOrder}
+        selectedOrder={selectedOrder as any}
         remittanceForm={remittanceForm}
         setRemittanceForm={setRemittanceForm}
         onUpdate={handleUpdate}
         isUpdating={isUpdating}
       />
+    </Tabs>
+  )
+}
+
+interface CODUserGroupsDataTableProps {
+  data: CODUserGroup[]
+  isLoading?: boolean
+  pagination?: {
+    currentPage: number
+    pageSize: number
+    totalPages: number
+    total: number
+  }
+  summary?: {
+    totalPendingCOD: number
+    totalRemitted: number
+  }
+  filters?: {
+    status: string
+    search: string
+    order_source: string
+  }
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
+  onFilterChange?: (filters: { status: string; search: string; order_source: string }) => void
+  onUpdateRemittance?: (userGroup: CODUserGroup, data: { remittance_status: string; payout_status?: string; remitted_amount?: number; remittance_ref_id?: string }) => void
+  isUpdating?: boolean
+}
+
+const statusConfigGroup: Record<string, { label: string; className: string }> = {
+  PENDING: { label: "Pending", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
+  PROCESSING: { label: "Processing", className: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
+  REMITTED: { label: "Remitted", className: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
+  FAILED: { label: "Failed", className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
+};
+
+export function CODUserGroupsDataTable({
+  data,
+  isLoading,
+  pagination,
+  summary,
+  filters,
+  onPageChange,
+  onPageSizeChange,
+  onFilterChange,
+  onUpdateRemittance,
+  isUpdating,
+}: CODUserGroupsDataTableProps) {
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [selectedUserGroup, setSelectedUserGroup] = React.useState<CODUserGroup | null>(null)
+  const [showDialog, setShowDialog] = React.useState(false)
+  const [isMounted, setIsMounted] = React.useState(false)
+  const [remittanceForm, setRemittanceForm] = React.useState({
+    remittance_status: "REMITTED",
+    payout_status: "PENDING",
+    remitted_amount: "",
+    remittance_ref_id: "",
+  })
+
+  React.useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  const handleFilterUpdate = React.useCallback((key: string, value: string) => {
+    if (!isMounted) return
+    onFilterChange?.({ ...(filters as any), [key]: value })
+  }, [filters, onFilterChange, isMounted])
+
+  const openDialog = (userGroup: CODUserGroup) => {
+    setSelectedUserGroup(userGroup)
+    setRemittanceForm({
+      remittance_status: userGroup.remittance_status || "REMITTED",
+      payout_status: "PENDING",
+      remitted_amount: userGroup.total_cod_amount?.toString() || "",
+      remittance_ref_id: "",
+    })
+    setShowDialog(true)
+  }
+
+  const handleUpdate = () => {
+    if (!selectedUserGroup) return
+    onUpdateRemittance?.(selectedUserGroup, {
+      remittance_status: remittanceForm.remittance_status,
+      payout_status: remittanceForm.payout_status,
+      remitted_amount: parseFloat(remittanceForm.remitted_amount) || undefined,
+      remittance_ref_id: remittanceForm.remittance_ref_id || undefined,
+    })
+    setShowDialog(false)
+    setSelectedUserGroup(null)
+  }
+
+  const columns = React.useMemo<ColumnDef<CODUserGroup>[]>(() => [
+    {
+      id: "user",
+      header: "User",
+      cell: ({ row }) => {
+        const user = row.original.user
+        return (
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-foreground">{user?.name || "Unknown"}</span>
+            <span className="text-xs text-muted-foreground">{user?.email}</span>
+            {user?.mobile && (
+              <span className="text-xs text-blue-600 font-medium">{user.mobile}</span>
+            )}
+            {user?.upi_id && (
+              <span className="text-xs text-green-600">{user.upi_id}</span>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "order_count",
+      header: "Orders",
+      cell: ({ row }) => (
+        <div className="font-medium">
+          {row.original.order_count} order{row.original.order_count !== 1 ? 's' : ''}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "total_cod_amount",
+      header: () => <div className="text-right">Total COD</div>,
+      cell: ({ row }) => (
+        <div className="text-right font-semibold">
+          {formatCurrency(row.original.total_cod_amount)}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "total_remitted_amount",
+      header: () => <div className="text-right">Remitted</div>,
+      cell: ({ row }) => (
+        <div className="text-right text-green-600 font-medium">
+          {formatCurrency(row.original.total_remitted_amount)}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "pending_amount",
+      header: () => <div className="text-right">Pending</div>,
+      cell: ({ row }) => (
+        <div className="text-right text-yellow-600 font-medium">
+          {formatCurrency(row.original.pending_amount)}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "remittance_status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.original.remittance_status
+        const config = statusConfigGroup[status] || { label: status, className: "" }
+        return (
+          <Badge variant="secondary" className={cn("text-xs capitalize", config.className)}>
+            {config.label}
+          </Badge>
+        )
+      },
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => openDialog(row.original)}
+        >
+          Update All
+        </Button>
+      ),
+      enableHiding: false,
+    },
+  ], [])
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+    },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
+
+  React.useEffect(() => {
+    if (pagination?.pageSize) {
+      table.setPageSize(pagination.pageSize)
+    }
+  }, [pagination?.pageSize, table])
+
+  return (
+    <Tabs
+      value={filters?.status ?? "ALL"}
+      onValueChange={(v) => { handleFilterUpdate("status", v); onPageChange?.(1) }}
+      className="w-full flex-col justify-start gap-6 overflow-hidden"
+    >
+      <div className="flex flex-col gap-4 overflow-hidden">
+        <CODStatsCards summary={summary} totalOrders={pagination?.total} isLoading={isLoading} />
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
+            <Select
+              value={filters?.status ?? "ALL"}
+              onValueChange={(v) => { if (v) { handleFilterUpdate("status", v); onPageChange?.(1) } }}
+            >
+              <SelectTrigger className="flex w-fit lg:hidden" size="sm">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Status</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="PROCESSING">Processing</SelectItem>
+                <SelectItem value="REMITTED">Remitted</SelectItem>
+                <SelectItem value="FAILED">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <TabsList className="hidden lg:flex">
+              <TabsTrigger value="ALL">All</TabsTrigger>
+              <TabsTrigger value="PENDING">Pending</TabsTrigger>
+              <TabsTrigger value="PROCESSING">Processing</TabsTrigger>
+              <TabsTrigger value="REMITTED">Remitted</TabsTrigger>
+              <TabsTrigger value="FAILED">Failed</TabsTrigger>
+            </TabsList>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+            <div className="hidden md:flex bg-muted/60 p-1 rounded-lg">
+              <Button variant={filters?.order_source === "ALL" ? "secondary" : "ghost"} size="sm" onClick={() => { handleFilterUpdate("order_source", "ALL"); onPageChange?.(1); }} className="h-7 text-xs px-3 shadow-none">All</Button>
+              <Button variant={filters?.order_source === "USER_ORDERS" ? "secondary" : "ghost"} size="sm" onClick={() => { handleFilterUpdate("order_source", "USER_ORDERS"); onPageChange?.(1); }} className="h-7 text-xs px-3 shadow-none">User COD</Button>
+              <Button variant={filters?.order_source === "MY_ORDERS" ? "secondary" : "ghost"} size="sm" onClick={() => { handleFilterUpdate("order_source", "MY_ORDERS"); onPageChange?.(1); }} className="h-7 text-xs px-3 shadow-none">My Orders</Button>
+            </div>
+            <div className="relative w-full sm:w-64 min-w-[150px]">
+              <HugeiconsIcon icon={SearchIcon} strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search user..."
+                className="pl-9 h-8"
+                value={filters?.search ?? ""}
+                onChange={(e) => { handleFilterUpdate("search", e.target.value); onPageChange?.(1) }}
+              />
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+                <HugeiconsIcon icon={LeftToRightListBulletIcon} strokeWidth={2} data-icon="inline-start" />
+                <span className="hidden lg:inline">Columns</span>
+                <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {table.getAllColumns().filter(c => c.getCanHide()).map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={v => column.toggleVisibility(!!v)}
+                  >
+                    {column.id.replace(/_/g, " ")}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative flex flex-col gap-4">
+        <div className="overflow-x-auto border rounded-2xl">
+          <Table className="min-w-[800px]">
+            <TableHeader className="bg-muted sticky top-0 z-10">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="size-6 animate-spin mx-auto text-muted-foreground" />
+                  </TableCell>
+                </TableRow>
+              ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No COD user groups found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <DataTablePagination
+          pagination={pagination}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          filteredCount={table.getFilteredRowModel().rows.length}
+        />
+      </div>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={MoneyReceiveCircleIcon} size={20} />
+              Update Remittance for All Orders
+            </DialogTitle>
+            <DialogDescription>
+              {selectedUserGroup?.user?.name} - {selectedUserGroup?.order_count} orders - Total COD: {formatCurrency(selectedUserGroup?.total_cod_amount || 0)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Remittance Status</Label>
+              <Select
+                value={remittanceForm.remittance_status}
+                onValueChange={(v) => { if (v) setRemittanceForm(prev => ({ ...prev, remittance_status: v })) }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="PROCESSING">Processing</SelectItem>
+                  <SelectItem value="REMITTED">Remitted</SelectItem>
+                  <SelectItem value="FAILED">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Payout Status (To User)</Label>
+              <Select
+                value={remittanceForm.payout_status}
+                onValueChange={(v) => { if (v) setRemittanceForm(prev => ({ ...prev, payout_status: v })) }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {remittanceForm.remittance_status === "REMITTED" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Remitted Amount</Label>
+                  <Input
+                    type="number"
+                    value={remittanceForm.remitted_amount}
+                    onChange={(e) => setRemittanceForm(prev => ({ ...prev, remitted_amount: e.target.value }))}
+                    placeholder="Enter remitted amount"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Reference ID (Optional)</Label>
+                  <Input
+                    value={remittanceForm.remittance_ref_id}
+                    onChange={(e) => setRemittanceForm(prev => ({ ...prev, remittance_ref_id: e.target.value }))}
+                    placeholder="Transaction reference ID"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate} disabled={isUpdating}>
+              {isUpdating ? (
+                <>
+                  <HugeiconsIcon icon={Loading03Icon} className="animate-spin mr-2" size={16} />
+                  Updating...
+                </>
+              ) : (
+                "Update All Orders"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Tabs>
   )
 }

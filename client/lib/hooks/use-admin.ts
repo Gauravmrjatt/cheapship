@@ -329,6 +329,78 @@ export const useProcessWithdrawal = () => {
   });
 };
 
+export interface WithdrawalUserGroup {
+  id: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    upi_id?: string;
+    mobile?: string;
+    wallet_balance: number;
+  };
+  request_count: number;
+  total_amount: number;
+  pending_amount: number;
+  approved_amount: number;
+  rejected_amount: number;
+  status: string;
+  created_at: string;
+}
+
+export interface AdminWithdrawalUserGroupsResponse {
+  data: WithdrawalUserGroup[];
+  pagination: {
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  };
+}
+
+export const useAdminWithdrawalUserGroups = (
+  page: number = 1,
+  pageSize: number = 10,
+  status: string = "ALL",
+  search?: string
+) => {
+  const http = useHttp();
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+    status
+  });
+  if (search) queryParams.append("search", search);
+  return useQuery<AdminWithdrawalUserGroupsResponse>(http.get<AdminWithdrawalUserGroupsResponse>(["admin-withdrawals", page, pageSize, status, search], `/admin/withdrawals?${queryParams.toString()}`));
+};
+
+export const useProcessUserWithdrawals = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async ({ userId, status, reference_id }: { userId: string, status: 'APPROVED' | 'REJECTED', reference_id?: string }) => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/withdrawals/user/${userId}/process`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
+        },
+        body: JSON.stringify({ status, reference_id })
+      });
+      if (!response.ok) throw new Error('Failed to process withdrawals');
+      return response.json();
+    },
+    onSuccess: () => {
+      sileo.success({ title: "All withdrawals processed" });
+      queryClient.invalidateQueries({ queryKey: ["admin-withdrawals"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
+    onError: (error: Error) => {
+      sileo.error({ title: "Error", description: error.message || "Failed to process withdrawals" });
+    }
+  });
+};
+
 export const useGlobalSettings = () => {
   const http = useHttp();
   return useQuery(http.get<{ rate: number }>(["global-commission"], "/admin/settings/global-commission"));
@@ -777,7 +849,93 @@ export const useAdminSecurityDeposits = (page: number = 1, pageSize: number = 20
 export const useAdminSecurityDepositByOrder = (orderId: string) => {
   const http = useHttp();
   return useQuery(http.get<AdminSecurityDeposit>(
-    ["admin-security-deposit-by-order", orderId],
+    ["admin-security-deposit", orderId],
     `/admin/settings/security-deposits/${orderId}`
   ));
+};
+
+export interface CODUserGroup {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    upi_id?: string;
+    mobile?: string;
+  };
+  order_count: number;
+  total_cod_amount: number;
+  total_remitted_amount: number;
+  pending_amount: number;
+  remittance_status: string;
+}
+
+export interface AdminCODOrdersResponse {
+  data: CODUserGroup[];
+  pagination: {
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  };
+  summary: {
+    totalPendingCOD: number;
+    totalRemitted: number;
+  };
+}
+
+export const useAdminCODUserGroups = (
+  page: number = 1,
+  pageSize: number = 10,
+  status: string = "ALL",
+  search: string = "",
+  order_source: string = "ALL"
+) => {
+  const http = useHttp();
+  let queryParams = `page=${page}&pageSize=${pageSize}`;
+  if (status !== "ALL") queryParams += `&remittance_status=${status}`;
+  if (search) queryParams += `&search=${encodeURIComponent(search)}`;
+  if (order_source !== "ALL") queryParams += `&order_source=${order_source}`;
+  
+  return useQuery<AdminCODOrdersResponse>(http.get<AdminCODOrdersResponse>(
+    ["admin-cod-orders", page, pageSize, status, search, order_source],
+    `/admin/cod-orders?${queryParams}`
+  ));
+};
+
+export const useUpdateUserCODRemittance = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    mutationFn: async ({ 
+      userId, 
+      remittance_status, 
+      remitted_amount, 
+      remittance_ref_id,
+      payout_status 
+    }: { 
+      userId: string; 
+      remittance_status: string; 
+      remitted_amount?: number; 
+      remittance_ref_id?: string;
+      payout_status?: string;
+    }) => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/cod-orders/user/${userId}/remittance`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
+        },
+        body: JSON.stringify({ remittance_status, remitted_amount, remittance_ref_id, payout_status })
+      });
+      if (!response.ok) throw new Error('Failed to update remittance');
+      return response.json();
+    },
+    onSuccess: () => {
+      sileo.success({ title: "Success", description: "COD remittance updated for all user orders" });
+      queryClient.invalidateQueries({ queryKey: ["admin-cod-orders"] });
+    },
+    onError: (error: Error) => {
+      sileo.error({ title: "Error", description: error.message || "Failed to update remittance" });
+    }
+  });
 };
