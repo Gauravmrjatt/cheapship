@@ -73,15 +73,6 @@ interface TrackingActivity {
   date?: string;
 }
 
-interface ShipmentHistory {
-  id: string;
-  status: string;
-  shipment_status: string
-  status_date: string;
-  location?: string;
-  activity?: string;
-}
-
 export default function OrderDetailsPage({
   params,
 }: {
@@ -459,43 +450,7 @@ export default function OrderDetailsPage({
             </CardHeader>
             <CardContent className="space-y-4">
               {liveStatus?.history && liveStatus.history.length > 0 && (
-
-                <div className="relative pl-4 border-l-2 p-0 m-0 border-dotted border-muted-foreground/20 max-h-[500px] overflow-scroll ">
-                  {liveStatus.history
-                    .filter((item: ShipmentHistory, idx: number, arr: ShipmentHistory[]) => {
-                      const firstIndex = arr.findIndex(h =>
-                        h.status_date === item.status_date && h.shipment_status === item.shipment_status
-                      );
-                      return firstIndex === idx;
-                    })
-                    .map((history: ShipmentHistory, index: number) => {
-                      const date = new Date(history.status_date);
-                      const day = date.getDate();
-                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                      const month = monthNames[date.getMonth()];
-                      const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-
-                      return (
-                        <div key={history.id || index} className="relative pb-9  last:pb-0">
-                          <div className="absolute -left-[28px] top-[10px] h-6 w-6 rounded-full bg-primary border-2 border-background" />
-                          <div className="flex gap-4">
-                            <div className="text-center flex-1">
-
-                              <p className="text-xl font-medium">{day} {month}</p>
-                              <p className="text-xs text-muted-foreground">{time}</p>
-
-                            </div>
-                            <div className="flex-3 flex justify-center flex-col">
-                              <p className="font-medium text-sm">{history.activity}</p>
-                              {history.location && <p className="text-xs text-muted-foreground mt-1 mb-2">{history.location}</p>}
-                              <ShipmentStatus status={history.shipment_status} />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-
+                <ShipmentTimeline liveStatus={liveStatus} />
               )}
 
               <div className="flex flex-wrap gap-3">
@@ -736,4 +691,79 @@ export default function OrderDetailsPage({
       </Dialog>
     </div>
   );
+};
+
+interface ShipmentHistory {
+  id?: string;
+  status_date: string;
+  activity: string;
+  location?: string;
+  shipment_status: string;
 }
+
+const ShipmentTimeline = ({ liveStatus }: { liveStatus: any }) => {
+  const now = new Date();
+
+  const filteredHistory = (liveStatus?.history || [])
+    .filter((item: ShipmentHistory, idx: number, arr: ShipmentHistory[]) => {
+      const itemDate = new Date(item.status_date);
+
+      if (itemDate > now) return false;
+
+      const firstIndex = arr.findIndex(h =>
+        h.status_date === item.status_date &&
+        h.shipment_status === item.shipment_status
+      );
+
+      return firstIndex === idx;
+    });
+
+  return (
+    <div className="relative pl-4 border-l-2 p-0 m-0 border-dotted border-muted-foreground/20 max-h-[500px] overflow-scroll">
+      {filteredHistory.map((history: ShipmentHistory, index: number) => {
+        const date = new Date(history.status_date);
+
+        const day = date.getDate();
+
+        const monthNames = [
+          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
+        const month = monthNames[date.getMonth()];
+
+        const time = date.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
+
+        return (
+          <div key={history.id || index} className="relative pb-9 last:pb-0">
+            <div className="absolute -left-[28px] top-[10px] h-6 w-6 rounded-full bg-primary border-2 border-background" />
+
+            <div className="flex gap-4">
+              <div className="text-center flex-1">
+                <p className="text-xl font-medium">
+                  {day} {month}
+                </p>
+                <p className="text-xs text-muted-foreground">{time}</p>
+              </div>
+
+              <div className="flex-3 flex justify-center flex-col">
+                <p className="font-medium text-sm">{history.activity}</p>
+
+                {history.location && (
+                  <p className="text-xs text-muted-foreground mt-1 mb-2">
+                    {history.location}
+                  </p>
+                )}
+
+<ShipmentStatus status={history.shipment_status} />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
