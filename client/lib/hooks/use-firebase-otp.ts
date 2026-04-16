@@ -28,6 +28,12 @@ const getFirebaseApp = () => {
   return getApp();
 };
 
+declare global {
+  interface Window {
+    recaptchaVerifier?: RecaptchaVerifier;
+  }
+}
+
 interface UseFirebaseOtpReturn {
   sendOtp: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (otp: string) => Promise<{ success: boolean; error?: string; verificationId?: string; idToken?: string }>;
@@ -35,13 +41,14 @@ interface UseFirebaseOtpReturn {
   loading: boolean;
   error: string | null;
   isConfigValid: boolean;
+  isVerifierReady: boolean;
 }
 
 export function useFirebaseOtp(): UseFirebaseOtpReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verificationId, setVerificationId] = useState<string | null>(null);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
+  const [isVerifierReady, setIsVerifierReady] = useState(false);
   const authRef = useRef<ReturnType<typeof getAuth> | null>(null);
 
   const isConfigValid = Boolean(
@@ -64,7 +71,7 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
     const auth = getAuth(app);
     authRef.current = auth;
 
-    if (!recaptchaVerifier) {
+    if (!window.recaptchaVerifier) {
       try {
         const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
           size: "invisible",
@@ -73,17 +80,28 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
           },
           "expired-callback": () => {
             setError("Recaptcha expired. Please try again.");
+            setIsVerifierReady(false);
           },
         });
-        setRecaptchaVerifier(verifier);
+
+        window.recaptchaVerifier = verifier;
+        
+        verifier.render().then(() => {
+          console.log("reCAPTCHA ready");
+          setIsVerifierReady(true);
+        }).catch((err) => {
+          console.error("Recaptcha render error:", err);
+        });
       } catch (err) {
         console.error("Failed to create RecaptchaVerifier:", err);
       }
+    } else {
+      setIsVerifierReady(true);
     }
 
     return () => {
-      if (recaptchaVerifier) {
-        recaptchaVerifier.clear();
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
       }
     };
   }, [isConfigValid]);
@@ -93,8 +111,8 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
       return { success: false, error: "Firebase not configured. Please add Firebase credentials to .env" };
     }
 
-    if (!authRef.current || !recaptchaVerifier) {
-      return { success: false, error: "Firebase not initialized" };
+    if (!authRef.current || !window.recaptchaVerifier) {
+      return { success: false, error: "Firebase not initialized. Please refresh and try again." };
     }
 
     setLoading(true);
@@ -102,11 +120,11 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
 
     try {
       const formattedPhone = phoneNumber.startsWith("+") ? phoneNumber : `+91${phoneNumber}`;
-      
+
       const confirmationResult = await signInWithPhoneNumber(
         authRef.current,
         formattedPhone,
-        recaptchaVerifier
+        window.recaptchaVerifier
       );
 
       setVerificationId(confirmationResult.verificationId);
@@ -131,14 +149,14 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
     try {
       const credential = PhoneAuthProvider.credential(verificationId, otp);
       const result = await signInWithCredential(authRef.current!, credential);
-      
+
       const idToken = await result.user.getIdToken();
-      
+
       setLoading(false);
-      return { 
-        success: true, 
+      return {
+        success: true,
         verificationId: result.user.uid,
-        idToken: idToken 
+        idToken: idToken
       };
     } catch (err: any) {
       setLoading(false);
@@ -155,5 +173,6 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
     loading,
     error,
     isConfigValid,
+    isVerifierReady,
   };
 }

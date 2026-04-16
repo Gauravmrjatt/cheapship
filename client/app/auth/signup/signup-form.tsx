@@ -77,7 +77,7 @@ export default function SignUpForm() {
       }
     }
   }, []);
-  
+
   const [state, setState] = useState({
     step: 1 as 1 | 2 | 3,
     mobile: "",
@@ -198,7 +198,7 @@ export default function SignUpForm() {
   const handleAgreementAccepted = async () => {
     const mobile = state.pendingMobile;
     setState(prev => ({ ...prev, showAgreementDialog: false }));
-    
+
     if (firebaseOtp.isConfigValid) {
       const result = await firebaseOtp.sendOtp(mobile);
       if (result.success) {
@@ -220,11 +220,11 @@ export default function SignUpForm() {
     if (firebaseOtp.isConfigValid && firebaseOtp.verificationId) {
       const result = await firebaseOtp.verifyOtp(values.otp);
       if (result.success) {
-        setState(prev => ({ 
-          ...prev, 
-          verificationToken: result.verificationId!, 
+        setState(prev => ({
+          ...prev,
+          verificationToken: result.verificationId!,
           firebaseIdToken: result.idToken!,
-          step: 3 
+          step: 3
         }));
         sileo.success({ title: "Verified", description: "Mobile number verified successfully" });
       } else {
@@ -236,10 +236,10 @@ export default function SignUpForm() {
   };
 
   const onDetailsSubmit = (values: DetailsRegFormData) => {
-    const token = firebaseOtp.isConfigValid && state.firebaseIdToken 
-      ? state.firebaseIdToken 
+    const token = firebaseOtp.isConfigValid && state.firebaseIdToken
+      ? state.firebaseIdToken
       : (state.verificationToken || "skipped_verification");
-    
+
     completeRegMutation.mutate({
       verificationToken: token,
       mobile: state.mobile,
@@ -250,7 +250,7 @@ export default function SignUpForm() {
 
   const handleResendOtp = async () => {
     if (state.countdown > 0) return;
-    
+
     if (firebaseOtp.isConfigValid) {
       const result = await firebaseOtp.sendOtp(state.mobile);
       if (result.success) {
@@ -321,6 +321,7 @@ export default function SignUpForm() {
               ) : null}
               {initMobileMutation.isPending || firebaseOtp.loading ? "Sending OTP..." : "Get OTP"}
             </Button>
+            {initMobileMutation.isPending || firebaseOtp.loading ? "Please wait 10-15 seconds to get OTP" : ""}
             <div className="text-center text-sm">
               Already have an account?{" "}
               <Link href="/auth/signin" className="underline font-medium text-primary">
@@ -370,7 +371,7 @@ export default function SignUpForm() {
                 variant="link"
                 className="p-0 h-auto text-xs"
                 onClick={handleResendOtp}
-                disabled={state.countdown > 0 || initMobileMutation.isPending || firebaseOtp.loading}
+                disabled={state.countdown > 0 || initMobileMutation.isPending || firebaseOtp.loading || (firebaseOtp.isConfigValid && !firebaseOtp.isVerifierReady)}
               >
                 {state.countdown > 0 ? `Resend OTP in ${state.countdown}s` : "Resend OTP"}
               </Button>
@@ -450,7 +451,7 @@ export default function SignUpForm() {
           </CardFooter>
         </form>
       )}
-      
+
       <div id="recaptcha-container" style={{ position: "absolute", left: "-9999px" }} />
 
       {/* Digital Agreement Dialog */}
@@ -479,8 +480,8 @@ export default function SignUpForm() {
             <Button variant="outline" onClick={handleAgreementDeclined} className="flex-1">
               Cancel
             </Button>
-            <Button onClick={handleAgreementAccepted} className="flex-1" disabled={initMobileMutation.isPending || firebaseOtp.loading}>
-              {(initMobileMutation.isPending || firebaseOtp.loading) ? (
+            <Button onClick={handleAgreementAccepted} className="flex-1" disabled={initMobileMutation.isPending || firebaseOtp.loading || (firebaseOtp.isConfigValid && !firebaseOtp.isVerifierReady)}>
+              {(initMobileMutation.isPending || firebaseOtp.loading || (firebaseOtp.isConfigValid && !firebaseOtp.isVerifierReady)) ? (
                 <HugeiconsIcon icon={Loading03Icon} className="animate-spin mr-2 h-4 w-4" />
               ) : null}
               I Agree

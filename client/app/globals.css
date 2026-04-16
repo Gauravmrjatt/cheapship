@@ -118,6 +118,10 @@
 [data-sileo-viewport] {
   z-index: 1000 !important;
 }
+#recaptcha-container {
+  display: none;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
