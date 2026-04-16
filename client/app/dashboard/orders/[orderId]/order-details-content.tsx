@@ -352,11 +352,11 @@ export default function OrderDetailsPage({
 
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Shipping Amount</p>
-              <p className="font-semibold">₹{order.total_amount}</p>
+              <p className="font-semibold">₹{order.shipment_status === "DRAFT" ? <>0</> : order.total_amount}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Product Value</p>
-              <p className="font-semibold">₹{order.product_amount || order.total_amount}</p>
+             <p className="font-semibold">₹{order.shipment_status === "DRAFT" ? <>0</> : order.total_amount}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Order Type</p>

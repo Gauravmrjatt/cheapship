@@ -2,13 +2,13 @@
 
 import * as React from "react";
 import { useState } from "react";
-import { 
-  useFranchiseOrders, 
+import {
+  useFranchiseOrders,
   FranchiseOrder
 } from "@/lib/hooks/use-franchise";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { 
+import {
   ShoppingBasket01Icon,
   SearchIcon,
   Package01Icon,
@@ -19,18 +19,18 @@ import {
 } from "@hugeicons/core-free-icons";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
-import { 
-  Tabs, 
-  TabsList, 
-  TabsTrigger 
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger
 } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ export function FranchiseOrdersDataTable({ franchiseId, franchiseName }: Franchi
   const filteredOrders = React.useMemo(() => {
     if (!data?.data) return [];
     if (!search) return data.data;
-    return data.data.filter((order: FranchiseOrder) => 
+    return data.data.filter((order: FranchiseOrder) =>
       order.id.toString().toLowerCase().includes(search.toLowerCase())
     );
   }, [data, search]);
@@ -94,7 +94,7 @@ export function FranchiseOrdersDataTable({ franchiseId, franchiseName }: Franchi
             <TableRow>
               <TableHead>Order ID</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total Amount</TableHead>
+              {/* <TableHead className="text-right">Total Amount</TableHead> */}
               <TableHead className="text-right text-primary">Your Profit</TableHead>
               <TableHead>Date</TableHead>
             </TableRow>
@@ -137,11 +137,16 @@ export function FranchiseOrdersDataTable({ franchiseId, franchiseName }: Franchi
                       );
                     })()}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  {/* <TableCell className="text-right font-medium">
                     {formatCurrency(Number(order.shipping_charge || order.total_amount))}
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell className="text-right font-semibold text-green-600">
-                    + {formatCurrency(Number(order.franchise_commission_amount || 0))}
+                    {(() => {
+                      const s = order.shipment_status.toUpperCase();
+                      return s === 'DRAFT'
+                        ? 0
+                        : formatCurrency(Number(order.franchise_commission_amount || 0));
+                    })()}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(order.created_at).toLocaleDateString("en-IN", {

@@ -25,33 +25,37 @@ class LabelCustomizer {
             // 2. Load PDF
             // ===============================
             const pdfDoc = await PDFDocument.load(originalPdfBuffer);
-            const pages = pdfDoc.getPages();
-            const firstPage = pages[0];
+            const firstPage = pdfDoc.getPages()[0];
 
             const { width, height } = firstPage.getSize();
 
             // ===============================
-            // 3. REMOVE SHIPROCKET BORDERS
-            // (Crop edges where branding exists)
+            // 3. SAFE CROP (Fix right cut issue)
             // ===============================
-            const cropMargin = 6; // adjust 15–25 if needed
+            const cropLeft = 6;
+            const cropBottom = 6;
+            const cropRight = 2;   // 👈 smaller to avoid cutting barcode/text
+            const cropTop = 6;
+
+            const newWidth = width - cropLeft - cropRight;
+            const newHeight = height - cropBottom - cropTop;
 
             firstPage.setCropBox(
-                cropMargin,
-                cropMargin,
-                width - cropMargin * 2,
-                height - cropMargin * 2
+                cropLeft,
+                cropBottom,
+                newWidth,
+                newHeight
             );
 
             firstPage.setMediaBox(
-                cropMargin,
-                cropMargin,
-                width - cropMargin * 2,
-                height - cropMargin * 2
+                cropLeft,
+                cropBottom,
+                newWidth,
+                newHeight
             );
 
             // ===============================
-            // 4. Add CHEAPSHIP Branding
+            // 4. Fonts
             // ===============================
             const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
             const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -59,18 +63,22 @@ class LabelCustomizer {
             const margin = 10;
             const boxHeight = 55;
 
-            // White branding box
+            // ===============================
+            // 5. White Branding Box
+            // ===============================
             firstPage.drawRectangle({
                 x: margin,
                 y: margin,
-                width: width - margin * 2,
+                width: newWidth - margin * 2,
                 height: boxHeight,
                 color: rgb(1, 1, 1),
                 borderColor: rgb(0, 0, 0),
                 borderWidth: 1,
             });
 
-            // Brand Name
+            // ===============================
+            // 6. Left Content
+            // ===============================
             firstPage.drawText('CHEAPSHIP', {
                 x: margin + 12,
                 y: margin + 32,
@@ -79,7 +87,6 @@ class LabelCustomizer {
                 color: rgb(0.14, 0.39, 0.92),
             });
 
-            // Support
             firstPage.drawText('Support: +91 92511 20521', {
                 x: margin + 12,
                 y: margin + 15,
@@ -88,18 +95,21 @@ class LabelCustomizer {
                 color: rgb(0.2, 0.2, 0.2),
             });
 
-            // Instagram
+            // ===============================
+            // 7. RIGHT SIDE (FIXED POSITION)
+            // ===============================
+            const rightPadding = 160;
+
             firstPage.drawText('Insta: @cheapship.in', {
-                x: width - 170,
+                x: newWidth - rightPadding,
                 y: margin + 32,
                 size: 9,
                 font: fontRegular,
                 color: rgb(0.2, 0.2, 0.2),
             });
 
-            // Hashtag
             firstPage.drawText('#AapkaShippingPartner', {
-                x: width - 170,
+                x: newWidth - rightPadding,
                 y: margin + 15,
                 size: 8,
                 font: fontRegular,
@@ -107,7 +117,7 @@ class LabelCustomizer {
             });
 
             // ===============================
-            // 5. Save Modified PDF and Upload to Cloudinary
+            // 8. Save & Upload
             // ===============================
             const pdfBytes = await pdfDoc.save();
 
@@ -119,16 +129,16 @@ class LabelCustomizer {
                 return uploadResult.secure_url;
             } catch (uploadError) {
                 console.error('Cloudinary upload failed, saving locally:', uploadError);
+
                 const filename = `label_${orderId}_${Date.now()}.pdf`;
                 const filePath = path.join(this.publicDir, filename);
+
                 fs.writeFileSync(filePath, pdfBytes);
                 return `/labels/${filename}`;
             }
 
         } catch (error) {
             console.error('Label customization failed:', error);
-
-            // fallback to original label
             return labelUrl;
         }
     }
