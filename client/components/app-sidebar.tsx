@@ -185,8 +185,8 @@ export const data = {
       ),
     },
     {
-      title: "Franchise",
-      url: "/dashboard/franchise",
+      title: "Refer & Earn",
+      url: "/dashboard/refer-earn",
       icon: (
         <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />
       ),

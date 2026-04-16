@@ -28,6 +28,9 @@ import {
 } from "@hugeicons/core-free-icons"
 import { CODOrder } from "./cod-orders-data-table"
 
+const getPercentage = (value: number, total: number): number =>
+  total ? Number(((value / 100) * total).toFixed(2)) : 0;
+
 const formatCurrency = (amount: number | null) => {
   if (!amount) return "-"
   return new Intl.NumberFormat("en-IN", {
@@ -65,7 +68,8 @@ export function RemittanceDialog({
   onUpdate,
   isUpdating,
 }: RemittanceDialogProps) {
-  const upiString = `upi://pay?pa=${selectedOrder?.user?.upi_id}&am=${selectedOrder?.cod_amount}`;
+  const amountToPay = (selectedOrder?.cod_amount || 0) -  getPercentage(2, selectedOrder?.cod_amount || 0) ;
+  const upiString = `upi://pay?pa=${selectedOrder?.user?.upi_id}&am=${amountToPay}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiString)}`;
 
 
@@ -117,7 +121,7 @@ export function RemittanceDialog({
           </div>
 
           {remittanceForm.payout_status === "PENDING" && selectedOrder?.user?.upi_id && (
-            <div className="p-4 bg-muted/50 rounded-lg flex flex-col items-center justify-center gap-3">
+            <div className="p-4 bg-white rounded-lg flex flex-col items-center justify-center gap-3">
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pay via UPI App</p>
               <Image
                 src={`${qrUrl}`}
@@ -126,8 +130,8 @@ export function RemittanceDialog({
                 height={150}
                 className="rounded-md shadow-sm bg-white p-2 object-contain mix-blend-multiply"
               />
-              <p className="text-xs font-medium text-center">{selectedOrder.user.upi_id}</p>
-              <p className="text-[10px] text-muted-foreground text-center">Scan to pay exactly {formatCurrency(selectedOrder.cod_amount)}</p>
+              <p className="text-xs font-medium text-black text-center">{selectedOrder.user.upi_id}</p>
+              <p className="text-[10px] text-muted-foreground text-center">Scan to pay exactly {formatCurrency(amountToPay)}</p>
             </div>
           )}
 
