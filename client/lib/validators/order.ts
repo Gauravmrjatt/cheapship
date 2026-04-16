@@ -30,14 +30,20 @@ export const calculateRateSchema = z.object({
   is_insured: z.boolean().optional(),
 });
 
+const coerceNumber = (val: unknown, fallback = undefined): number | undefined => {
+  if (val === "" || val === null || val === undefined) return fallback;
+  const num = Number(val);
+  return isNaN(num) ? fallback : num;
+};
+
 export const createOrderSchema = z.object({
   order_type: z.enum(["SURFACE", "EXPRESS", "CARGO"]),
   shipment_type: z.enum(["DOMESTIC", "INTERNATIONAL"]),
   payment_mode: z.enum(["PREPAID", "COD"]),
-  weight: z.number().min(100, "Weight must be at least 100g").max(1000000, "Weight cannot exceed 1000000g (1000kg)"),
-  length: z.number().min(1, "Length is required"),
-  width: z.number().min(1, "Width is required"),
-  height: z.number().min(1, "Height is required"),
+  weight: z.coerce.number().min(100, "Weight must be at least 100g").max(1000000, "Weight cannot exceed 1000000g (1000kg)"),
+  length: z.coerce.number().min(1, "Length is required"),
+  width: z.coerce.number().min(1, "Width is required"),
+  height: z.coerce.number().min(1, "Height is required"),
   total_amount: z.number().min(1, "Total amount is required"),
   // COD amount is only required when payment_mode is COD
   cod_amount: z.preprocess((val) => (val === "" || val === null || val === undefined ? undefined : Number(val)), z.number().optional()),
@@ -104,11 +110,11 @@ export const shiprocketPickupSchema = z.object({
 export const courierRateInputSchema = z.object({
   pickup_pincode: z.string().min(6, "Pickup pincode is required"),
   delivery_pincode: z.string().min(6, "Delivery pincode is required"),
-  weight: z.number().min(100, "Weight must be at least 100g").max(1000000, "Weight cannot exceed 1000000g (1000kg)"),
+  weight: z.coerce.number().min(100, "Weight must be at least 100g").max(1000000, "Weight cannot exceed 1000000g (1000kg)"),
   cod: z.boolean(),
-  declared_value: z.number().min(1, "Value is required"),
-  length: z.number().min(1, "Length is required"),
-  width: z.number().min(1, "Width is required"),
-  height: z.number().min(1, "Height is required"),
+  declared_value: z.coerce.number().min(1, "Value is required"),
+  length: z.coerce.number().min(1, "Length is required"),
+  width: z.coerce.number().min(1, "Width is required"),
+  height: z.coerce.number().min(1, "Height is required"),
   mode: z.enum(["Surface", "Air"]),
 });
