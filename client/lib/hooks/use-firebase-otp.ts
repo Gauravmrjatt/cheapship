@@ -50,6 +50,7 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
   const [verificationId, setVerificationId] = useState<string | null>(null);
   const [isVerifierReady, setIsVerifierReady] = useState(false);
   const authRef = useRef<ReturnType<typeof getAuth> | null>(null);
+  const isMountedRef = useRef(true);
 
   const isConfigValid = Boolean(
     firebaseConfig.apiKey &&
@@ -98,13 +99,13 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
     } else {
       setIsVerifierReady(true);
     }
-
-    return () => {
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-      }
-    };
   }, [isConfigValid]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const sendOtp = async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
     if (!isConfigValid) {
@@ -115,6 +116,7 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
       return { success: false, error: "Firebase not initialized. Please refresh and try again." };
     }
 
+    isMountedRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -127,10 +129,13 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
         window.recaptchaVerifier
       );
 
+      if (!isMountedRef.current) return { success: false, error: "Component unmounted" };
+
       setVerificationId(confirmationResult.verificationId);
       setLoading(false);
       return { success: true };
     } catch (err: any) {
+      if (!isMountedRef.current) return { success: false, error: "Component unmounted" };
       setLoading(false);
       const errorMessage = err.message || "Failed to send OTP";
       setError(errorMessage);
@@ -143,14 +148,21 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
       return { success: false, error: "No verification ID found. Please request OTP first." };
     }
 
+    if (!authRef.current) {
+      return { success: false, error: "Firebase not initialized. Please refresh and try again." };
+    }
+
+    isMountedRef.current = true;
     setLoading(true);
     setError(null);
 
     try {
       const credential = PhoneAuthProvider.credential(verificationId, otp);
-      const result = await signInWithCredential(authRef.current!, credential);
+      const result = await signInWithCredential(authRef.current, credential);
 
       const idToken = await result.user.getIdToken();
+
+      if (!isMountedRef.current) return { success: false, error: "Component unmounted" };
 
       setLoading(false);
       return {
@@ -159,6 +171,7 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
         idToken: idToken
       };
     } catch (err: any) {
+      if (!isMountedRef.current) return { success: false, error: "Component unmounted" };
       setLoading(false);
       const errorMessage = err.message || "Invalid OTP";
       setError(errorMessage);
