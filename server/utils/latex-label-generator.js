@@ -111,6 +111,26 @@ class LatexLabelGenerator {
         return { barcodePath, qrcodePath };
     }
 
+    buildProductRows(products) {
+        let rows = '';
+        
+        if (!products || products.length === 0) {
+            rows = 'N/A & N/A & 1 & Rs.0.00 & & Rs.0.00 & Rs.0.00 \\\\\n';
+        } else {
+            products.forEach((product) => {
+                const name = this.escapeLatex((product.name || product.product_name || 'N/A').substring(0, 12));
+                const sku = this.escapeLatex((product.sku || product.channel_sku || 'N/A').substring(0, 10));
+                const qty = product.quantity || 1;
+                const price = Number(product.price || product.selling_price || 0);
+                const taxable = price;
+                const total = price * qty;
+                rows += `${name} & ${sku} & ${qty} & Rs.${this.formatINR(price)} & & Rs.${this.formatINR(taxable)} & Rs.${this.formatINR(total)} \\\\\n`;
+            });
+        }
+        
+        return rows;
+    }
+
     buildProductTable(products) {
         let table = '\\begin{tabular}{|l|l|l|l|l|l|l|}\\hline\n';
         table += '\\textbf{Item} & \\textbf{SKU} & \\textbf{Qty} & \\textbf{Price} & \\textbf{HSN} & \\textbf{Total} \\\\\n\\hline\n';
@@ -174,6 +194,7 @@ class LatexLabelGenerator {
             receiver_address: this.escapeLatex(receiver.address || ''),
             receiver_city: this.escapeLatex(receiver.city || ''),
             receiver_state: this.escapeLatex(receiver.state || ''),
+            receiver_country: this.escapeLatex(receiver.country || 'India'),
             receiver_pincode: receiver.pincode || '',
             receiver_phone: receiver.phone || '',
             sender_name: this.escapeLatex(pickup.name || ''),
@@ -191,7 +212,7 @@ class LatexLabelGenerator {
             order_date: this.formatDate(order.created_at),
             dimensions: dimensions,
             weight: order.weight || '0.2',
-            payment_mode_upper: paymentMode,
+            payment_mode: paymentMode,
             total_amount: this.formatINR(order.total_amount),
             platform_fee: this.formatINR(order.platform_fee || 0),
             shipping_charge: this.formatINR(order.shipping_charge || 0),
@@ -201,12 +222,8 @@ class LatexLabelGenerator {
             ewaybillno: order.ewaybillno || '',
             routing_code: order.routing_code || 'NA',
             rto_routing_code: order.rto_routing_code || 'NA',
-            product_table: this.buildProductTable(order.products || [])
+            product_rows: this.buildProductRows(order.products || [])
         };
-
-        data.barcode_placeholder = data.awb_code ? '\\includegraphics[height=1cm,width=4cm]{BARCODE\_PATH}' : '';
-        data.qr_placeholder_left = data.awb_code ? '\\fbox{\\includegraphics[width=1.5cm]{QR\_PATH}}' : '';
-        data.qr_placeholder_right = data.awb_code ? '\\fbox{\\includegraphics[width=1.5cm]{QR\_PATH}}' : '';
 
         let templatePath = path.join(this.templatesDir, 'label-template.tex');
         let template = fs.readFileSync(templatePath, 'utf8');
@@ -223,13 +240,17 @@ class LatexLabelGenerator {
         const absQrcodePath = qrcodePath ? path.resolve(qrcodePath) : '';
 
         if (absBarcodePath) {
-            template = template.replace('BARCODE\_PLACEHOLDER', `\\includegraphics[height=1cm,width=4cm]{${absBarcodePath}}`);
-            template = template.replace('BARCODE_PATH', absBarcodePath);
+            template = template.replace('BARCODE_IMAGE', `\\includegraphics[height=1.2cm,width=3.8cm]{${absBarcodePath}}`);
+        } else {
+            template = template.replace('BARCODE_IMAGE', '\\rule{3.8cm}{1.2cm}');
         }
+
         if (absQrcodePath) {
-            template = template.replace('QR\_PLACEHOLDER\_LEFT', `\\fbox{\\includegraphics[width=1.5cm]{${absQrcodePath}}}`);
-            template = template.replace('QR\_PLACEHOLDER\_RIGHT', `\\fbox{\\includegraphics[width=1.5cm]{${absQrcodePath}}}`);
-            template = template.replace('QR_PATH', absQrcodePath);
+            template = template.replace('QR_LEFT', `\\fbox{\\includegraphics[width=1.8cm,height=1.8cm]{${absQrcodePath}}}`);
+            template = template.replace('QR_RIGHT', `\\fbox{\\includegraphics[width=1.8cm,height=1.8cm]{${absQrcodePath}}}`);
+        } else {
+            template = template.replace('QR_LEFT', '\\rule{1.8cm}{1.8cm}');
+            template = template.replace('QR_RIGHT', '\\rule{1.8cm}{1.8cm}');
         }
 
         template = template.replace(/BARCODE\_PLACEHOLDER/, '').replace(/QR\_PLACEHOLDER\_LEFT/, '').replace(/QR\_PLACEHOLDER\_RIGHT/, '');

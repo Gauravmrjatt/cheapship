@@ -1,107 +1,133 @@
 \documentclass[a4paper,10pt]{article}
 \usepackage[utf8]{inputenc}
-\usepackage[margin=15mm]{geometry}
+\usepackage[margin=20mm, top=15mm, bottom=15mm]{geometry}
 \usepackage{array}
+\usepackage{tabularx}
 \usepackage{graphicx}
+\usepackage{tikz}
 \usepackage{xcolor}
 \usepackage{fontawesome}
 \usepackage{helvet}
+\usepackage{changepage}
 
 \definecolor{cbwpurple}{RGB}{102, 45, 145}
 \definecolor{whatsappgreen}{RGB}{37, 211, 102}
+\definecolor{cbwborder}{HTML}{6469F0}
 
 \raggedright
 \pagestyle{empty}
 
 \begin{document}
 
-\noindent
-\begin{tabular}{|p{10cm}|}
+\begin{tikzpicture}[remember picture, overlay]
+    \def\cbw{\textbf{CASHBACKWALLAH} \hspace{1.5em}}
+    \def\cbwline{\mbox{\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw}}
+    
+    \node[anchor=center, text=cbwborder, font=\small, inner sep=0pt] at ([yshift=-4mm]current page.north) {\cbwline};
+    \node[anchor=center, text=cbwborder, font=\small, inner sep=0pt] at ([yshift=4mm]current page.south) {\cbwline};
+    \node[anchor=center, text=cbwborder, font=\small, inner sep=0pt, rotate=90] at ([xshift=4mm]current page.west) {\cbwline};
+    \node[anchor=center, text=cbwborder, font=\small, inner sep=0pt, rotate=-90] at ([xshift=-4mm]current page.east) {\cbwline};
+\end{tikzpicture}
+
+\newcommand{\flushlines}{\vspace{-\arrayrulewidth}}
+
+\begin{tabularx}{\textwidth}{|X|}
 \hline
 \textbf{Ship To} \\
-\textbf{RECEIVER\_NAME} \\
-RECEIVER\_ADDRESS \\
-RECEIVER\_CITY, RECEIVER\_STATE, India \\
-RECEIVER\_PINCODE \\
-\textbf{RECEIVER\_PHONE} \\
+{\large \textbf{{{receiver_name}}}} \\
+{{{receiver_address}}} \\
+{{{receiver_city}}}, {{{receiver_state}}}, {{{receiver_country}}} \\
+{{{receiver_pincode}}} \\
+\textbf{{{receiver_phone}}} \\
 \hline
-\end{tabular}
+\end{tabularx}
+\flushlines
 
-\bigskip
-\noindent
-\begin{tabular}{p{5cm}p{5cm}}
+\begin{tabularx}{\textwidth}{|X r|}
 \begin{tabular}[t]{@{}l@{}}
-Dimensions: DIMENSIONS \\
-Payment: PAYMENT\_MODE \\
-Order Total: Rs.TOTAL\_AMOUNT \\
-Weight: WEIGHT kg
-\end{tabular} &
+Dimensions: {{{dimensions}}} \\
+Payment: \textbf{{{payment_mode}}} \\
+Order Total: \textbf{Rs.{{total_amount}}} \\
+Weight: {{{weight}}} kg \\
+EWaybill No: {{{ewaybillno}}} \\
+Routing code: {{{routing_code}}} \\
+RTO Routing code: {{{rto_routing_code}}}
+\end{tabular} & 
 \begin{tabular}[t]{@{}r@{}}
-\textbf{COURIER\_NAME} \\
-AWB: AWB\_CODE \\
-BARCODE\_PLACEHOLDER
+\textbf{{{courier_name}}} \\
+AWB: \textbf{{{awb_code}}} \\
+BARCODE_IMAGE
 \end{tabular} \\
 \hline
-\end{tabular}
+\end{tabularx}
+\flushlines
 
-\bigskip
-\noindent
-\begin{tabular}{p{5cm}p{5cm}}
+\begin{tabularx}{\textwidth}{|X r|}
 \begin{tabular}[t]{@{}l@{}}
-\textbf{Shipped By} \\
-\textbf{SENDER\_NAME} \\
-SENDER\_ADDRESS \\
-SENDER\_CITY, SENDER\_STATE \\
-SENDER\_PINCODE \\
-SENDER\_PHONE
-\end{tabular} &
+\textbf{Shipped By} \textit{(if undelivered, return to)} \\
+\textbf{{{sender_name}}} \\
+{{{sender_address}}} \\
+{{{sender_city}}}, {{{sender_state}}} \\
+{{{sender_pincode}}} \\
+{{{sender_phone}}} \\
+Customer Care: 1800-123-4567 \\
+Customer Email: {{{sender_email}}}
+\end{tabular} & 
 \begin{tabular}[t]{@{}r@{}}
-Order\#: ORDER\_ID \\
-Invoice No. INVOICE\_NO \\
-Invoice Date: INVOICE\_DATE \\
-Order Date: ORDER\_DATE \\
-GSTIN: GSTIN
+Order\#: \textbf{{{order_id}}} \\
+Invoice No. \textbf{{{invoice_no}}} \\
+Invoice Date: {{{invoice_date}}} \\
+Order Date: {{{order_date}}} \\
+GSTIN: {{{gstin}}}
 \end{tabular} \\
 \hline
-\end{tabular}
+\end{tabularx}
+\flushlines
 
-\bigskip
-PRODUCT\_TABLE
+\small
+\begin{tabularx}{\textwidth}{|l X c r c c r|}
+\textbf{Item} & \textbf{SKU} & \textbf{Qty} & \textbf{Price} & \textbf{HSN} & \textbf{Taxable Value} & \textbf{Total} \\
+\hline
+{{product_rows}}
+\hline
+\end{tabularx}
+\flushlines
 
-\bigskip
-\noindent
-\begin{tabular}{p{5cm}p{5cm}}
-Platform Fee: Rs.PLATFORM\_FEE & Discount: Rs.DISCOUNT \\
-Shipping Charges: Rs.SHIPPING\_CHARGE & \textbf{Collectable Amount: Rs.COLLECTABLE} \\
+\normalsize
+\begin{tabularx}{\textwidth}{|X r|}
+Platform Fee: Rs.{{platform_fee}} & Discount: Rs.{{discount}} \\
+Shipping Charges: Rs.{{shipping_charge}} & \textbf{Collectable Amount: Rs.{{collectable_amount}}} \\
 \hline
-\end{tabular}
+\end{tabularx}
+\flushlines
 
-\bigskip
-\noindent
-\begin{tabular}{|p{10cm}|}
+\begin{tabularx}{\textwidth}{|X|}
+\small \textbf{All disputes are subject to Haryana Jurisdiction only. Goods once sold will only be taken back or exchanged as per store's exchange and return policy} \\
 \hline
-All disputes subject to Haryana Jurisdiction. \\
+\scriptsize This is an auto generated label and does not require any signature. \\
+\vspace{4.5cm} \\ 
 \hline
-Auto generated label - no signature required. \\
-\hline
-\end{tabular}
+\end{tabularx}
 
-\vspace{1cm}
+\vspace{100pt}
 
 \begin{center}
-\begin{tabular}{c@{\hspace{1cm}}c@{\hspace{1cm}}c}
+\begin{tabular}{@{} c @{\hspace{1.8cm}} c @{\hspace{1.9cm}} c @{}}
 \begin{tabular}[c]{@{}c@{}}
-QR\_PLACEHOLDER\_LEFT \\
-\textbf{Cashback on WhatsApp}
+QR_LEFT \\
+\fontsize{6pt}{7pt}\selectfont \textbf{Get Instant Cashback} \\
+\fontsize{6pt}{7pt}\selectfont \textbf{Offers on WhatsApp}
 \end{tabular} &
 \begin{tabular}[c]{@{}c@{}}
-\textbf{\LARGE\color{cbwpurple}CASHBACKWALLAH} \\
-\textcolor{whatsappgreen}{\faWhatsapp} +91 9251120521 \\
-\textcolor{cbwpurple}{\faInstagram} cashbackwallahuniverse
+{\fontsize{26pt}{26pt}\selectfont \textbf{\color{cbwpurple}CASHBACKWALLAH}} \\
+{\fontsize{7pt}{8pt}\selectfont \textbf{\color{cbwpurple}WORLD'S LARGEST \& MOST TRUSTED FLAT CASHBACK PLATFORM}} \\
+{\large \textcolor{whatsappgreen}{\faWhatsapp} \textbf{+91 92511 20521 | +91 95096 98208}} \\
+{\large \textcolor{cbwpurple}{\faInstagram} \textbf{cashbackwallahuniverse}}
 \end{tabular} &
 \begin{tabular}[c]{@{}c@{}}
-QR\_PLACEHOLDER\_RIGHT \\
-\textbf{Cashback on Instagram}
+QR_RIGHT \\
+\fontsize{6pt}{7pt}\selectfont \textbf{Get Instant Cashback} \\
+\fontsize{6pt}{7pt}\selectfont \textbf{Offers on Instagram}
 \end{tabular} \\
 \end{tabular}
 \end{center}
