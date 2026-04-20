@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { WorldMap } from "@/components/ui/map";
@@ -6,7 +7,7 @@ import { motion } from "framer-motion";
 
 export const metadata: Metadata = {
   title: "Home",
-  description: "Ship smarter and save bigger with CheapShip. Compare shipping rates from 25+ carriers in seconds.",
+  description: "Ship smarter and save bigger with Cashbackwallah. Compare shipping rates from 25+ carriers in seconds.",
 };
 
 import {
@@ -92,7 +93,7 @@ const testimonials = [
     name: "Rajesh Kumar",
     role: "E-commerce Owner",
     company: "TechGadgets India",
-    content: "CheapShip has reduced our shipping costs by 35%. The rate calculator is a game-changer for our business.",
+    content: "Cashbackwallah has reduced our shipping costs by 35%. The rate calculator is a game-changer for our business.",
     rating: 5,
   },
   {
@@ -178,8 +179,8 @@ const partners = [
 
 const faqs = [
   {
-    question: "How does CheapShip work?",
-    answer: "CheapShip aggregates shipping rates from multiple carriers. Enter your shipment details, compare rates in real-time, and book with your preferred carrier.",
+    question: "How does Cashbackwallah work?",
+    answer: "Cashbackwallah aggregates shipping rates from multiple carriers. Enter your shipment details, compare rates in real-time, and book with your preferred carrier.",
   },
   {
     question: "Is there a minimum shipping volume?",
@@ -206,10 +207,16 @@ export default function LandingPage() {
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <HugeiconsIcon icon={TruckIcon} size={24} className="text-primary" />
+            <div className="bg-white p-0.5 rounded-xl">
+              <Image
+                src="/logoo.png"
+                alt="logoo"
+                width={40}
+                height={40}
+                className="rounded-lg"
+              />
             </div>
-            <span className="text-xl font-bold">CheapShip</span>
+            <span className="text-xl font-bold">Cashbackwallah</span>
           </div>
           <nav className="hidden lg:flex items-center gap-8">
             <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -359,7 +366,7 @@ export default function LandingPage() {
               Ship in 3 simple steps
             </h2>
             <p className="text-muted-foreground">
-              Getting started with CheapShip is easy. Ship your first package in minutes.
+              Getting started with Cashbackwallah is easy. Ship your first package in minutes.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 relative">
@@ -465,7 +472,7 @@ export default function LandingPage() {
               Loved by businesses across India
             </h2>
             <p className="text-muted-foreground">
-              See what our customers have to say about their experience with CheapShip.
+              See what our customers have to say about their experience with Cashbackwallah.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
@@ -638,7 +645,7 @@ export default function LandingPage() {
             Ready to start saving on shipping?
           </h2>
           <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
-            Join 50,000+ businesses already using CheapShip to reduce their logistics costs. Start your free trial today.
+            Join 50,000+ businesses already using Cashbackwallah to reduce their logistics costs. Start your free trial today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/auth/signup">
@@ -661,10 +668,14 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="bg-primary/10 p-2 rounded-lg">
-                  <HugeiconsIcon icon={TruckIcon} size={20} className="text-primary" />
-                </div>
-                <span className="text-lg font-bold">CheapShip</span>
+                <Image
+                  src="/fav.jpg"
+                  alt="Cashbackwallah"
+                  width={32}
+                  height={32}
+                  className="rounded-lg"
+                />
+                <span className="text-lg font-bold">Cashbackwallah</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 India&apos;s smartest shipping platform. Compare rates, book shipments, and track deliveries—all in one place.
@@ -699,7 +710,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2026 CheapShip. All rights reserved.</p>
+            <p>&copy; 2026 Cashbackwallah. All rights reserved.</p>
           </div>
         </div>
       </footer>

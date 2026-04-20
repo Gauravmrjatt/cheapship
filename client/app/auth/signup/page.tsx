@@ -5,8 +5,8 @@ import { Loading03Icon } from "@hugeicons/core-free-icons";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign Up | CheapShip",
-  description: "Create a new CheapShip account",
+  title: "Sign Up | Cashbackwallah",
+  description: "Create a new Cashbackwallah account",
 };
 
 export default function SignUpPage() {

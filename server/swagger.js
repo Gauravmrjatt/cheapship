@@ -3,9 +3,9 @@ const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerDefinition = {
   openapi: '3.0.0',
   info: {
-    title: 'CheapShip API',
+    title: 'Cashbackwallah API',
     version: '1.0.0',
-    description: 'API documentation for the CheapShip application.',
+    description: 'API documentation for the Cashbackwallah application.',
   },
   servers: [
     {

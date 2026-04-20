@@ -20,8 +20,8 @@ const getTransporter = () => {
 const getOtpEmailTemplate = (otp, purpose) => {
   const purposeMessages = {
     registration: {
-      title: 'Welcome to CheapShip!',
-      message: 'Thank you for registering with CheapShip. Please use the following OTP to verify your email address:',
+      title: 'Welcome to Cashbackwallah!',
+      message: 'Thank you for registering with Cashbackwallah. Please use the following OTP to verify your email address:',
     },
     login: {
       title: 'Login Verification',
@@ -125,7 +125,7 @@ const getOtpEmailTemplate = (otp, purpose) => {
       <div class="container">
         <div class="email-card">
           <div class="header">
-            <div class="logo">CheapShip</div>
+            <div class="logo">Cashbackwallah</div>
           </div>
           <div class="content">
             <h2 style="color: #2d3748; margin-bottom: 20px;">${title}</h2>
@@ -138,7 +138,7 @@ const getOtpEmailTemplate = (otp, purpose) => {
           </div>
           <div class="footer">
             <p>If you did not request this OTP, please ignore this email.</p>
-            <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} CheapShip. All rights reserved.</p>
+            <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} Cashbackwallah. All rights reserved.</p>
           </div>
         </div>
       </div>
@@ -151,15 +151,15 @@ const sendOtpEmail = async (email, otp, purpose = 'registration') => {
   const transporter = getTransporter();
 
   const subjectMap = {
-    registration: 'CheapShip - Verify Your Email',
-    login: 'CheapShip - Login OTP',
-    forgot_password: 'CheapShip - Password Reset OTP',
+    registration: 'Cashbackwallah - Verify Your Email',
+    login: 'Cashbackwallah - Login OTP',
+    forgot_password: 'Cashbackwallah - Password Reset OTP',
   };
 
   const mailOptions = {
     from: process.env.EMAIL_FROM || 'noreply@cheapship.com',
     to: email,
-    subject: subjectMap[purpose] || 'CheapShip - OTP Verification',
+    subject: subjectMap[purpose] || 'Cashbackwallah - OTP Verification',
     html: getOtpEmailTemplate(otp, purpose),
   };
 

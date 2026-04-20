@@ -3,7 +3,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Manage Users",
-  description: "Administrative tools for managing CheapShip users and their permissions.",
+  description: "Administrative tools for managing Cashbackwallah users and their permissions.",
 };
 
 export default function Page() {

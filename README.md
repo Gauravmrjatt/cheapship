@@ -1,6 +1,6 @@
-# CheapShip — Logistics & Shipping Management Platform
+# Cashbackwallah — Logistics & Shipping Management Platform
 
-CheapShip is a comprehensive full-stack platform designed to simplify shipping and logistics management. It provides a seamless experience for users to calculate rates, manage orders, and grow through a dedicated franchise network, while giving administrators powerful tools to oversee the entire ecosystem.
+Cashbackwallah is a comprehensive full-stack platform designed to simplify shipping and logistics management. It provides a seamless experience for users to calculate rates, manage orders, and grow through a dedicated franchise network, while giving administrators powerful tools to oversee the entire ecosystem.
 
 ---
 

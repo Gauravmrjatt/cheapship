@@ -1,0 +1,158 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=20mm, top=15mm, bottom=15mm]{geometry}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{fontawesome}
+\usepackage{helvet}
+\usepackage{wrapfig}
+\usepackage[export]{adjustbox}
+\usepackage{changepage}
+\usepackage{iftex}
+
+% Custom Colors
+\definecolor{cbwpurple}{RGB}{102, 45, 145}
+\definecolor{whatsappgreen}{RGB}{37, 211, 102}
+\definecolor{cbwborder}{HTML}{6469F0}
+
+% Decreased padding as requested
+\ifdefined\codewidth
+\else
+\newcommand\codewidth{10cm}
+\fi
+
+\raggedright
+\pagestyle{empty}
+
+\begin{document}
+
+% --- CASHBACKWALLAH Border Text Overlay ---
+\begin{tikzpicture}[remember picture, overlay]
+    % Define the repeating string
+    \def\cbw{\textbf{CASHBACKWALLAH} \hspace{1.5em}}
+    \def\cbwline{\mbox{\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw\cbw}}
+
+    % Top horizontal text
+    \node[anchor=center, text=cbwborder, font=\small, inner sep=0pt] at ([yshift=-4mm]current page.north) {\cbwline};
+    % Bottom horizontal text
+    \node[anchor=center, text=cbwborder, font=\small, inner sep=0pt] at ([yshift=4mm]current page.south) {\cbwline};
+
+    % Left vertical text
+    \node[anchor=center, text=cbwborder, font=\small, inner sep=0pt, rotate=90] at ([xshift=4mm]current page.west) {\cbwline};
+    % Right vertical text
+    \node[anchor=center, text=cbwborder, font=\small, inner sep=0pt, rotate=-90] at ([xshift=-4mm]current page.east) {\cbwline};
+\end{tikzpicture}
+
+% Command to perfectly overlap table borders
+\newcommand{\flushlines}{\vspace{-\arrayrulewidth}}
+
+\begin{tabularx}{\textwidth}{|X|}
+\hline
+\textbf{Ship To} \\
+{\large \textbf{Shashwat Kumar Jha}} \\
+{C/O Ram Rai Dikshit, House No 11, Shri Ram Ki Nangal, Via Riico, Tonk Road, Sitapura} \\
+{Jaipur}, {Rajasthan}, India \\
+{302022} \\
+\textbf{9928311585} \\
+\hline
+\end{tabularx}
+\flushlines
+
+\begin{tabularx}{\textwidth}{|X r|}
+\begin{tabular}[t]{@{}l@{}}
+Dimensions: {1x1x1} \\
+Payment: \textbf{PREPAID} \\
+Order Total: \textbf{Rs.Rs.5,000.00} \\
+Weight: {0.2} kg \\
+EWaybill No: {} \\
+Routing code: {NA} \\
+RTO Routing code: {NA}
+\end{tabular} &
+\begin{tabular}[t]{@{}r@{}}
+\textbf{DTDC Surface} \\
+AWB: \textbf{7D131033539} \\
+
+\end{tabular} \\
+\hline
+\end{tabularx}
+\flushlines
+
+\begin{tabularx}{\textwidth}{|X r|}
+\begin{tabular}[t]{@{}l@{}}
+\textbf{Shipped By} \textit{\small (if undelivered, return to)} \\
+\textbf{MISW REVALTO LLP} \\
+{House No 249, Fla No 02, Amba Wadi} \\
+{Jaipur}, {Rajasthan} \\
+{302013} \\
+{6377860521} \\
+Customer Care: 1800-123-4567 \\
+Customer Email: {shiprocket.com}
+\end{tabular} &
+\begin{tabular}[t]{@{}r@{}}
+Order\#: \textbf{671284875} \\
+
+Invoice No. \textbf{Retail00264} \\
+Invoice Date: {17/04/2026} \\
+Order Date: {17/04/2026} \\
+GSTIN: {N/A}
+\end{tabular} \\
+\hline
+\end{tabularx}
+\flushlines
+
+\small
+\begin{tabularx}{\textwidth}{|l X c r c c r|}
+\textbf{Item} & \textbf{SKU} & \textbf{Qty} & \textbf{Price} & \textbf{HSN} & \textbf{Taxable Value} & \textbf{Total} \\
+{medicine & SKU-671284 & 1 & ₹Rs.5,000.00 & & ₹Rs.5,000.00 & ₹Rs.5,000.00 \\
+}
+\hline
+\end{tabularx}
+\flushlines
+
+\normalsize
+\begin{tabularx}{\textwidth}{|X r|}
+Platform Fee: Rs.Rs.0.00 & Discount: Rs.Rs.0.00 \\
+Shipping Charges: Rs.Rs.0.00 & \textbf{Collectable Amount: Rs.Rs.0.00} \\
+\hline
+\end{tabularx}
+\flushlines
+
+\begin{tabularx}{\textwidth}{|X|}
+\small \textbf{All disputes are subject to Haryana Jurisdiction only. Goods once sold will only be taken back or exchanged as per store's exchange and return policy} \\
+\hline
+\scriptsize This is an auto generated label and does not require any signature. \\
+\vspace{4.5cm} \\
+\hline
+\end{tabularx}
+
+\vspace{100pt}
+
+% --- CASHBACKWALLAH FOOTER ---
+\begin{center}
+\begin{tabular}{@{} c @{\hspace{1.8cm}} c @{\hspace{1.9cm}} c @{}}
+\begin{tabular}[c]{@{}c@{}}
+ \\
+\fontsize{6pt}{7pt}\selectfont \textbf{Get Instant Cashback} \\
+\fontsize{6pt}{7pt}\selectfont \textbf{Offers on WhatsApp}
+\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}
+{\fontsize{26pt}{26pt}\selectfont \textbf{\color{cbwpurple}CASHBACKWALLAH}} \\[-2pt]
+{\fontsize{7pt}{8pt}\selectfont \textbf{\color{cbwpurple}WORLD'S LARGEST \& MOST TRUSTED FLAT CASHBACK PLATFORM}} \\[2pt]
+{\large \textcolor{whatsappgreen}{\faWhatsapp} \textbf{+91 92511 20521 | +91 95096 98208}} \\[-1pt]
+{\large \textcolor{cbwpurple}{\faInstagram} \textbf{cashbackwallahuniverse}}
+\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}
+\begin{document}\def\qrcodefile{}
+\fbox{\includegraphics[width=1.8cm,height=1.8cm]{/Users/gauravchaudhary/Projects/Node/cheapship/temp/qrcode_1776610706666.png}}
+ fi \\
+\fontsize{6pt}{7pt}\selectfont \textbf{Get Instant Cashback} \\
+\fontsize{6pt}{7pt}\selectfont \textbf{Offers on Instagram}
+\end{tabular} \\
+\end{tabular}
+\end{center}
+
+\end{document}

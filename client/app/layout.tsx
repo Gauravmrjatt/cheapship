@@ -20,9 +20,13 @@ import { Toaster } from "sileo";
 import { ThemeProvider } from "./theme-provider";
 
 export const metadata: Metadata = {
+  icons: {
+    icon: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
   title: {
-    template: "%s | CheapShip",
-    default: "CheapShip - Shipping and Logistics Solutions",
+    template: "%s | Cashbackwallah",
+    default: "Cashbackwallah - Shipping and Logistics Solutions",
   },
   description: "Efficient and affordable shipping and logistics management for businesses.",
 };

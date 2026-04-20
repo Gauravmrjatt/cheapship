@@ -1636,6 +1636,25 @@ const getAllCODOrders = async (req, res) => {
       }
     });
 
+    const latestOrders = await prisma.order.findMany({
+      where: {
+        user_id: { in: userIds }
+      },
+      orderBy: { created_at: 'desc' },
+      distinct: ['user_id'],
+      select: {
+        user_id: true,
+        order_pickup_address: true,
+        order_receiver_address: true,
+        pickup_location: true
+      }
+    });
+
+    const ordersMap = latestOrders.reduce((acc, order) => {
+      acc[order.user_id] = order;
+      return acc;
+    }, {});
+
     const groupedOrders = userGroups.map(user => {
       const userData = aggregatedData.filter(d => d.user_id === user.id);
       
@@ -1651,6 +1670,8 @@ const getAllCODOrders = async (req, res) => {
         ? (processingOrders ? 'PROCESSING' : 'PENDING')
         : (failedOrders ? 'FAILED' : (remittedOrders ? 'REMITTED' : 'PENDING'));
 
+      const latestOrder = ordersMap[user.id];
+
       return {
         user: {
           id: user.id,
@@ -1664,6 +1685,9 @@ const getAllCODOrders = async (req, res) => {
         total_remitted_amount: totalRemitted,
         pending_amount: pendingOrders?._sum.cod_amount || 0,
         remittance_status: overallStatus,
+        order_pickup_address: latestOrder?.order_pickup_address,
+        order_receiver_address: latestOrder?.order_receiver_address,
+        pickup_location: latestOrder?.pickup_location,
         orders: []
       };
     });

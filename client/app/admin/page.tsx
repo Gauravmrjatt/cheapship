@@ -3,7 +3,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard",
-  description: "CheapShip administrative dashboard for managing users, orders, and platform operations.",
+  description: "Cashbackwallah administrative dashboard for managing users, orders, and platform operations.",
 };
 
 export default function AdminPage() {

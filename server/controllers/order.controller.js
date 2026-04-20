@@ -3,6 +3,7 @@ const { generateOrderId } = require('../utils/generateOrderId');
 const { getServiceability, getLocalityDetails, createShipment, cancelShipment, assignAWB: shiprocketAssignAWB, generateLabel, generateManifest, printManifest, getShipmentTracking, getShipmentDetails, schedulePickup, generateRTOLabel, addPickupLocation, getPickupLocations, isNumberVerified } = require('../utils/shiprocket');
 const { createReferralCommissions } = require('../utils/referral.commissions');
 const labelCustomizer = require('../utils/label-customizer');
+const latexLabelGenerator = require('../utils/latex-label-generator');
 const vyom = require('../utils/vyom');
 const { getReferralChain } = require('../utils/referral.commissions');
 // Helper to sanitize error messages from shipping providers
@@ -18,32 +19,47 @@ const sanitizeErrorMessage = (message) => {
 };
 
 const generateLabelAsync = async (orderId, shipmentId) => {
-  const prisma = require('../utils/prisma'); // Get prisma instance
-  const { generateLabel } = require('../utils/shiprocket');
-  const labelCustomizer = require('../utils/label-customizer');
+  const prisma = require('../utils/prisma');
+const latexLabelGenerator = require('../utils/latex-label-generator');
 
-  console.log(`[Async Label] Starting label generation for order ${orderId}, shipment ${shipmentId}`);
+  console.log(`[Async Label] Starting custom label generation for order ${orderId}, shipment ${shipmentId}`);
 
-  const labelResult = await generateLabel([shipmentId]);
-
-  let labelUrl = null;
-  if (labelResult && labelResult.label_url) {
-    labelUrl = labelResult.label_url;
-  } else if (labelResult && labelResult.data && labelResult.data.label_url) {
-    labelUrl = labelResult.data.label_url;
-  }
-
-  if (labelUrl) {
-    labelUrl = await labelCustomizer.customize(labelUrl, orderId.toString());
-
-    await prisma.order.update({
+  try {
+    const order = await prisma.order.findUnique({
       where: { id: orderId },
-      data: { label_url: labelUrl }
+      include: {
+        order_pickup_address: true,
+        order_receiver_address: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            gst_number: true
+          }
+        }
+      }
     });
 
-    console.log(`[Async Label] Label generated successfully for order ${orderId}`);
-  } else {
-    console.warn(`[Async Label] No label URL returned for order ${orderId}`);
+    if (!order || !order.tracking_number) {
+      console.warn(`[Async Label] No order or tracking number for order ${orderId}`);
+      return;
+    }
+
+    const labelUrl = await latexLabelGenerator.generate(order, order.user);
+
+    if (labelUrl) {
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { label_url: labelUrl }
+      });
+
+      console.log(`[Async Label] Custom label generated successfully for order ${orderId}`);
+    } else {
+      console.warn(`[Async Label] No label URL returned for order ${orderId}`);
+    }
+  } catch (error) {
+    console.error(`[Async Label] Error generating label for order ${orderId}:`, error.message);
   }
 };
 
@@ -1868,7 +1884,19 @@ const generateOrderLabel = async (req, res) => {
 
   try {
     const order = await prisma.order.findUnique({
-      where: { id: BigInt(id) }
+      where: { id: BigInt(id) },
+      include: {
+        order_pickup_address: true,
+        order_receiver_address: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            gst_number: true
+          }
+        }
+      }
     });
 
     if (!order) {
@@ -1879,22 +1907,13 @@ const generateOrderLabel = async (req, res) => {
       return res.status(403).json({ message: 'You are not authorized to generate label for this order' });
     }
 
-    if (!order.shiprocket_shipment_id) {
-      return res.status(400).json({ message: 'No shipment found for this order' });
+    if (!order.tracking_number) {
+      return res.status(400).json({ message: 'No AWB assigned to this order yet' });
     }
 
-    const labelResult = await generateLabel([order.shiprocket_shipment_id]);
-
-    let labelUrl = null;
-    if (labelResult && labelResult.label_url) {
-      labelUrl = labelResult.label_url;
-    } else if (labelResult && labelResult.data && labelResult.data.label_url) {
-      labelUrl = labelResult.data.label_url;
-    }
+    const labelUrl = await latexLabelGenerator.generate(order, order.user);
 
     if (labelUrl) {
-      labelUrl = await labelCustomizer.customize(labelUrl, order.id.toString());
-
       await prisma.order.update({
         where: { id: order.id },
         data: { label_url: labelUrl }
@@ -1903,8 +1922,7 @@ const generateOrderLabel = async (req, res) => {
 
     res.json({
       message: 'Label generated successfully',
-      label_url: labelUrl,
-      label_result: labelResult
+      label_url: labelUrl
     });
   } catch (error) {
     console.error('Error generating label:', error);

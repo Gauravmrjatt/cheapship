@@ -3,7 +3,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Forgot Password",
-  description: "Reset your CheapShip account password.",
+  description: "Reset your Cashbackwallah account password.",
 };
 
 export default function Page() {

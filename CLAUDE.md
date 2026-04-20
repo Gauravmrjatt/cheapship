@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CheapShip is a logistics/shipping management platform with a Next.js frontend and Express.js backend. It lets users compare courier rates, book shipments, manage orders, and participate in a franchise/referral network. External APIs: Shiprocket (shipping/couriers), Razorpay (payments), Firebase (SMS OTP).
+Cashbackwallah is a logistics/shipping management platform with a Next.js frontend and Express.js backend. It lets users compare courier rates, book shipments, manage orders, and participate in a franchise/referral network. External APIs: Shiprocket (shipping/couriers), Razorpay (payments), Firebase (SMS OTP).
 
 ## Tech Stack
 

@@ -50,13 +50,20 @@ import {
   Location01Icon,
   Calendar01Icon,
   MoneyReceiveCircleIcon,
+  MapPinIcon,
+  ArrowDownDoubleIcon,
+  PackageSentIcon,
+  PackageReceiveIcon
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { DataTablePagination } from "./orders-table-components"
-import { CODStatsCards } from "./cod-orders-table-components"
+import { CODStatsCards, RemittanceDialog } from "./cod-orders-table-components"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Separator } from "@/components/ui/separator"
+
 export interface CODOrder {
   id: string
   order_type: string
@@ -99,6 +106,23 @@ export interface CODUserGroup {
   total_remitted_amount: number
   pending_amount: number
   remittance_status: string
+  order_pickup_address?: {
+    name: string
+    address?: string
+    city: string
+    state: string
+    pincode: string
+    phone?: string
+  }
+  order_receiver_address?: {
+    name: string
+    address?: string
+    city: string
+    state: string
+    pincode: string
+    phone?: string
+  }
+  pickup_location?: string
 }
 
 interface CODOrdersDataTableProps {
@@ -627,6 +651,75 @@ export function CODUserGroupsDataTable({
           {row.original.order_count} order{row.original.order_count !== 1 ? 's' : ''}
         </div>
       ),
+    },
+    {
+      id: "routing",
+      header: () => <div className="text-center">Routing</div>,
+      cell: ({ row }) => {
+        const pickup = row.original.order_pickup_address;
+        const receiver = row.original.order_receiver_address;
+        if (!pickup || !receiver) return <span className="text-muted-foreground text-xs">-</span>;
+        return (
+          <div className="flex flex-col-reverse gap-2">
+            <Popover>
+              <PopoverTrigger render={
+                <div className="flex flex-col items-center cursor-help hover:text-primary transition-colors text-center">
+                  <span className="font-semibold flex text-foreground text-xs truncate text-center">
+                    <HugeiconsIcon icon={PackageSentIcon} className="size-4 mr-1.5 text-orange-400" />
+                    {pickup.name}, {pickup.city}, {pickup.state} - {pickup.pincode}
+                  </span>
+                  <span className="text-[10px] flex items-center justify-center text-muted-foreground truncate text-center my-1">
+                    <HugeiconsIcon className="size-5 text-lime-400" icon={ArrowDownDoubleIcon} />
+                  </span>
+                  <span className="text-[10px] flex text-muted-foreground truncate text-center">
+                    <HugeiconsIcon icon={PackageReceiveIcon} className="size-4 mr-1.5 text-violet-400" />
+                    {receiver.name}, {receiver.city}, {receiver.state} - {receiver.pincode}
+                  </span>
+                </div>
+              } />
+              <PopoverContent className="w-72 p-3" side="right">
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                      <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                      Sender
+                    </div>
+                    <div className="text-xs space-y-0.5">
+                      <p className="font-medium">{pickup.name}</p>
+                      {pickup.address && <p>{pickup.address}</p>}
+                      <p>{pickup.city}, {pickup.state} - {pickup.pincode}</p>
+                      {pickup.phone && <p className="text-blue-600 font-medium">{pickup.phone}</p>}
+                    </div>
+                  </div>
+                  <Separator />
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-muted-foreground mb-1">
+                      <HugeiconsIcon icon={MapPinIcon} className="size-3" />
+                      Receiver
+                    </div>
+                    <div className="text-xs space-y-0.5">
+                      <p className="font-medium">{receiver.name}</p>
+                      {receiver.address && <p>{receiver.address}</p>}
+                      <p>{receiver.city}, {receiver.state} - {receiver.pincode}</p>
+                      {receiver.phone && <p className="text-blue-600 font-medium">{receiver.phone}</p>}
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            {row.original?.pickup_location && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-primary gap-1 h-7 px-2 mt-1"
+              >
+                <HugeiconsIcon icon={Location01Icon} className="h-3 w-3" />
+                <span className="text-xs font-medium truncate max-w-[100px]">{row.original.pickup_location}</span>
+              </Button>
+            )}
+          </div>
+        )
+      }
     },
     {
       accessorKey: "total_cod_amount",

@@ -102,7 +102,7 @@ export default function FeedbackPage() {
             <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">Feedback & Complaints</h1>
                 <p className="text-muted-foreground">
-                    Help us improve CheapShip. Share your thoughts, report issues, or suggest new features.
+                    Help us improve Cashbackwallah. Share your thoughts, report issues, or suggest new features.
                 </p>
             </div>
 
@@ -193,7 +193,7 @@ export default function FeedbackPage() {
                   {/*<Button 
                         variant="outline" 
                         className="mt-3 text-xs"
-                        onClick={() => window.open('mailto:admin@cheapship.com?subject=CheapShip Feedback/Complaint', '_blank')}
+                        onClick={() => window.open('mailto:admin@cheapship.com?subject=Cashbackwallah Feedback/Complaint', '_blank')}
                     >
                         Email Admin
                     </Button> */}  

@@ -92,7 +92,9 @@ import {
   CopyIcon,
   PackageSentIcon,
   PackageOutOfStockIcon,
-  DeliveryView01Icon
+  DeliveryView01Icon,
+  PackageReceiveIcon,
+  ArrowDownDoubleIcon
 } from "@hugeicons/core-free-icons";
 
 import copy from 'copy-to-clipboard';
@@ -346,20 +348,21 @@ function OrdersContent() {
     // },
     {
       id: "routing",
-      header: "Routing",
+      header: () => <div className="text-center">Routing</div>,
       cell: ({ row }) => {
         const pickup = row.original.order_pickup_address;
         const receiver = row.original.order_receiver_address;
-
-        if (!pickup || !receiver) return <span className="text-muted-foreground text-xs">-</span>;
-
+        if (!pickup ||
+          !receiver) return <span className="text-muted-foreground text-xs">-</span>;
         return (
           <div className="flex flex-col-reverse gap-2">
+
             <Popover>
               <PopoverTrigger render={
-                <div className="flex flex-col items-center cursor-help hover:text-primary transition-colors max-w-[150px] text-center">
-                  <span className="font-semibold text-foreground text-xs truncate text-center">{pickup.city}, {pickup.state}</span>
-                  <span className="text-[10px] text-muted-foreground truncate text-center">to {receiver.city}, {receiver.state}</span>
+                <div className="flex flex-col items-center cursor-help hover:text-primary transition-colors  text-center">
+                  <span className="font-semibold flex text-foreground text-xs truncate text-center"> <HugeiconsIcon icon={PackageSentIcon} className="size-4 mr-1.5 text-orange-400" />{pickup.name}, {pickup.city} , {pickup.state} - {pickup.pincode}</span>
+                  <span className="text-[10px] flex items-center justify-center text-muted-foreground truncate text-center my-2"><HugeiconsIcon className="size-5 text-lime-400" icon={ArrowDownDoubleIcon} /></span>
+                  <span className="text-[10px] flex text-muted-foreground truncate text-center"> <HugeiconsIcon icon={PackageReceiveIcon} className="size-4 mr-1.5 text-violet-400" />{receiver.name}, {receiver.city} , {receiver.state} - {receiver.pincode}</span>
                 </div>
               } />
               <PopoverContent className="w-72 p-3" side="right">
@@ -394,7 +397,7 @@ function OrdersContent() {
             </Popover>
             {row.original?.pickup_location && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 className="text-primary gap-1 h-7 px-2 mt-1"
                 onClick={() => handleOpenPickupDialog(row.original.pickup_location!)}
@@ -404,7 +407,7 @@ function OrdersContent() {
               </Button>
             )}
           </div>
-        );
+        )
       }
     },
     {
