@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const bwipjs = require('bwip-js');
 const QRCode = require('qrcode');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const { compile, isAvailable } = require('node-latex-compiler');
 const { uploadPdfToCloudinary } = require('./cloudinary');
 
@@ -16,6 +17,14 @@ class LatexLabelGenerator {
                 fs.mkdirSync(dir, { recursive: true });
             }
         });
+    }
+
+    canUseLatex() {
+        try {
+            return isAvailable();
+        } catch (e) {
+            return false;
+        }
     }
 
     formatINR(amount) {
@@ -47,7 +56,7 @@ class LatexLabelGenerator {
             .replace(/\^/g, '\\textasciicircum{}');
     }
 
-    async generateBarcode(text, outputPath) {
+    generateBarcode(text, outputPath) {
         return new Promise((resolve, reject) => {
             try {
                 bwipjs.toBuffer({
@@ -59,7 +68,6 @@ class LatexLabelGenerator {
                     textxalign: 'center'
                 }, function (err, png) {
                     if (err) {
-                        console.error('[LatexLabel] Barcode generation error:', err.message);
                         resolve(null);
                     } else {
                         fs.writeFileSync(outputPath, png);
@@ -67,30 +75,40 @@ class LatexLabelGenerator {
                     }
                 });
             } catch (error) {
-                console.error('[LatexLabel] Barcode generation error:', error.message);
                 resolve(null);
             }
         });
     }
 
-    async generateQR(text, outputPath) {
-        try {
-            const qrBuffer = await QRCode.toBuffer(text, {
-                type: 'png',
-                width: 200,
-                margin: 1,
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                }
-            });
+    generateQR(text, outputPath) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const qrBuffer = await QRCode.toBuffer(text, {
+                    type: 'png',
+                    width: 200,
+                    margin: 1,
+                    color: { dark: '#000000', light: '#FFFFFF' }
+                });
+                fs.writeFileSync(outputPath, qrBuffer);
+                resolve(outputPath);
+            } catch (error) {
+                resolve(null);
+            }
+        });
+    }
 
-            fs.writeFileSync(outputPath, qrBuffer);
-            return outputPath;
-        } catch (error) {
-            console.error('[LatexLabel] QR generation error:', error.message);
-            return null;
-        }
+    async generateImages(order) {
+        const timestamp = Date.now();
+        const barcodePath = path.join(this.tempDir, `barcode_${timestamp}.png`);
+        const qrcodePath = path.join(this.tempDir, `qrcode_${timestamp}.png`);
+        const awbCode = order.tracking_number || '';
+
+        await Promise.all([
+            awbCode ? this.generateBarcode(awbCode, barcodePath) : Promise.resolve(null),
+            awbCode ? this.generateQR(`https://cashbackwallah.com/track/${awbCode}`, qrcodePath) : Promise.resolve(null)
+        ]);
+
+        return { barcodePath, qrcodePath };
     }
 
     buildProductTable(products) {
@@ -117,192 +135,393 @@ class LatexLabelGenerator {
     async generate(order, user) {
         const timestamp = Date.now();
         const orderId = order.id;
+        const awbCode = order.tracking_number || '';
 
         console.log(`[LatexLabel] Generating label for order ${orderId}...`);
 
         try {
-            const available = isAvailable();
-            console.log(`[LatexLabel] Tectonic available: ${available}`);
+            const useLatex = this.canUseLatex();
+            console.log(`[LatexLabel] Tectonic available: ${useLatex}`);
 
-            if (!available) {
-                throw new Error('LaTeX compiler (Tectonic) is not available. Please install node-latex-compiler correctly.');
-            }
-
-            const receiver = order.order_receiver_address || {};
-            const pickup = order.order_pickup_address || {};
-
-            const len = order.length || order.lengths || 0;
-            const wid = order.width || order.breadth || 0;
-            const hgt = order.height || 0;
-            const dimensions = (len || wid || hgt) ? `${len}x${wid}x${hgt}` : '1x1x1';
-
-            const paymentMode = (order.payment_mode || 'PREPAID').toUpperCase();
-            const codAmount = Number(order.cod_amount || 0);
-            const collectable = paymentMode === 'COD' ? codAmount : 0;
-            const platformFee = Number(order.platform_fee || 0);
-            const shippingCharge = Number(order.shipping_charge || 0);
-            const discount = Number(order.discount || 0);
-
-            const data = {
-                receiver_name: this.escapeLatex(receiver.name || ''),
-                receiver_address: this.escapeLatex(receiver.address || ''),
-                receiver_city: this.escapeLatex(receiver.city || ''),
-                receiver_state: this.escapeLatex(receiver.state || ''),
-                receiver_pincode: receiver.pincode || '',
-                receiver_phone: receiver.phone || '',
-
-                sender_name: this.escapeLatex(pickup.name || ''),
-                sender_address: this.escapeLatex(pickup.address || ''),
-                sender_city: this.escapeLatex(pickup.city || ''),
-                sender_state: this.escapeLatex(pickup.state || ''),
-                sender_pincode: pickup.pincode || '',
-                sender_phone: pickup.phone || '',
-                sender_email: this.escapeLatex(pickup.email || 'shiprocket.com'),
-
-                courier_name: this.escapeLatex(order.courier_name || ''),
-                awb_code: order.tracking_number || '',
-                order_id: orderId,
-                invoice_no: order.invoice_no || `Retail${String(orderId).slice(-6)}`,
-                invoice_date: this.formatDate(order.invoice_date || order.created_at),
-                order_date: this.formatDate(order.created_at),
-                dimensions: dimensions,
-                weight: order.weight || '0.2',
-                payment_mode_upper: paymentMode,
-                total_amount: this.formatINR(order.total_amount),
-
-                platform_fee: this.formatINR(platformFee),
-                shipping_charge: this.formatINR(shippingCharge),
-                discount: this.formatINR(discount),
-                collectable_amount: this.formatINR(collectable),
-                gstin: user?.gst_number || 'N/A',
-
-                ewaybillno: order.ewaybillno || '',
-                routing_code: order.routing_code || 'NA',
-                rto_routing_code: order.rto_routing_code || 'NA',
-
-                product_table: this.buildProductTable(order.products || [])
-            };
-
-            data.barcode_placeholder = data.awb_code ? '\\includegraphics[height=1cm,width=4cm]{BARCODE\_PATH}' : '';
-            data.qr_placeholder_left = data.awb_code ? '\\fbox{\\includegraphics[width=1.5cm]{QR\_PATH}}' : '';
-            data.qr_placeholder_right = data.awb_code ? '\\fbox{\\includegraphics[width=1.5cm]{QR\_PATH}}' : '';
-
-            let templatePath = path.join(this.templatesDir, 'label-template.tex');
-            if (!fs.existsSync(templatePath)) {
-                throw new Error(`Template not found: ${templatePath}`);
-            }
-
-            let template = fs.readFileSync(templatePath, 'utf8');
-
-            Object.keys(data).forEach(key => {
-                const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-                template = template.replace(regex, data[key]);
-            });
-
-            const unreplaced = template.match(/\{\{([^}]+)\}\}/g);
-            if (unreplaced) {
-                console.log(`[LatexLabel] Warning: ${unreplaced.length} unreplaced placeholders`);
-                unreplaced.forEach(placeholder => {
-                    template = template.replace(placeholder, '');
-                });
-            }
-
-            const barcodePath = path.join(this.tempDir, `barcode_${timestamp}.png`);
-            const qrcodePath = path.join(this.tempDir, `qrcode_${timestamp}.png`);
-            const texPath = path.join(this.tempDir, `label_${orderId}_${timestamp}.tex`);
-
-            let barcodefile = null;
-            let qrcodefile = null;
-
-            if (data.awb_code) {
-                barcodefile = await this.generateBarcode(data.awb_code, barcodePath);
-                console.log(`[LatexLabel] Barcode generated: ${barcodefile}`);
-            }
-
-            if (data.awb_code) {
-                qrcodefile = await this.generateQR(`https://cashbackwallah.com/track/${data.awb_code}`, qrcodePath);
-                console.log(`[LatexLabel] QR generated: ${qrcodefile}`);
-            }
-
-            const absBarcodePath = barcodefile ? path.resolve(barcodefile) : '';
-            const absQrcodePath = qrcodefile ? path.resolve(qrcodefile) : '';
-
-            template = template.replace(/\\ifdefined\\barcodefile[\s\S]*?\\fi/g, '');
-            template = template.replace(/\\ifdefined\\qrcodefile[\s\S]*?\\fi/g, '');
-
-            if (absBarcodePath) {
-                const barcodeInclude = `\\includegraphics[height=1.2cm,width=3.8cm,keepaspectratio]{${absBarcodePath}}`;
-                template = template.replace('\\ifdefined\\barcodefile', '\\begin{document}\\def\\barcodefile{}');
-                template = template.replace('\\includegraphics[height=1.2cm,width=3.8cm,keepaspectratio]{\\barcodefile}', barcodeInclude);
-            }
-
-            if (absQrcodePath) {
-                const qrInclude = `\\fbox{\\includegraphics[width=1.8cm,height=1.8cm]{${absQrcodePath}}}`;
-                template = template.replace('\\ifdefined\\qrcodefile', '\\begin{document}\\def\\qrcodefile{}');
-                template = template.replace('\\fbox{\\includegraphics[width=1.8cm,height=1.8cm]{\\qrcodefile}}', qrInclude);
-            }
-
-            if (!template.includes('\\begin{document}')) {
-                template = template.replace(/\\end{document}/g, '');
-                template = '\\begin{document}\n' + template + '\n\\end{document}';
-            }
-
-            fs.writeFileSync(texPath, template);
-            console.log(`[LatexLabel] TeX file written: ${texPath}`);
-
-            try {
-                const result = await compile({
-                    texFile: texPath,
-                    outputDir: this.tempDir,
-                    returnBuffer: true
-                });
-
-                console.log(`[LatexLabel] Compilation status: ${result.status}`);
-
-                if (result.status !== 'success') {
-                    throw new Error(`LaTeX compilation failed: ${result.stderr || result.error}`);
-                }
-
-                const pdfBuffer = result.pdfBuffer;
-                if (!pdfBuffer || !pdfBuffer.length) {
-                    throw new Error('PDF buffer is empty or undefined');
-                }
-
-                const filename = `label_${orderId}_${timestamp}.pdf`;
-                const pdfPath = path.join(this.labelsDir, filename);
-                fs.writeFileSync(pdfPath, pdfBuffer);
-                console.log(`[LatexLabel] PDF written: ${pdfPath}`);
-
+            if (useLatex) {
                 try {
-                    const uploadResult = await uploadPdfToCloudinary(pdfBuffer, 'cashbackwallah/labels');
-                    console.log(`[LatexLabel] Uploaded to Cloudinary:`, uploadResult.secure_url);
-
-                    [barcodePath, qrcodePath, texPath].forEach(f => {
-                        try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) {}
-                    });
-
-                    return uploadResult.secure_url;
-                } catch (uploadError) {
-                    console.error('[LatexLabel] Cloudinary upload failed:', uploadError.message);
-
-                    [barcodePath, qrcodePath, texPath].forEach(f => {
-                        try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) {}
-                    });
-
-                    return `/labels/${filename}`;
+                    return await this.generateLatex(order, user, timestamp);
+                } catch (latexErr) {
+                    console.warn(`[LatexLabel] LaTeX failed: ${latexErr.message}, falling back to pdf-lib`);
                 }
-            } catch (latexError) {
-                console.error('[LatexLabel] LaTeX compilation error:', latexError.message);
-
-                [barcodePath, qrcodePath].forEach(f => {
-                    try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) {}
-                });
-
-                throw new Error(`LaTeX compilation failed: ${latexError.message}`);
             }
+
+            return await this.generatePdfLib(order, user, timestamp);
         } catch (error) {
             console.error('[LatexLabel] Error generating label:', error);
             throw error;
+        }
+    }
+
+    async generateLatex(order, user, timestamp) {
+        const orderId = order.id;
+        const receiver = order.order_receiver_address || {};
+        const pickup = order.order_pickup_address || {};
+
+        const len = order.length || order.lengths || 0;
+        const wid = order.width || order.breadth || 0;
+        const hgt = order.height || 0;
+        const dimensions = (len || wid || hgt) ? `${len}x${wid}x${hgt}` : '1x1x1';
+        const paymentMode = (order.payment_mode || 'PREPAID').toUpperCase();
+        
+        const data = {
+            receiver_name: this.escapeLatex(receiver.name || ''),
+            receiver_address: this.escapeLatex(receiver.address || ''),
+            receiver_city: this.escapeLatex(receiver.city || ''),
+            receiver_state: this.escapeLatex(receiver.state || ''),
+            receiver_pincode: receiver.pincode || '',
+            receiver_phone: receiver.phone || '',
+            sender_name: this.escapeLatex(pickup.name || ''),
+            sender_address: this.escapeLatex(pickup.address || ''),
+            sender_city: this.escapeLatex(pickup.city || ''),
+            sender_state: this.escapeLatex(pickup.state || ''),
+            sender_pincode: pickup.pincode || '',
+            sender_phone: pickup.phone || '',
+            sender_email: this.escapeLatex(pickup.email || 'shiprocket.com'),
+            courier_name: this.escapeLatex(order.courier_name || ''),
+            awb_code: order.tracking_number || '',
+            order_id: orderId,
+            invoice_no: order.invoice_no || `Retail${String(orderId).slice(-6)}`,
+            invoice_date: this.formatDate(order.invoice_date || order.created_at),
+            order_date: this.formatDate(order.created_at),
+            dimensions: dimensions,
+            weight: order.weight || '0.2',
+            payment_mode_upper: paymentMode,
+            total_amount: this.formatINR(order.total_amount),
+            platform_fee: this.formatINR(order.platform_fee || 0),
+            shipping_charge: this.formatINR(order.shipping_charge || 0),
+            discount: this.formatINR(order.discount || 0),
+            collectable_amount: this.formatINR(order.cod_amount || 0),
+            gstin: user?.gst_number || 'N/A',
+            ewaybillno: order.ewaybillno || '',
+            routing_code: order.routing_code || 'NA',
+            rto_routing_code: order.rto_routing_code || 'NA',
+            product_table: this.buildProductTable(order.products || [])
+        };
+
+        data.barcode_placeholder = data.awb_code ? '\\includegraphics[height=1cm,width=4cm]{BARCODE\_PATH}' : '';
+        data.qr_placeholder_left = data.awb_code ? '\\fbox{\\includegraphics[width=1.5cm]{QR\_PATH}}' : '';
+        data.qr_placeholder_right = data.awb_code ? '\\fbox{\\includegraphics[width=1.5cm]{QR\_PATH}}' : '';
+
+        let templatePath = path.join(this.templatesDir, 'label-template.tex');
+        let template = fs.readFileSync(templatePath, 'utf8');
+
+        Object.keys(data).forEach(key => {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+            template = template.replace(regex, data[key]);
+        });
+
+        template = template.replace(/\{\{[^}]+\}\}/g, '');
+
+        const { barcodePath, qrcodePath } = await this.generateImages(order);
+        const absBarcodePath = barcodePath ? path.resolve(barcodePath) : '';
+        const absQrcodePath = qrcodePath ? path.resolve(qrcodePath) : '';
+
+        if (absBarcodePath) {
+            template = template.replace('BARCODE\_PLACEHOLDER', `\\includegraphics[height=1cm,width=4cm]{${absBarcodePath}}`);
+            template = template.replace('BARCODE_PATH', absBarcodePath);
+        }
+        if (absQrcodePath) {
+            template = template.replace('QR\_PLACEHOLDER\_LEFT', `\\fbox{\\includegraphics[width=1.5cm]{${absQrcodePath}}}`);
+            template = template.replace('QR\_PLACEHOLDER\_RIGHT', `\\fbox{\\includegraphics[width=1.5cm]{${absQrcodePath}}}`);
+            template = template.replace('QR_PATH', absQrcodePath);
+        }
+
+        template = template.replace(/BARCODE\_PLACEHOLDER/, '').replace(/QR\_PLACEHOLDER\_LEFT/, '').replace(/QR\_PLACEHOLDER\_RIGHT/, '');
+
+        if (!template.includes('\\begin{document}')) {
+            template = template.replace(/\\end\{document\}/g, '');
+            template = '\\begin{document}\n' + template + '\n\\end{document}';
+        }
+
+        const texPath = path.join(this.tempDir, `label_${orderId}_${timestamp}.tex`);
+        fs.writeFileSync(texPath, template);
+
+        const result = await compile({
+            texFile: texPath,
+            outputDir: this.tempDir,
+            returnBuffer: true
+        });
+
+        console.log(`[LatexLabel] LaTeX compilation status: ${result.status}`);
+
+        if (result.status !== 'success') {
+            throw new Error(`LaTeX compilation failed: ${result.stderr || result.error}`);
+        }
+
+        const pdfBuffer = result.pdfBuffer;
+        const filename = `label_${orderId}_${timestamp}.pdf`;
+        const pdfPath = path.join(this.labelsDir, filename);
+        fs.writeFileSync(pdfPath, pdfBuffer);
+
+        try {
+            const uploadResult = await uploadPdfToCloudinary(pdfBuffer, 'cashbackwallah/labels');
+            return uploadResult.secure_url;
+        } catch (uploadError) {
+            console.error('[LatexLabel] Cloudinary upload failed:', uploadError.message);
+            return `/labels/${filename}`;
+        } finally {
+            [barcodePath, qrcodePath, texPath].forEach(f => {
+                try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) {}
+            });
+        }
+    }
+
+    async generatePdfLib(order, user, timestamp) {
+        const orderId = order.id;
+        const receiver = order.order_receiver_address || {};
+        const pickup = order.order_pickup_address || {};
+
+        console.log(`[LatexLabel] Using pdf-lib fallback for order ${orderId}`);
+
+        const pdfDoc = await PDFDocument.create();
+        const page = pdfDoc.addPage([600, 800]);
+        const { width, height } = page.getSize();
+
+        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        const purple = rgb(0.4, 0.18, 0.57);
+        const green = rgb(0.15, 0.83, 0.4);
+        const black = rgb(0, 0, 0);
+        const gray = rgb(0.4, 0.4, 0.4);
+        const lightBlue = rgb(0.39, 0.41, 0.94);
+
+        const margin = 25;
+        const contentWidth = width - margin * 2;
+        let y = height - margin;
+
+        for (let i = 0; i < 35; i++) {
+            page.drawText('CASHBACKWALLAH', {
+                x: margin - 5,
+                y: height - margin - i * 20,
+                size: 8,
+                font: fontBold,
+                color: lightBlue
+            });
+            page.drawText('CASHBACKWALLAH', {
+                x: width - margin - 95,
+                y: height - margin - i * 20,
+                size: 8,
+                font: fontBold,
+                color: lightBlue
+            });
+        }
+
+        y -= 30;
+        page.drawRectangle({
+            x: margin, y: y - 90,
+            width: contentWidth, height: 90,
+            borderColor: black, borderWidth: 1
+        });
+
+        y -= 15;
+        page.drawText('Ship To', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
+        y -= 18;
+        page.drawText(receiver.name || '', { x: margin + 10, y: y, size: 12, font: fontBold, color: black });
+        y -= 16;
+        page.drawText(receiver.address || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 14;
+        page.drawText(`${receiver.city || ''}, ${receiver.state || ''}, India`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 14;
+        page.drawText(receiver.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 14;
+        page.drawText(receiver.phone || '', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
+
+        y -= 20;
+        page.drawRectangle({
+            x: margin, y: y - 70,
+            width: contentWidth, height: 70,
+            borderColor: black, borderWidth: 1
+        });
+
+        y -= 15;
+        const dim = order.length && order.width && order.height ? `${order.length}x${order.width}x${order.height}` : '1x1x1';
+        const paymentMode = (order.payment_mode || 'PREPAID').toUpperCase();
+        const totalAmount = Number(order.total_amount || 0);
+        
+        page.drawText(`Dimensions: ${dim}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        page.drawText(`Payment: ${paymentMode}`, { x: margin + 10, y: y - 14, size: 9, font: fontRegular, color: black });
+        page.drawText(`Order Total: Rs.${this.formatINR(totalAmount)}`, { x: margin + 10, y: y - 28, size: 9, font: fontRegular, color: black });
+        page.drawText(`Weight: ${order.weight || 0.2} kg`, { x: margin + 10, y: y - 42, size: 9, font: fontRegular, color: black });
+
+        page.drawText(order.courier_name || '', { x: width - margin - 140, y: y, size: 12, font: fontBold, color: black });
+        page.drawText(`AWB: ${order.tracking_number || ''}`, { x: width - margin - 140, y: y - 16, size: 10, font: fontBold, color: black });
+
+        const { barcodePath, qrcodePath } = await this.generateImages(order);
+        
+        if (barcodePath && fs.existsSync(barcodePath)) {
+            const barcodeImg = fs.readFileSync(barcodePath);
+            const barcodePng = await pdfDoc.embedPng(barcodeImg);
+            page.drawImage(barcodePng, {
+                x: width - margin - 180,
+                y: y - 55,
+                width: 160,
+                height: 40
+            });
+        }
+
+        y -= 90;
+        page.drawRectangle({
+            x: margin, y: y - 100,
+            width: contentWidth, height: 100,
+            borderColor: black, borderWidth: 1
+        });
+
+        y -= 15;
+        page.drawText('Shipped By (if undelivered, return to)', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
+        y -= 16;
+        page.drawText(pickup.name || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 14;
+        page.drawText(pickup.address || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 14;
+        page.drawText(`${pickup.city || ''}, ${pickup.state || ''}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 14;
+        page.drawText(pickup.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 14;
+        page.drawText(pickup.phone || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 28;
+        page.drawText('Customer Care: 1800-123-4567', { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
+        y -= 12;
+        page.drawText(`Email: ${pickup.email || 'shiprocket.com'}`, { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
+
+        page.drawText(`Order #: ${orderId}`, { x: width - margin - 140, y: y + 75, size: 10, font: fontBold, color: black });
+        page.drawText(`Invoice No: ${order.invoice_no || `Retail${String(orderId).slice(-6)}`}`, { x: width - margin - 140, y: y + 60, size: 9, font: fontRegular, color: black });
+        page.drawText(`Invoice Date: ${this.formatDate(order.invoice_date || order.created_at)}`, { x: width - margin - 140, y: y + 46, size: 9, font: fontRegular, color: black });
+        page.drawText(`Order Date: ${this.formatDate(order.created_at)}`, { x: width - margin - 140, y: y + 32, size: 9, font: fontRegular, color: black });
+        page.drawText(`GSTIN: ${user?.gst_number || 'N/A'}`, { x: width - margin - 140, y: y + 18, size: 9, font: fontRegular, color: black });
+
+        y -= 120;
+        page.drawRectangle({
+            x: margin, y: y - 30,
+            width: contentWidth, height: 30,
+            borderColor: black, borderWidth: 1
+        });
+        
+        const products = order.products || [];
+        page.drawText('Item', { x: margin + 10, y: y - 5, size: 8, font: fontBold, color: black });
+        page.drawText('SKU', { x: margin + 100, y: y - 5, size: 8, font: fontBold, color: black });
+        page.drawText('Qty', { x: margin + 180, y: y - 5, size: 8, font: fontBold, color: black });
+        page.drawText('Price', { x: margin + 230, y: y - 5, size: 8, font: fontBold, color: black });
+        page.drawText('Total', { x: margin + 320, y: y - 5, size: 8, font: fontBold, color: black });
+
+        let productY = y - 22;
+        const displayProducts = products.length > 0 ? products : [{name: 'N/A', sku: 'N/A', quantity: 1, price: 0}];
+        
+        displayProducts.forEach((product, idx) => {
+            if (idx < 3) {
+                const name = (product.name || product.product_name || 'N/A').substring(0, 12);
+                const sku = (product.sku || product.channel_sku || 'N/A').substring(0, 8);
+                const qty = product.quantity || 1;
+                const price = Number(product.price || product.selling_price || 0);
+                const total = price * qty;
+                
+                page.drawText(name, { x: margin + 10, y: productY, size: 8, font: fontRegular, color: black });
+                page.drawText(sku, { x: margin + 100, y: productY, size: 8, font: fontRegular, color: black });
+                page.drawText(String(qty), { x: margin + 180, y: productY, size: 8, font: fontRegular, color: black });
+                page.drawText(`Rs.${this.formatINR(price)}`, { x: margin + 230, y: productY, size: 8, font: fontRegular, color: black });
+                page.drawText(`Rs.${this.formatINR(total)}`, { x: margin + 320, y: productY, size: 8, font: fontRegular, color: black });
+                productY -= 14;
+            }
+        });
+
+        y -= 50;
+        page.drawRectangle({
+            x: margin, y: y - 45,
+            width: contentWidth, height: 45,
+            borderColor: black, borderWidth: 1
+        });
+
+        const platformFee = Number(order.platform_fee || 0);
+        const shippingCharge = Number(order.shipping_charge || 0);
+        const discount = Number(order.discount || 0);
+        const collectable = order.payment_mode === 'COD' ? Number(order.cod_amount || 0) : 0;
+
+        y -= 15;
+        page.drawText(`Platform Fee: Rs.${this.formatINR(platformFee)}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        page.drawText(`Discount: Rs.${this.formatINR(discount)}`, { x: width - margin - 120, y: y, size: 9, font: fontRegular, color: black });
+        page.drawText(`Shipping: Rs.${this.formatINR(shippingCharge)}`, { x: margin + 10, y: y - 18, size: 9, font: fontRegular, color: black });
+        page.drawText(`Collectable: Rs.${this.formatINR(collectable)}`, { x: width - margin - 130, y: y - 18, size: 10, font: fontBold, color: black });
+
+        y -= 55;
+        page.drawRectangle({
+            x: margin, y: y - 30,
+            width: contentWidth, height: 30,
+            borderColor: black, borderWidth: 1
+        });
+        page.drawText('All disputes subject to Haryana Jurisdiction only. Goods once sold as per exchange policy.', {
+            x: margin + 10, y: y - 10, size: 7, font: fontRegular, color: gray
+        });
+        page.drawText('Auto generated label - no signature required.', {
+            x: margin + 10, y: y - 22, size: 7, font: fontRegular, color: gray
+        });
+
+        const footerY = y - 120;
+        
+        if (qrcodePath && fs.existsSync(qrcodePath)) {
+            const qrImg = fs.readFileSync(qrcodePath);
+            const qrPng = await pdfDoc.embedPng(qrImg);
+            page.drawImage(qrPng, {
+                x: margin + 30,
+                y: footerY - 50,
+                width: 60,
+                height: 60
+            });
+            page.drawText('Get Cashback', { x: margin + 35, footerY: footerY - 60, size: 7, font: fontBold, color: black });
+            page.drawText('on WhatsApp', { x: margin + 38, footerY: footerY - 70, size: 7, font: fontBold, color: black });
+        }
+
+        page.drawText('CASHBACKWALLAH', {
+            x: width / 2 - 100, y: footerY - 20,
+            size: 22, font: fontBold, color: purple
+        });
+        page.drawText("WORLD'S LARGEST FLAT CASHBACK PLATFORM", {
+            x: width / 2 - 90, y: footerY - 38,
+            size: 8, font: fontRegular, color: purple
+        });
+        page.drawText('+91 92511 20521 | +91 95096 98208', {
+            x: width / 2 - 70, y: footerY - 55,
+            size: 9, font: fontRegular, color: green
+        });
+        page.drawText('@cashbackwallahuniverse', {
+            x: width / 2 - 70, y: footerY - 70,
+            size: 9, font: fontRegular, color: purple
+        });
+
+        if (qrcodePath && fs.existsSync(qrcodePath)) {
+            const qrImg = fs.readFileSync(qrcodePath);
+            const qrPng = await pdfDoc.embedPng(qrImg);
+            page.drawImage(qrPng, {
+                x: width - margin - 90,
+                y: footerY - 50,
+                width: 60,
+                height: 60
+            });
+            page.drawText('Get Cashback', { x: width - margin - 85, footerY: footerY - 60, size: 7, font: fontBold, color: black });
+            page.drawText('on Instagram', { x: width - margin - 85, footerY: footerY - 70, size: 7, font: fontBold, color: black });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const filename = `label_${orderId}_${timestamp}.pdf`;
+        const pdfPath = path.join(this.labelsDir, filename);
+        fs.writeFileSync(pdfPath, pdfBytes);
+        console.log(`[LatexLabel] PDF (pdf-lib) written: ${pdfPath}`);
+
+        try {
+            const uploadResult = await uploadPdfToCloudinary(Buffer.from(pdfBytes), 'cashbackwallah/labels');
+            return uploadResult.secure_url;
+        } catch (uploadError) {
+            console.error('[LatexLabel] Cloudinary upload failed:', uploadError.message);
+            return `/labels/${filename}`;
+        } finally {
+            [barcodePath, qrcodePath].forEach(f => {
+                try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) {}
+            });
         }
     }
 }
