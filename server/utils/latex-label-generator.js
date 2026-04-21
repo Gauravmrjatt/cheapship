@@ -280,43 +280,9 @@ class LatexLabelGenerator {
         const gray = rgb(0.4, 0.4, 0.4);
         const lightBlue = rgb(0.39, 0.41, 0.94);
 
-        const margin = 20;
+        const margin = 25;
         const contentWidth = width - margin * 2;
         let y = height - margin;
-
-        for (let i = 0; i < 30; i++) {
-            page.drawText('CASHBACKWALLAH', {
-                x: margin - 5,
-                y: height - margin - 8 - i * 18,
-                size: 8,
-                font: fontBold,
-                color: lightBlue
-            });
-            page.drawText('CASHBACKWALLAH', {
-                x: width - margin - 95,
-                y: height - margin - 8 - i * 18,
-                size: 8,
-                font: fontBold,
-                color: lightBlue
-            });
-        }
-
-        for (let i = 0; i < 22; i++) {
-            page.drawText('CASHBACKWALLAH', {
-                x: 5,
-                y: height / 2 - 50 - i * 18,
-                size: 8,
-                font: fontBold,
-                color: lightBlue
-            });
-            page.drawText('CASHBACKWALLAH', {
-                x: width - 100,
-                y: height / 2 - 50 - i * 18,
-                size: 8,
-                font: fontBold,
-                color: lightBlue
-            });
-        }
 
         y -= 35;
         page.drawRectangle({
