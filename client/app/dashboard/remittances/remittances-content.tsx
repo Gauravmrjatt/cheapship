@@ -182,7 +182,7 @@ export default function RemittancesPage() {
             {tracking ? (
               <div className="flex items-center gap-1">
                 <a
-                  href={`https://shiprocket.co/tracking/${tracking}`}
+                  href={`/track?awb=${tracking}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="

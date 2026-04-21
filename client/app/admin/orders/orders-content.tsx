@@ -469,7 +469,7 @@ function OrdersContent() {
             {tracking ? (
               <div className="flex items-center gap-1">
                 <a
-                  href={trackUrl || `https://shiprocket.co/tracking/${tracking}`}
+                  href={trackUrl || `/track?awb=${tracking}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="

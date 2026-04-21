@@ -2330,6 +2330,83 @@ const getUndeliveredSummary = async (req, res) => {
   }
 };
 
+const trackOrderByAWB = async (req, res) => {
+  const { awb } = req.query;
+  const prisma = req.app.locals.prisma;
+
+  if (!awb || awb.length < 5) {
+    return res.status(400).json({ message: 'AWB number is required (minimum 5 characters)' });
+  }
+
+  try {
+    const order = await prisma.order.findFirst({
+      where: { tracking_number: awb },
+      include: {
+        order_pickup_address: true,
+        order_receiver_address: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            mobile: true
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found with this AWB' });
+    }
+
+    let liveStatus = null;
+    let trackingData = null;
+
+    if (order.shiprocket_shipment_id) {
+      try {
+        trackingData = await getShipmentTracking(order.shiprocket_shipment_id);
+
+        if (trackingData && trackingData.tracking_status) {
+          liveStatus = {
+            current_status: mapShiprocketStatus(trackingData.tracking_status),
+            status: trackingData.tracking_status,
+            track_url: trackingData.track_url,
+            estimated_delivery: trackingData.est_delivery,
+            courier: trackingData.courier_name,
+            tracking_number: trackingData.tracking_number,
+            activities: trackingData.shipment_track_activities || []
+          };
+        }
+      } catch (trackingError) {
+        console.error('Error fetching live tracking:', trackingError);
+      }
+    }
+
+    const shipmentHistory = await prisma.shipmentHistory.findMany({
+      where: { order_id: order.id },
+      orderBy: { status_date: 'desc' }
+    });
+
+    res.json({
+      order: {
+        id: order.id,
+        shipment_status: order.shipment_status,
+        tracking_number: order.tracking_number,
+        courier_name: order.courier_name,
+        label_url: order.label_url,
+        created_at: order.created_at,
+        delivered_at: order.delivered_at,
+        user: order.user
+      },
+      live_status: liveStatus,
+      history: shipmentHistory
+    });
+  } catch (error) {
+    console.error('Error tracking order by AWB:', error);
+    res.status(500).json({ message: 'Error tracking order' });
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
@@ -2341,6 +2418,7 @@ module.exports = {
   handleWebhook,
   getOrderTracking,
   getLiveOrderStatus,
+  trackOrderByAWB,
   generateOrderManifest,
   printOrderManifest,
   generateOrderLabel,
@@ -2351,5 +2429,6 @@ module.exports = {
   generateOrderInvoice,
   assignOrderAWB,
   scheduleOrderPickup,
-  getUndeliveredSummary
+  getUndeliveredSummary,
+  trackOrderByAWB
 };

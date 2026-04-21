@@ -24,6 +24,8 @@ route.use('/support', supportRoute);
 route.use('/disputes', disputeRoute);
 route.use('/feedback', feedbackRoute);
 
+route.use('/track', require('./track.route'));
+
 route.get('/test-db', async (req, res) => {
   try {
     const prisma = req.app.locals.prisma;

@@ -1276,11 +1276,18 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               <Field data-invalid={!!errors.weight}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Dead Weight (g)</FieldLabel>
                 <div className="relative">
                   <HugeiconsIcon icon={Package01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
-                  <Input type="number" onFocus={(e) => {
-                    form.onFocus?.(e);
-                    e.target.select();
-                  }} step="1" max={1000000} {...form.register("weight", { valueAsNumber: true })} aria-invalid={!!errors.weight} className="h-11 font-bold text-lg pl-10" />
-                </div>
+                <Input
+  type="number"
+  onFocus={(e) => {
+    form.onFocus?.(e);
+    e.target.value = ""; // clear the field
+  }}
+  step="1"
+  max={1000000}
+  {...form.register("weight", { valueAsNumber: true })}
+  aria-invalid={!!errors.weight}
+  className="h-11 font-bold text-lg pl-10"
+/> </div>
                 <FieldError errors={[errors.weight]} className="text-[10px] font-bold uppercase" />
               </Field>
               <div className="grid grid-cols-3 gap-3">

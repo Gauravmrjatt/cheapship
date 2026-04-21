@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { sileo } from "sileo";
 import { useLoginHistory, LoginSession } from "@/lib/hooks/use-sessions";
 import { format } from "date-fns";
+import { useAuthStore } from "@/lib/store/auth";
 
 interface KycData {
   pan_number: string | null;
@@ -354,12 +355,15 @@ function KycTab({ http }: { http: any }) {
     }
   };
 
+  const { user, setUser } = useAuthStore();
   const { mutate: updateKyc, isPending: isUpdating } = useMutation(
     http.put("/auth/kyc", {
       onSuccess: () => {
         sileo.success({ title: "KYC details updated successfully" });
+        setUser({ ...user!, kyc_status: "VERIFIED" });
         queryClient.invalidateQueries({ queryKey: ["kyc-status"] });
         queryClient.invalidateQueries({ queryKey: ["me"] });
+        queryClient.invalidateQueries({ queryKey: ["user-profile"] });
         queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       }
     })

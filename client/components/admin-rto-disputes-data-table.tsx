@@ -63,6 +63,7 @@ export type AdminRTODispute = {
   created_at: string;
   user?: {
     name?: string;
+    email?: string;
     mobile?: string;
   };
   order?: {
@@ -163,7 +164,7 @@ export function AdminRTODisputesDataTable({
             {tracking ? (
               <div className="flex items-center gap-1">
                 <a
-                  href={`https://shiprocket.co/tracking/${tracking}`}
+                  href={`/track?awb=${tracking}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="
@@ -200,7 +201,8 @@ export function AdminRTODisputesDataTable({
       cell: ({ row }) => (
         <div>
           <div className="font-medium">{row.original.user?.name}</div>
-          <div className="text-xs text-muted-foreground">{row.original.user?.mobile}</div>
+          <div className="text-xs text-muted-foreground">{row.original.user?.email}</div>
+          <div className="text-[10px] text-muted-foreground">{row.original.user?.mobile}</div>
         </div>
       ),
     },

@@ -64,6 +64,7 @@ export type AdminWeightDispute = {
 
   user?: {
     name?: string;
+    email?: string;
     mobile?: string;
   };
   status: string;
@@ -175,7 +176,7 @@ export function AdminWeightDisputesDataTable({
             {tracking ? (
               <div className="flex items-center gap-1">
                 <a
-                  href={`https://shiprocket.co/tracking/${tracking}`}
+                  href={`/track?awb=${tracking}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="
@@ -212,7 +213,8 @@ export function AdminWeightDisputesDataTable({
       cell: ({ row }) => (
         <div>
           <div className="font-medium">{row.original.user?.name}</div>
-          <div className="text-xs text-muted-foreground">{row.original.user?.mobile}</div>
+          <div className="text-xs text-muted-foreground">{row.original.user?.email}</div>
+          <div className="text-[10px] text-muted-foreground">{row.original.user?.mobile}</div>
         </div>
       ),
     },
