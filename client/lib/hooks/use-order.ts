@@ -48,6 +48,7 @@ export const useSchedulePickup = () => {
           sileo.success({ title: "Pickup Scheduled", description: "Pickup has been successfully scheduled." });
           queryClient.invalidateQueries({ queryKey: ["order", orderId] });
           queryClient.invalidateQueries({ queryKey: ["orders"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
         },
         onError: (error: any) => {
           sileo.error({ title: "Failed to schedule pickup", description: error.message || "An error occurred while scheduling pickup." });

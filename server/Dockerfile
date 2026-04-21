@@ -1,30 +1,26 @@
-# Use Node.js 22
 FROM node:22.12-slim
 
-# Install dependencies required by Prisma
-RUN apt-get update -y && apt-get install -y openssl
+# ✅ Install required system libs (FIX)
+RUN apt-get update && apt-get install -y \
+    openssl \
+    libgraphite2-3 \
+    libharfbuzz0b \
+    libfreetype6 \
+    libfontconfig1 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy dependency files
 COPY package.json pnpm-lock.yaml* ./
-
-# Install deps
 RUN npm install
 
-# Copy app
 COPY . .
 
-# ✅ Resolve failed migrations (if any)
+# Prisma steps
 RUN npx prisma migrate resolve --applied 20260227000000_add_transaction_categories || true
-
-# ✅ Wait for DB + apply migrations
 RUN npx prisma migrate deploy
-
-# ✅ Pull real DB schema (VERY IMPORTANT)
 RUN npx prisma db pull
-
-# ✅ Regenerate client from REAL DB
 RUN npx prisma generate
 
 EXPOSE 3001
