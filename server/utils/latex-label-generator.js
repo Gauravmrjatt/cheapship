@@ -92,14 +92,16 @@ class LatexLabelGenerator {
         const timestamp = Date.now();
         const barcodePath = path.join(this.tempDir, `barcode_${timestamp}.png`);
         const qrcodePath = path.join(this.tempDir, `qrcode_${timestamp}.png`);
+        const qrcodePath2 = path.join(this.tempDir, `qrcode2_${timestamp}.png`);
         const awbCode = order.tracking_number || '';
 
         await Promise.all([
             awbCode ? this.generateBarcode(awbCode, barcodePath) : Promise.resolve(null),
-            awbCode ? this.generateQR(`https://cashbackwallah.com/track/${awbCode}`, qrcodePath) : Promise.resolve(null)
+            this.generateQR('https://instagram.com/cashbackwallahuniverse', qrcodePath),
+            this.generateQR('https://wa.me/9251220521', qrcodePath2)
         ]);
 
-        return { barcodePath, qrcodePath };
+        return { barcodePath, qrcodePath, qrcodePath2 };
     }
 
     buildProductRows(products) {
@@ -125,7 +127,7 @@ class LatexLabelGenerator {
     buildProductTable(products) {
         let table = '\\begin{tabular}{|l|l|l|l|l|l|l|}\\hline\n';
         table += '\\textbf{Item} & \\textbf{SKU} & \\textbf{Qty} & \\textbf{Price} & \\textbf{HSN} & \\textbf{Total} \\\\\n\\hline\n';
-        
+
         if (!products || products.length === 0) {
             table += 'N/A & N/A & 1 & Rs.0.00 & & Rs.0.00 \\\\\n\\hline\n';
         } else {
@@ -138,7 +140,7 @@ class LatexLabelGenerator {
                 table += `${name} & ${sku} & ${qty} & Rs.${this.formatINR(price)} & & Rs.${this.formatINR(total)} \\\\\n\\hline\n`;
             });
         }
-        
+
         table += '\\end{tabular}';
         return table;
     }
@@ -167,7 +169,7 @@ class LatexLabelGenerator {
         const hgt = order.height || 0;
         const dimensions = (len || wid || hgt) ? `${len}x${wid}x${hgt}` : '1x1x1';
         const paymentMode = (order.payment_mode || 'PREPAID').toUpperCase();
-        
+
         const data = {
             receiver_name: this.escapeLatex(receiver.name || ''),
             receiver_address: this.escapeLatex(receiver.address || ''),
@@ -254,19 +256,13 @@ class LatexLabelGenerator {
             console.error('[LatexLabel] Cloudinary upload failed:', uploadError.message);
             return `/labels/${pdfFilename}`;
         } finally {
-            [barcodePath, qrcodePath].forEach(f => {
-                try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) {}
+            [barcodePath, qrcodePath, qrcodePath2].forEach(f => {
+                try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) { }
             });
         }
     }
 
     async generatePdfLib(order, user, timestamp) {
-        const orderId = order.id;
-        const receiver = order.order_receiver_address || {};
-        const pickup = order.order_pickup_address || {};
-
-        console.log(`[LatexLabel] Using pdf-lib for order ${orderId}`);
-
         const pdfDoc = await PDFDocument.create();
         const page = pdfDoc.addPage([600, 800]);
         const { width, height } = page.getSize();
@@ -274,222 +270,238 @@ class LatexLabelGenerator {
         const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
+        const black = rgb(0, 0, 0);
+        const gray = rgb(0.5, 0.5, 0.5);
         const purple = rgb(0.4, 0.18, 0.57);
         const green = rgb(0.15, 0.83, 0.4);
-        const black = rgb(0, 0, 0);
-        const gray = rgb(0.4, 0.4, 0.4);
-        const lightBlue = rgb(0.39, 0.41, 0.94);
 
         const margin = 25;
         const contentWidth = width - margin * 2;
+
+        const padding = 10;
+        const lineGap = 12;
+
         let y = height - margin;
 
-        y -= 35;
-        page.drawRectangle({
-            x: margin, y: y - 95,
-            width: contentWidth, height: 95,
-            borderColor: black, borderWidth: 1
+        const drawBox = (boxHeight) => {
+            y -= boxHeight;
+            page.drawRectangle({
+                x: margin,
+                y: y,
+                width: contentWidth,
+                height: boxHeight,
+                borderColor: black,
+                borderWidth: 1
+            });
+            return y + boxHeight;
+        };
+
+        const wrapText = (text, maxChars = 45) => {
+            if (!text) return [''];
+            const words = text.split(' ');
+            let lines = [];
+            let line = '';
+            for (let w of words) {
+                if ((line + ' ' + w).trim().length > maxChars) {
+                    lines.push(line);
+                    line = w;
+                } else {
+                    line = (line + ' ' + w).trim();
+                }
+            }
+            if (line) lines.push(line);
+            return lines;
+        };
+
+        // =========================
+        // SHIP TO
+        // =========================
+        let top = drawBox(110);
+        let innerY = top - padding;
+
+        const receiver = order.order_receiver_address || {};
+
+        page.drawText('Ship To', { x: margin + 10, y: innerY, size: 10, font: fontBold });
+        innerY -= lineGap + 2;
+
+        page.drawText(receiver.name || '', { x: margin + 10, y: innerY, size: 13, font: fontBold });
+        innerY -= lineGap;
+
+        wrapText(receiver.address || '').slice(0, 3).forEach(line => {
+            page.drawText(line, { x: margin + 10, y: innerY, size: 9, font: fontRegular });
+            innerY -= lineGap;
         });
 
-        y -= 15;
-        page.drawText('Ship To', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
-        y -= 18;
-        page.drawText(this.escapePdf(receiver.name || ''), { x: margin + 10, y: y, size: 14, font: fontBold, color: black });
-        y -= 18;
-        const addrLines = this.wrapText(this.escapePdf(receiver.address || ''), 50);
-        addrLines.slice(0, 4).forEach(line => {
-            page.drawText(line, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-            y -= 14;
-        });
-        page.drawText(`${this.escapePdf(receiver.city || '')}, ${this.escapePdf(receiver.state || '')}, ${receiver.country || 'India'}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
-        page.drawText(receiver.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
-        page.drawText(receiver.phone || '', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
+        page.drawText(`${receiver.city || ''}, ${receiver.state || ''}`, { x: margin + 10, y: innerY, size: 9 });
+        innerY -= lineGap;
 
-        y -= 35;
-        page.drawRectangle({
-            x: margin, y: y - 100,
-            width: contentWidth, height: 100,
-            borderColor: black, borderWidth: 1
-        });
+        page.drawText(receiver.pincode || '', { x: margin + 10, y: innerY, size: 9 });
+        innerY -= lineGap;
 
-        y -= 15;
-        const dim = (order.length || order.width || order.height) ? `${order.length || 1}x${order.width || 1}x${order.height || 1}` : '1x1x1';
+        page.drawText(receiver.phone || '', { x: margin + 10, y: innerY, size: 10, font: fontBold });
+
+        // =========================
+        // SHIPMENT BOX
+        // =========================
+        top = drawBox(100);
+        innerY = top - padding;
+
+        const dim = `${order.length || 1}x${order.width || 1}x${order.height || 1}`;
         const paymentMode = (order.payment_mode || 'PREPAID').toUpperCase();
-        const products = order.products || [];
-        const itemsTotal = products.reduce((sum, p) => sum + (Number(p.price || p.selling_price || 0) * (p.quantity || 1)), 0);
 
-        page.drawText(`Dimensions: ${dim}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        page.drawText(`Payment: ${paymentMode}`, { x: margin + 10, y: y - 12, size: 9, font: fontRegular, color: black });
-        page.drawText(`Order Total: Rs.${this.formatINR(itemsTotal)}`, { x: margin + 10, y: y - 24, size: 9, font: fontRegular, color: black });
-        page.drawText(`Weight: ${order.weight || 0.2} kg`, { x: margin + 10, y: y - 36, size: 9, font: fontRegular, color: black });
+        page.drawText(`Dimensions: ${dim}`, { x: margin + 10, y: innerY, size: 9 });
+        page.drawText(`Payment: ${paymentMode}`, { x: margin + 10, y: innerY - 14, size: 9 });
+        page.drawText(`Weight: ${order.weight || 0.2} kg`, { x: margin + 10, y: innerY - 28, size: 9 });
 
-        page.drawText(order.courier_name || '', { x: width - margin - 150, y: y, size: 12, font: fontBold, color: black });
-        page.drawText(`AWB: ${order.tracking_number || ''}`, { x: width - margin - 150, y: y - 16, size: 10, font: fontBold, color: black });
+        const rightX = width - margin - 180;
 
-        const { barcodePath, qrcodePath } = await this.generateImages(order);
+        page.drawText(order.courier_name || '', {
+            x: rightX,
+            y: innerY,
+            size: 12,
+            font: fontBold
+        });
+
+        page.drawText(`AWB: ${order.tracking_number || ''}`, {
+            x: rightX,
+            y: innerY - 16,
+            size: 10,
+            font: fontBold
+        });
+
+        const { barcodePath, qrcodePath, qrcodePath2 } = await this.generateImages(order);
 
         if (barcodePath && fs.existsSync(barcodePath)) {
-            const barcodeImg = fs.readFileSync(barcodePath);
-            const barcodePng = await pdfDoc.embedPng(barcodeImg);
-            page.drawImage(barcodePng, {
-                x: width - margin - 190,
-                y: y - 52,
-                width: 160,
-                height: 34
+            const img = await pdfDoc.embedPng(fs.readFileSync(barcodePath));
+            page.drawImage(img, {
+                x: rightX,
+                y: innerY - 50,
+                width: 150,
+                height: 30
             });
         }
 
-        y -= 100;
-        page.drawRectangle({
-            x: margin, y: y - 120,
-            width: contentWidth, height: 120,
-            borderColor: black, borderWidth: 1
+        // =========================
+        // SENDER + ORDER DETAILS
+        // =========================
+        top = drawBox(130);
+        innerY = top - padding;
+
+        const pickup = order.order_pickup_address || {};
+        const leftX = margin + 10;
+
+        page.drawText('Shipped By', { x: leftX, y: innerY, size: 10, font: fontBold });
+        innerY -= lineGap;
+
+        page.drawText(pickup.name || '', { x: leftX, y: innerY, size: 9 });
+        innerY -= lineGap;
+
+        wrapText(pickup.address || '').slice(0, 3).forEach(line => {
+            page.drawText(line, { x: leftX, y: innerY, size: 9 });
+            innerY -= lineGap;
         });
 
-        y -= 15;
-        page.drawText('Shipped By (if undelivered, return to)', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
-        y -= 16;
-        page.drawText(this.escapePdf(pickup.name || ''), { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
-        const pickupAddrLines = this.wrapText(this.escapePdf(pickup.address || ''), 50);
-        pickupAddrLines.slice(0, 4).forEach(line => {
-            page.drawText(line, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-            y -= 14;
-        });
-        page.drawText(`${this.escapePdf(pickup.city || '')}, ${this.escapePdf(pickup.state || '')}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
-        page.drawText(pickup.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
-        page.drawText(pickup.phone || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 22;
-        page.drawText('Customer Care: 1800-123-4567', { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
-        y -= 12;
-        page.drawText(`Email: ${pickup.email || 'shiprocket.com'}`, { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
+        page.drawText(`${pickup.city || ''}, ${pickup.state || ''}`, { x: leftX, y: innerY, size: 9 });
+        innerY -= lineGap;
 
-        const rightColY = y + 80;
-        page.drawText(`Order #: `, { x: width - margin - 150, y: rightColY, size: 9, font: fontRegular, color: black });
-        page.drawText(`${orderId}`, { x: width - margin - 150, y: rightColY - 12, size: 9, font: fontBold, color: black });
-        page.drawText(`Invoice No: `, { x: width - margin - 150, y: rightColY - 26, size: 9, font: fontRegular, color: black });
-        page.drawText(`${order.invoice_no || `Retail${String(orderId).slice(-6)}`}`, { x: width - margin - 150, y: rightColY - 38, size: 9, font: fontBold, color: black });
-        page.drawText(`Invoice Date: `, { x: width - margin - 150, y: rightColY - 52, size: 9, font: fontRegular, color: black });
-        page.drawText(`${this.formatDate(order.invoice_date || order.created_at)}`, { x: width - margin - 150, y: rightColY - 64, size: 9, font: fontBold, color: black });
-        page.drawText(`Order Date: `, { x: width - margin - 150, y: rightColY - 78, size: 9, font: fontRegular, color: black });
-        page.drawText(`${this.formatDate(order.created_at)}`, { x: width - margin - 150, y: rightColY - 90, size: 9, font: fontBold, color: black });
-        page.drawText(`GSTIN: `, { x: width - margin - 150, y: rightColY - 104, size: 9, font: fontRegular, color: black });
-        page.drawText(`${user?.gst_number || 'N/A'}`, { x: width - margin - 150, y: rightColY - 116, size: 9, font: fontBold, color: black });
+        page.drawText(pickup.phone || '', { x: leftX, y: innerY, size: 9 });
 
-        y -= 145;
-        page.drawRectangle({
-            x: margin, y: y - 35,
-            width: contentWidth, height: 35,
-            borderColor: black, borderWidth: 1
-        });
+        const rightColX = width / 2 + 20;
+        let rightY = top - padding;
 
-        page.drawText('Item', { x: margin + 10, y: y - 6, size: 8, font: fontBold, color: black });
-        page.drawText('SKU', { x: margin + 120, y: y - 6, size: 8, font: fontBold, color: black });
-        page.drawText('Qty', { x: margin + 220, y: y - 6, size: 8, font: fontBold, color: black });
-        page.drawText('Price', { x: margin + 280, y: y - 6, size: 8, font: fontBold, color: black });
-        page.drawText('Total', { x: margin + 380, y: y - 6, size: 8, font: fontBold, color: black });
+        page.drawText(`Order #: ${order.id}`, { x: rightColX, y: rightY, size: 9 });
+        rightY -= lineGap;
 
-        let productY = y - 20;
-        const displayProducts = products.length > 0 ? products : [{ name: 'N/A', sku: 'N/A', quantity: 1, price: 0 }];
+        page.drawText(`Invoice: ${order.invoice_no || ''}`, { x: rightColX, y: rightY, size: 9 });
+        rightY -= lineGap;
 
-        displayProducts.slice(0, 3).forEach((product) => {
-            const name = (product.name || product.product_name || 'N/A').substring(0, 15);
-            const sku = (product.sku || product.channel_sku || 'N/A').substring(0, 12);
-            const qty = product.quantity || 1;
-            const price = Number(product.price || product.selling_price || 0);
-            const total = price * qty;
+        page.drawText(`Date: ${this.formatDate(order.created_at)}`, { x: rightColX, y: rightY, size: 9 });
+        rightY -= lineGap;
 
-            page.drawText(name, { x: margin + 10, y: productY, size: 8, font: fontRegular, color: black });
-            page.drawText(sku, { x: margin + 120, y: productY, size: 8, font: fontRegular, color: black });
-            page.drawText(String(qty), { x: margin + 220, y: productY, size: 8, font: fontRegular, color: black });
-            page.drawText(`Rs.${this.formatINR(price)}`, { x: margin + 280, y: productY, size: 8, font: fontRegular, color: black });
-            page.drawText(`Rs.${this.formatINR(total)}`, { x: margin + 380, y: productY, size: 8, font: fontRegular, color: black });
-            productY -= 14;
+        page.drawText(`GSTIN: ${user?.gst_number || 'N/A'}`, { x: rightColX, y: rightY, size: 9 });
+
+        // =========================
+        // PRODUCT TABLE
+        // =========================
+        const products = order.products?.length ? order.products : [{ name: 'N/A', quantity: 1, price: 0 }];
+        const rowHeight = 14;
+        const tableHeight = 25 + products.length * rowHeight;
+
+        top = drawBox(tableHeight);
+        innerY = top - 10;
+
+        page.drawText('Item', { x: margin + 10, y: innerY, size: 8, font: fontBold });
+        page.drawText('Qty', { x: margin + 220, y: innerY, size: 8, font: fontBold });
+        page.drawText('Price', { x: margin + 280, y: innerY, size: 8, font: fontBold });
+
+        let rowY = innerY - 12;
+
+        products.forEach(p => {
+            page.drawText((p.name || '').substring(0, 20), { x: margin + 10, y: rowY, size: 8 });
+            page.drawText(String(p.quantity || 1), { x: margin + 220, y: rowY, size: 8 });
+            page.drawText(`Rs.${this.formatINR(p.price || 0)}`, { x: margin + 280, y: rowY, size: 8 });
+            rowY -= rowHeight;
         });
 
-        y -= 50;
-
-        y -= 50;
-        page.drawRectangle({
-            x: margin, y: y - 25,
-            width: contentWidth, height: 25,
-            borderColor: black, borderWidth: 1
-        });
-        page.drawText('All disputes are subject to Haryana Jurisdiction only. Goods once sold will only be taken back or exchanged as per store exchange policy.', {
-            x: margin + 10, y: y - 8, size: 7, font: fontRegular, color: gray
-        });
-        page.drawText('This is an auto generated label and does not require any signature.', {
-            x: margin + 10, y: y - 18, size: 7, font: fontRegular, color: gray
+        // =========================
+        // LEGAL
+        // =========================
+        top = drawBox(30);
+        page.drawText('Auto generated label. No signature required.', {
+            x: margin + 10,
+            y: top - 15,
+            size: 7,
+            font: fontRegular,
+            color: gray
         });
 
-        y -= 30;
-
-        const footerY = y - 70;
+        // =========================
+        // FOOTER (FIXED)
+        // =========================
+        const footerY = margin + 70;
 
         if (qrcodePath && fs.existsSync(qrcodePath)) {
-            const qrImg = fs.readFileSync(qrcodePath);
-            const qrPng = await pdfDoc.embedPng(qrImg);
-            page.drawImage(qrPng, {
-                x: margin + 20,
-                y: footerY - 45,
-                width: 50,
-                height: 50
-            });
-            page.drawText('Get Instant Cashback', { x: margin + 22, y: footerY - 55, size: 7, font: fontBold, color: black });
-            page.drawText('Offers on WhatsApp', { x: margin + 20, y: footerY - 65, size: 7, font: fontBold, color: black });
+            const qr = await pdfDoc.embedPng(fs.readFileSync(qrcodePath));
+            page.drawImage(qr, { x: margin + 10, y: footerY, width: 50, height: 50 });
+            page.drawText('Get Instant Cashback', { x: margin + 10, y: footerY - 8, size: 7, font: fontBold });
+            page.drawText('Offers on WhatsApp', { x: margin + 10, y: footerY - 18, size: 7, font: fontBold });
+        }
+
+        if (qrcodePath2 && fs.existsSync(qrcodePath2)) {
+            const qr2 = await pdfDoc.embedPng(fs.readFileSync(qrcodePath2));
+            page.drawImage(qr2, { x: width - margin - 60, y: footerY, width: 50, height: 50 });
+            page.drawText('Get Instant Cashback', { x: width - margin - 60, y: footerY - 8, size: 7, font: fontBold });
+            page.drawText('Offers on Instagram', { x: width - margin - 60, y: footerY - 18, size: 7, font: fontBold });
         }
 
         page.drawText('CASHBACKWALLAH', {
-            x: width / 2 - 90, y: footerY - 10,
-            size: 24, font: fontBold, color: purple
+            x: width / 2 - 110,
+            y: footerY + 30,
+            size: 26,
+            font: fontBold,
+            color: purple
         });
-        page.drawText("WORLD'S LARGEST & MOST TRUSTED FLAT CASHBACK PLATFORM", {
-            x: width / 2 - 110, y: footerY - 26,
-            size: 7, font: fontRegular, color: purple
+
+        page.drawText("WORLD'S MOST TRUSTED CASHBACK PLATFORM", {
+            x: width / 2 - 110,
+            y: footerY + 12,
+            size: 8,
+            color: purple
         });
+
         page.drawText('+91 92511 20521 | +91 95096 98208', {
-            x: width / 2 - 65, y: footerY - 40,
-            size: 10, font: fontRegular, color: green
-        });
-        page.drawText('@cashbackwallahuniverse', {
-            x: width / 2 - 65, y: footerY - 54,
-            size: 10, font: fontRegular, color: purple
+            x: width / 2 - 90,
+            y: footerY - 5,
+            size: 10,
+            color: green
         });
 
-        if (qrcodePath && fs.existsSync(qrcodePath)) {
-            const qrImg = fs.readFileSync(qrcodePath);
-            const qrPng = await pdfDoc.embedPng(qrImg);
-            page.drawImage(qrPng, {
-                x: width - margin - 70,
-                y: footerY - 45,
-                width: 50,
-                height: 50
-            });
-            page.drawText('Get Instant Cashback', { x: width - margin - 70, y: footerY - 55, size: 7, font: fontBold, color: black });
-            page.drawText('Offers on Instagram', { x: width - margin - 70, y: footerY - 65, size: 7, font: fontBold, color: black });
-        }
-
+        // SAVE
         const pdfBytes = await pdfDoc.save();
-        const filename = `label_${orderId}_${timestamp}.pdf`;
-        const pdfPath = path.join(this.labelsDir, filename);
-        fs.writeFileSync(pdfPath, pdfBytes);
-        console.log(`[LatexLabel] PDF written: ${pdfPath}`);
+        const filePath = path.join(this.labelsDir, `label_${order.id}_${timestamp}.pdf`);
+        fs.writeFileSync(filePath, pdfBytes);
 
-        try {
-            const uploadResult = await uploadPdfToCloudinary(Buffer.from(pdfBytes), 'cashbackwallah/labels');
-            return uploadResult.secure_url;
-        } catch (uploadError) {
-            console.error('[LatexLabel] Cloudinary upload failed:', uploadError.message);
-            return `/labels/${filename}`;
-        } finally {
-            [barcodePath, qrcodePath].forEach(f => {
-                try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) { }
-            });
-        }
+        return filePath;
     }
 
     escapePdf(text) {
