@@ -634,7 +634,7 @@ const getWithdrawals = async (req, res) => {
         mobile: true,
         _count: {
           select: {
-            commissionWithdrawal: {
+            withdrawals: {
               where: baseWhere
             }
           }
