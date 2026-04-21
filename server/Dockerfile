@@ -1,14 +1,16 @@
-FROM ubuntu:24.04
+FROM node:22-bookworm
 
 RUN apt-get update && apt-get install -y \
     curl \
     openssl \
     ca-certificates \
     locales \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
+    texlive-latex-base \
+    texlive-latex-extra \
+    texlive-fonts-recommended \
+    texlive-pictures \
+    texlive-font-utils \
+    ghostscript \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

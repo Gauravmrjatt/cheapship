@@ -3,7 +3,8 @@ const path = require('path');
 const bwipjs = require('bwip-js');
 const QRCode = require('qrcode');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
-const { compile, isAvailable } = require('node-latex-compiler');
+const latex = require('node-latex');
+const { execSync } = require('child_process');
 const { uploadPdfToCloudinary } = require('./cloudinary');
 
 class LatexLabelGenerator {
@@ -21,10 +22,29 @@ class LatexLabelGenerator {
 
     canUseLatex() {
         try {
-            return isAvailable();
+            execSync('pdflatex --version', { stdio: 'ignore' });
+            return true;
         } catch (e) {
             return false;
         }
+    }
+
+    compileLatex(texString, outputPath) {
+        return new Promise((resolve, reject) => {
+            const output = fs.createWriteStream(outputPath);
+            const pdf = latex(texString, { passes: 2 });
+
+            pdf.pipe(output);
+
+            pdf.on('error', (err) => {
+                console.error('[LatexLabel] LaTeX Error:', err.message);
+                reject(err);
+            });
+
+            pdf.on('finish', () => {
+                resolve(outputPath);
+            });
+        });
     }
 
     formatINR(amount) {
@@ -161,7 +181,7 @@ class LatexLabelGenerator {
 
         try {
             const useLatex = this.canUseLatex();
-            console.log(`[LatexLabel] Tectonic available: ${useLatex}`);
+            console.log(`[LatexLabel] pdflatex available: ${useLatex}`);
 
             if (useLatex) {
                 try {
@@ -260,34 +280,22 @@ class LatexLabelGenerator {
             template = '\\begin{document}\n' + template + '\n\\end{document}';
         }
 
-        const texPath = path.join(this.tempDir, `label_${orderId}_${timestamp}.tex`);
-        fs.writeFileSync(texPath, template);
+        const pdfFilename = `label_${orderId}_${timestamp}.pdf`;
+        const pdfPath = path.join(this.labelsDir, pdfFilename);
 
-        const result = await compile({
-            texFile: texPath,
-            outputDir: this.tempDir,
-            returnBuffer: true
-        });
+        console.log('[LatexLabel] Compiling LaTeX with pdflatex...');
+        await this.compileLatex(template, pdfPath);
 
-        console.log(`[LatexLabel] LaTeX compilation status: ${result.status}`);
-
-        if (result.status !== 'success') {
-            throw new Error(`LaTeX compilation failed: ${result.stderr || result.error}`);
-        }
-
-        const pdfBuffer = result.pdfBuffer;
-        const filename = `label_${orderId}_${timestamp}.pdf`;
-        const pdfPath = path.join(this.labelsDir, filename);
-        fs.writeFileSync(pdfPath, pdfBuffer);
+        const pdfBuffer = fs.readFileSync(pdfPath);
 
         try {
             const uploadResult = await uploadPdfToCloudinary(pdfBuffer, 'cashbackwallah/labels');
             return uploadResult.secure_url;
         } catch (uploadError) {
             console.error('[LatexLabel] Cloudinary upload failed:', uploadError.message);
-            return `/labels/${filename}`;
+            return `/labels/${pdfFilename}`;
         } finally {
-            [barcodePath, qrcodePath, texPath].forEach(f => {
+            [barcodePath, qrcodePath].forEach(f => {
                 try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) {}
             });
         }

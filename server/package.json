@@ -25,7 +25,7 @@
     "morgan": "~1.9.1",
     "node-cron": "^3.0.3",
     "node-fetch": "^2.7.0",
-    "node-latex-compiler": "^1.0.5",
+    "node-latex": "^3.0.0",
     "nodemailer": "^8.0.1",
     "pdf-lib": "^1.17.1",
     "pg": "^8.18.0",
