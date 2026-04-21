@@ -382,18 +382,18 @@ class LatexLabelGenerator {
 
         y -= 145;
         page.drawRectangle({
-            x: margin, y: y - 40,
-            width: contentWidth, height: 40,
+            x: margin, y: y - 35,
+            width: contentWidth, height: 35,
             borderColor: black, borderWidth: 1
         });
 
-        page.drawText('Item', { x: margin + 10, y: y - 8, size: 8, font: fontBold, color: black });
-        page.drawText('SKU', { x: margin + 120, y: y - 8, size: 8, font: fontBold, color: black });
-        page.drawText('Qty', { x: margin + 220, y: y - 8, size: 8, font: fontBold, color: black });
-        page.drawText('Price', { x: margin + 280, y: y - 8, size: 8, font: fontBold, color: black });
-        page.drawText('Total', { x: margin + 380, y: y - 8, size: 8, font: fontBold, color: black });
+        page.drawText('Item', { x: margin + 10, y: y - 6, size: 8, font: fontBold, color: black });
+        page.drawText('SKU', { x: margin + 120, y: y - 6, size: 8, font: fontBold, color: black });
+        page.drawText('Qty', { x: margin + 220, y: y - 6, size: 8, font: fontBold, color: black });
+        page.drawText('Price', { x: margin + 280, y: y - 6, size: 8, font: fontBold, color: black });
+        page.drawText('Total', { x: margin + 380, y: y - 6, size: 8, font: fontBold, color: black });
 
-        let productY = y - 24;
+        let productY = y - 20;
         const products = order.products || [];
         const displayProducts = products.length > 0 ? products : [{ name: 'N/A', sku: 'N/A', quantity: 1, price: 0 }];
 
