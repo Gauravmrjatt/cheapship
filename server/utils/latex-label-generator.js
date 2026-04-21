@@ -394,7 +394,6 @@ class LatexLabelGenerator {
         page.drawText('Total', { x: margin + 380, y: y - 6, size: 8, font: fontBold, color: black });
 
         let productY = y - 20;
-        const products = order.products || [];
         const displayProducts = products.length > 0 ? products : [{ name: 'N/A', sku: 'N/A', quantity: 1, price: 0 }];
 
         displayProducts.slice(0, 3).forEach((product) => {
