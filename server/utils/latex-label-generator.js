@@ -296,8 +296,8 @@ class LatexLabelGenerator {
         y -= 16;
         page.drawText(this.escapePdf(receiver.name || ''), { x: margin + 10, y: y, size: 14, font: fontBold, color: black });
         y -= 16;
-        const addrLines = this.wrapText(this.escapePdf(receiver.address || ''), 55);
-        addrLines.forEach(line => {
+        const addrLines = this.wrapText(this.escapePdf(receiver.address || ''), 50);
+        addrLines.slice(0, 4).forEach(line => {
             page.drawText(line, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
             y -= 12;
         });
@@ -307,10 +307,10 @@ class LatexLabelGenerator {
         y -= 12;
         page.drawText(receiver.phone || '', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
 
-        y -= 25;
+        y -= 30;
         page.drawRectangle({
-            x: margin, y: y - 75,
-            width: contentWidth, height: 75,
+            x: margin, y: y - 100,
+            width: contentWidth, height: 100,
             borderColor: black, borderWidth: 1
         });
 
@@ -340,10 +340,10 @@ class LatexLabelGenerator {
             });
         }
 
-        y -= 95;
+        y -= 100;
         page.drawRectangle({
-            x: margin, y: y - 105,
-            width: contentWidth, height: 105,
+            x: margin, y: y - 120,
+            width: contentWidth, height: 120,
             borderColor: black, borderWidth: 1
         });
 
@@ -352,8 +352,8 @@ class LatexLabelGenerator {
         y -= 14;
         page.drawText(this.escapePdf(pickup.name || ''), { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
         y -= 12;
-        const pickupAddrLines = this.wrapText(this.escapePdf(pickup.address || ''), 55);
-        pickupAddrLines.forEach(line => {
+        const pickupAddrLines = this.wrapText(this.escapePdf(pickup.address || ''), 50);
+        pickupAddrLines.slice(0, 4).forEach(line => {
             page.drawText(line, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
             y -= 12;
         });
@@ -362,7 +362,7 @@ class LatexLabelGenerator {
         page.drawText(pickup.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
         y -= 12;
         page.drawText(pickup.phone || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 24;
+        y -= 20;
         page.drawText('Customer Care: 1800-123-4567', { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
         y -= 10;
         page.drawText(`Email: ${pickup.email || 'shiprocket.com'}`, { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
@@ -374,10 +374,10 @@ class LatexLabelGenerator {
         page.drawText(`Order Date: ${this.formatDate(order.created_at)}`, { x: width - margin - 150, y: rightColY - 36, size: 9, font: fontRegular, color: black });
         page.drawText(`GSTIN: ${user?.gst_number || 'N/A'}`, { x: width - margin - 150, y: rightColY - 48, size: 9, font: fontRegular, color: black });
 
-        y -= 130;
+        y -= 140;
         page.drawRectangle({
-            x: margin, y: y - 30,
-            width: contentWidth, height: 30,
+            x: margin, y: y - 35,
+            width: contentWidth, height: 35,
             borderColor: black, borderWidth: 1
         });
 
@@ -407,27 +407,11 @@ class LatexLabelGenerator {
         });
 
         y -= 35;
-        page.drawRectangle({
-            x: margin, y: y - 40,
-            width: contentWidth, height: 40,
-            borderColor: black, borderWidth: 1
-        });
-
-        const platformFee = Number(order.platform_fee || 0);
-        const shippingCharge = Number(order.shipping_charge || 0);
-        const discount = Number(order.discount || 0);
-        const collectable = Number(order.cod_amount || 0);
-
-        y -= 12;
-        page.drawText(`Platform Fee: Rs.${this.formatINR(platformFee)}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        page.drawText(`Discount: Rs.${this.formatINR(discount)}`, { x: width - margin - 110, y: y, size: 9, font: fontRegular, color: black });
-        page.drawText(`Shipping: Rs.${this.formatINR(shippingCharge)}`, { x: margin + 10, y: y - 14, size: 9, font: fontRegular, color: black });
-        page.drawText(`Collectable: Rs.${this.formatINR(collectable)}`, { x: width - margin - 130, y: y - 14, size: 10, font: fontBold, color: black });
 
         y -= 50;
         page.drawRectangle({
-            x: margin, y: y - 28,
-            width: contentWidth, height: 28,
+            x: margin, y: y - 30,
+            width: contentWidth, height: 30,
             borderColor: black, borderWidth: 1
         });
         page.drawText('All disputes are subject to Haryana Jurisdiction only. Goods once sold will only be taken back or exchanged as per store exchange policy.', {
@@ -437,7 +421,9 @@ class LatexLabelGenerator {
             x: margin + 10, y: y - 20, size: 7, font: fontRegular, color: gray
         });
 
-        const footerY = y - 100;
+        y -= 20;
+
+        const footerY = y - 80;
 
         if (qrcodePath && fs.existsSync(qrcodePath)) {
             const qrImg = fs.readFileSync(qrcodePath);
