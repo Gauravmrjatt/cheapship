@@ -293,21 +293,21 @@ class LatexLabelGenerator {
 
         y -= 15;
         page.drawText('Ship To', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
-        y -= 16;
+        y -= 18;
         page.drawText(this.escapePdf(receiver.name || ''), { x: margin + 10, y: y, size: 14, font: fontBold, color: black });
-        y -= 16;
+        y -= 18;
         const addrLines = this.wrapText(this.escapePdf(receiver.address || ''), 50);
         addrLines.slice(0, 4).forEach(line => {
             page.drawText(line, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-            y -= 12;
+            y -= 14;
         });
         page.drawText(`${this.escapePdf(receiver.city || '')}, ${this.escapePdf(receiver.state || '')}, ${receiver.country || 'India'}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 12;
+        y -= 14;
         page.drawText(receiver.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 12;
+        y -= 14;
         page.drawText(receiver.phone || '', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
 
-        y -= 30;
+        y -= 35;
         page.drawRectangle({
             x: margin, y: y - 100,
             width: contentWidth, height: 100,
@@ -325,7 +325,7 @@ class LatexLabelGenerator {
         page.drawText(`Weight: ${order.weight || 0.2} kg`, { x: margin + 10, y: y - 36, size: 9, font: fontRegular, color: black });
 
         page.drawText(order.courier_name || '', { x: width - margin - 150, y: y, size: 12, font: fontBold, color: black });
-        page.drawText(`AWB: ${order.tracking_number || ''}`, { x: width - margin - 150, y: y - 14, size: 10, font: fontBold, color: black });
+        page.drawText(`AWB: ${order.tracking_number || ''}`, { x: width - margin - 150, y: y - 16, size: 10, font: fontBold, color: black });
 
         const { barcodePath, qrcodePath } = await this.generateImages(order);
 
@@ -334,9 +334,9 @@ class LatexLabelGenerator {
             const barcodePng = await pdfDoc.embedPng(barcodeImg);
             page.drawImage(barcodePng, {
                 x: width - margin - 190,
-                y: y - 50,
+                y: y - 52,
                 width: 160,
-                height: 38
+                height: 34
             });
         }
 
@@ -349,45 +349,50 @@ class LatexLabelGenerator {
 
         y -= 15;
         page.drawText('Shipped By (if undelivered, return to)', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
-        y -= 14;
+        y -= 16;
         page.drawText(this.escapePdf(pickup.name || ''), { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 12;
+        y -= 14;
         const pickupAddrLines = this.wrapText(this.escapePdf(pickup.address || ''), 50);
         pickupAddrLines.slice(0, 4).forEach(line => {
             page.drawText(line, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-            y -= 12;
+            y -= 14;
         });
         page.drawText(`${this.escapePdf(pickup.city || '')}, ${this.escapePdf(pickup.state || '')}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 12;
+        y -= 14;
         page.drawText(pickup.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 12;
+        y -= 14;
         page.drawText(pickup.phone || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 20;
+        y -= 22;
         page.drawText('Customer Care: 1800-123-4567', { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
-        y -= 10;
+        y -= 12;
         page.drawText(`Email: ${pickup.email || 'shiprocket.com'}`, { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
 
-        const rightColY = y + 75;
-        page.drawText(`Order #: ${orderId}`, { x: width - margin - 150, y: rightColY, size: 10, font: fontBold, color: black });
-        page.drawText(`Invoice No: ${order.invoice_no || `Retail${String(orderId).slice(-6)}`}`, { x: width - margin - 150, y: rightColY - 12, size: 9, font: fontRegular, color: black });
-        page.drawText(`Invoice Date: ${this.formatDate(order.invoice_date || order.created_at)}`, { x: width - margin - 150, y: rightColY - 24, size: 9, font: fontRegular, color: black });
-        page.drawText(`Order Date: ${this.formatDate(order.created_at)}`, { x: width - margin - 150, y: rightColY - 36, size: 9, font: fontRegular, color: black });
-        page.drawText(`GSTIN: ${user?.gst_number || 'N/A'}`, { x: width - margin - 150, y: rightColY - 48, size: 9, font: fontRegular, color: black });
+        const rightColY = y + 80;
+        page.drawText(`Order #: `, { x: width - margin - 150, y: rightColY, size: 9, font: fontRegular, color: black });
+        page.drawText(`${orderId}`, { x: width - margin - 150, y: rightColY - 12, size: 9, font: fontBold, color: black });
+        page.drawText(`Invoice No: `, { x: width - margin - 150, y: rightColY - 26, size: 9, font: fontRegular, color: black });
+        page.drawText(`${order.invoice_no || `Retail${String(orderId).slice(-6)}`}`, { x: width - margin - 150, y: rightColY - 38, size: 9, font: fontBold, color: black });
+        page.drawText(`Invoice Date: `, { x: width - margin - 150, y: rightColY - 52, size: 9, font: fontRegular, color: black });
+        page.drawText(`${this.formatDate(order.invoice_date || order.created_at)}`, { x: width - margin - 150, y: rightColY - 64, size: 9, font: fontBold, color: black });
+        page.drawText(`Order Date: `, { x: width - margin - 150, y: rightColY - 78, size: 9, font: fontRegular, color: black });
+        page.drawText(`${this.formatDate(order.created_at)}`, { x: width - margin - 150, y: rightColY - 90, size: 9, font: fontBold, color: black });
+        page.drawText(`GSTIN: `, { x: width - margin - 150, y: rightColY - 104, size: 9, font: fontRegular, color: black });
+        page.drawText(`${user?.gst_number || 'N/A'}`, { x: width - margin - 150, y: rightColY - 116, size: 9, font: fontBold, color: black });
 
-        y -= 140;
+        y -= 145;
         page.drawRectangle({
-            x: margin, y: y - 35,
-            width: contentWidth, height: 35,
+            x: margin, y: y - 40,
+            width: contentWidth, height: 40,
             borderColor: black, borderWidth: 1
         });
 
-        page.drawText('Item', { x: margin + 10, y: y - 5, size: 8, font: fontBold, color: black });
-        page.drawText('SKU', { x: margin + 120, y: y - 5, size: 8, font: fontBold, color: black });
-        page.drawText('Qty', { x: margin + 220, y: y - 5, size: 8, font: fontBold, color: black });
-        page.drawText('Price', { x: margin + 280, y: y - 5, size: 8, font: fontBold, color: black });
-        page.drawText('Total', { x: margin + 380, y: y - 5, size: 8, font: fontBold, color: black });
+        page.drawText('Item', { x: margin + 10, y: y - 8, size: 8, font: fontBold, color: black });
+        page.drawText('SKU', { x: margin + 120, y: y - 8, size: 8, font: fontBold, color: black });
+        page.drawText('Qty', { x: margin + 220, y: y - 8, size: 8, font: fontBold, color: black });
+        page.drawText('Price', { x: margin + 280, y: y - 8, size: 8, font: fontBold, color: black });
+        page.drawText('Total', { x: margin + 380, y: y - 8, size: 8, font: fontBold, color: black });
 
-        let productY = y - 20;
+        let productY = y - 24;
         const products = order.products || [];
         const displayProducts = products.length > 0 ? products : [{ name: 'N/A', sku: 'N/A', quantity: 1, price: 0 }];
 
@@ -403,69 +408,69 @@ class LatexLabelGenerator {
             page.drawText(String(qty), { x: margin + 220, y: productY, size: 8, font: fontRegular, color: black });
             page.drawText(`Rs.${this.formatINR(price)}`, { x: margin + 280, y: productY, size: 8, font: fontRegular, color: black });
             page.drawText(`Rs.${this.formatINR(total)}`, { x: margin + 380, y: productY, size: 8, font: fontRegular, color: black });
-            productY -= 12;
+            productY -= 14;
         });
 
-        y -= 35;
+        y -= 50;
 
         y -= 50;
         page.drawRectangle({
-            x: margin, y: y - 30,
-            width: contentWidth, height: 30,
+            x: margin, y: y - 25,
+            width: contentWidth, height: 25,
             borderColor: black, borderWidth: 1
         });
         page.drawText('All disputes are subject to Haryana Jurisdiction only. Goods once sold will only be taken back or exchanged as per store exchange policy.', {
-            x: margin + 10, y: y - 10, size: 7, font: fontRegular, color: gray
+            x: margin + 10, y: y - 8, size: 7, font: fontRegular, color: gray
         });
         page.drawText('This is an auto generated label and does not require any signature.', {
-            x: margin + 10, y: y - 20, size: 7, font: fontRegular, color: gray
+            x: margin + 10, y: y - 18, size: 7, font: fontRegular, color: gray
         });
 
-        y -= 20;
+        y -= 30;
 
-        const footerY = y - 80;
+        const footerY = y - 70;
 
         if (qrcodePath && fs.existsSync(qrcodePath)) {
             const qrImg = fs.readFileSync(qrcodePath);
             const qrPng = await pdfDoc.embedPng(qrImg);
             page.drawImage(qrPng, {
-                x: margin + 30,
-                y: footerY - 40,
-                width: 55,
-                height: 55
+                x: margin + 20,
+                y: footerY - 45,
+                width: 50,
+                height: 50
             });
-            page.drawText('Get Instant Cashback', { x: margin + 35, y: footerY - 50, size: 7, font: fontBold, color: black });
-            page.drawText('Offers on WhatsApp', { x: margin + 30, y: footerY - 60, size: 7, font: fontBold, color: black });
+            page.drawText('Get Instant Cashback', { x: margin + 22, y: footerY - 55, size: 7, font: fontBold, color: black });
+            page.drawText('Offers on WhatsApp', { x: margin + 20, y: footerY - 65, size: 7, font: fontBold, color: black });
         }
 
         page.drawText('CASHBACKWALLAH', {
-            x: width / 2 - 90, y: footerY - 15,
+            x: width / 2 - 90, y: footerY - 10,
             size: 24, font: fontBold, color: purple
         });
         page.drawText("WORLD'S LARGEST & MOST TRUSTED FLAT CASHBACK PLATFORM", {
-            x: width / 2 - 110, y: footerY - 32,
+            x: width / 2 - 110, y: footerY - 26,
             size: 7, font: fontRegular, color: purple
         });
         page.drawText('+91 92511 20521 | +91 95096 98208', {
-            x: width / 2 - 65, y: footerY - 45,
-            size: 9, font: fontRegular, color: green
+            x: width / 2 - 65, y: footerY - 40,
+            size: 10, font: fontRegular, color: green
         });
         page.drawText('@cashbackwallahuniverse', {
-            x: width / 2 - 65, y: footerY - 58,
-            size: 9, font: fontRegular, color: purple
+            x: width / 2 - 65, y: footerY - 54,
+            size: 10, font: fontRegular, color: purple
         });
 
         if (qrcodePath && fs.existsSync(qrcodePath)) {
             const qrImg = fs.readFileSync(qrcodePath);
             const qrPng = await pdfDoc.embedPng(qrImg);
             page.drawImage(qrPng, {
-                x: width - margin - 85,
-                y: footerY - 40,
-                width: 55,
-                height: 55
+                x: width - margin - 70,
+                y: footerY - 45,
+                width: 50,
+                height: 50
             });
-            page.drawText('Get Instant Cashback', { x: width - margin - 80, y: footerY - 50, size: 7, font: fontBold, color: black });
-            page.drawText('Offers on Instagram', { x: width - margin - 80, y: footerY - 60, size: 7, font: fontBold, color: black });
+            page.drawText('Get Instant Cashback', { x: width - margin - 70, y: footerY - 55, size: 7, font: fontBold, color: black });
+            page.drawText('Offers on Instagram', { x: width - margin - 70, y: footerY - 65, size: 7, font: fontBold, color: black });
         }
 
         const pdfBytes = await pdfDoc.save();
