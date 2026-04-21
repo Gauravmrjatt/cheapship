@@ -1,13 +1,14 @@
-FROM node:22.12-slim
+FROM ubuntu:24.04
 
-# ✅ Install required system libs (FIX)
 RUN apt-get update && apt-get install -y \
+    curl \
     openssl \
-    libgraphite2-3 \
-    libharfbuzz0b \
-    libfreetype6 \
-    libfontconfig1 \
     ca-certificates \
+    locales \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -17,7 +18,6 @@ RUN npm install
 
 COPY . .
 
-# Prisma steps
 RUN npx prisma migrate resolve --applied 20260227000000_add_transaction_categories || true
 RUN npx prisma migrate deploy
 RUN npx prisma db pull
