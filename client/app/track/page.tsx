@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useTrackOrder, TrackingResponse } from "@/lib/hooks/use-track";
 import { Button } from "@/components/ui/button";
@@ -71,8 +71,9 @@ function TrackContent() {
   const router = useRouter();
   const initialAwb = searchParams.get("awb") || "";
   const [awb, setAwb] = useState(initialAwb);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data, isLoading, error, isError } = useTrackOrder(awb);
+  const { data, isLoading, error, isError } = useTrackOrder(awb, !!initialAwb);
 
   useEffect(() => {
     if (initialAwb && initialAwb !== awb) {
@@ -82,9 +83,9 @@ function TrackContent() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    inputRef.current?.blur();
     if (awb.trim()) {
       router.push(`/track?awb=${encodeURIComponent(awb.trim())}`);
-      (e.target as HTMLFormElement).querySelector("input")?.blur();
     }
   };
 
@@ -116,6 +117,7 @@ function TrackContent() {
                 <CardContent className="pt-6">
                   <form onSubmit={handleSearch} className="flex gap-3">
                     <Input
+                      ref={inputRef}
                       type="text"
                       placeholder="Enter AWB Number (e.g., 7D122298844)"
                       value={awb}

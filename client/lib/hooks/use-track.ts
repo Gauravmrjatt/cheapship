@@ -49,7 +49,7 @@ export interface TrackingResponse {
   history: TrackingActivity[];
 }
 
-export const useTrackOrder = (awb: string) => {
+export const useTrackOrder = (awb: string, autoFetch: boolean = false) => {
   return useQuery({
     queryKey: ["track", awb],
     queryFn: async () => {
@@ -62,7 +62,7 @@ export const useTrackOrder = (awb: string) => {
       
       return response.json() as Promise<TrackingResponse>;
     },
-    enabled: !!awb && awb.length >= 5,
+    enabled: autoFetch && !!awb && awb.length >= 5,
     retry: false,
   });
 };
