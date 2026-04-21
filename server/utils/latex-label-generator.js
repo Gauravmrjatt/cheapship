@@ -133,21 +133,21 @@ class LatexLabelGenerator {
 
     buildProductRows(products) {
         let rows = '';
-        
+
         if (!products || products.length === 0) {
-            rows = 'N/A & N/A & 1 & Rs.0.00 & & Rs.0.00 & Rs.0.00 \\\\\n';
+            rows = 'N/A & N/A & 1 & Rs.0.00 & - & Rs.0.00 \\\\\n';
         } else {
             products.forEach((product) => {
-                const name = this.escapeLatex((product.name || product.product_name || 'N/A').substring(0, 12));
+                const name = this.escapeLatex((product.name || product.product_name || 'N/A').substring(0, 15));
                 const sku = this.escapeLatex((product.sku || product.channel_sku || 'N/A').substring(0, 10));
                 const qty = product.quantity || 1;
                 const price = Number(product.price || product.selling_price || 0);
                 const taxable = price;
                 const total = price * qty;
-                rows += `${name} & ${sku} & ${qty} & Rs.${this.formatINR(price)} & & Rs.${this.formatINR(taxable)} & Rs.${this.formatINR(total)} \\\\\n`;
+                rows += `${name} & ${sku} & ${qty} & Rs.${this.formatINR(price)} & Rs.${this.formatINR(taxable)} & Rs.${this.formatINR(total)} \\\\\n`;
             });
         }
-        
+
         return rows;
     }
 
@@ -266,14 +266,14 @@ class LatexLabelGenerator {
         }
 
         if (absQrcodePath) {
-            template = template.replace('QR_LEFT', `\\fbox{\\includegraphics[width=1.8cm,height=1.8cm]{${absQrcodePath}}}`);
-            template = template.replace('QR_RIGHT', `\\fbox{\\includegraphics[width=1.8cm,height=1.8cm]{${absQrcodePath}}}`);
+            template = template.replace('QS_LEFT', `\\includegraphics[width=1.5cm,height=1.5cm]{${absQrcodePath}}`);
+            template = template.replace('QS_RIGHT', `\\includegraphics[width=1.5cm,height=1.5cm]{${absQrcodePath}}`);
         } else {
-            template = template.replace('QR_LEFT', '\\rule{1.8cm}{1.8cm}');
-            template = template.replace('QR_RIGHT', '\\rule{1.8cm}{1.8cm}');
+            template = template.replace('QS_LEFT', '\\rule{1.5cm}{1.5cm}');
+            template = template.replace('QS_RIGHT', '\\rule{1.5cm}{1.5cm}');
         }
 
-        template = template.replace(/BARCODE\_PLACEHOLDER/, '').replace(/QR\_PLACEHOLDER\_LEFT/, '').replace(/QR\_PLACEHOLDER\_RIGHT/, '');
+        template = template.replace(/BARCODE\_PLACEHOLDER/, '').replace(/QS\_PLACEHOLDER/, '');
 
         if (!template.includes('\\begin{document}')) {
             template = template.replace(/\\end\{document\}/g, '');
