@@ -3,8 +3,6 @@ const path = require('path');
 const bwipjs = require('bwip-js');
 const QRCode = require('qrcode');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
-const latex = require('node-latex');
-const { execSync } = require('child_process');
 const { uploadPdfToCloudinary } = require('./cloudinary');
 
 class LatexLabelGenerator {
@@ -17,33 +15,6 @@ class LatexLabelGenerator {
             if (!fs.existsSync(dir)) {
                 fs.mkdirSync(dir, { recursive: true });
             }
-        });
-    }
-
-    canUseLatex() {
-        try {
-            execSync('pdflatex --version', { stdio: 'ignore' });
-            return true;
-        } catch (e) {
-            return false;
-        }
-    }
-
-    compileLatex(texString, outputPath) {
-        return new Promise((resolve, reject) => {
-            const output = fs.createWriteStream(outputPath);
-            const pdf = latex(texString, { passes: 2 });
-
-            pdf.pipe(output);
-
-            pdf.on('error', (err) => {
-                console.error('[LatexLabel] LaTeX Error:', err.message);
-                reject(err);
-            });
-
-            pdf.on('finish', () => {
-                resolve(outputPath);
-            });
         });
     }
 
@@ -175,22 +146,10 @@ class LatexLabelGenerator {
     async generate(order, user) {
         const timestamp = Date.now();
         const orderId = order.id;
-        const awbCode = order.tracking_number || '';
 
         console.log(`[LatexLabel] Generating label for order ${orderId}...`);
 
         try {
-            const useLatex = this.canUseLatex();
-            console.log(`[LatexLabel] pdflatex available: ${useLatex}`);
-
-            if (useLatex) {
-                try {
-                    return await this.generateLatex(order, user, timestamp);
-                } catch (latexErr) {
-                    console.warn(`[LatexLabel] LaTeX failed: ${latexErr.message}, falling back to pdf-lib`);
-                }
-            }
-
             return await this.generatePdfLib(order, user, timestamp);
         } catch (error) {
             console.error('[LatexLabel] Error generating label:', error);
@@ -306,7 +265,7 @@ class LatexLabelGenerator {
         const receiver = order.order_receiver_address || {};
         const pickup = order.order_pickup_address || {};
 
-        console.log(`[LatexLabel] Using pdf-lib fallback for order ${orderId}`);
+        console.log(`[LatexLabel] Using pdf-lib for order ${orderId}`);
 
         const pdfDoc = await PDFDocument.create();
         const page = pdfDoc.addPage([600, 800]);
@@ -321,204 +280,226 @@ class LatexLabelGenerator {
         const gray = rgb(0.4, 0.4, 0.4);
         const lightBlue = rgb(0.39, 0.41, 0.94);
 
-        const margin = 25;
+        const margin = 20;
         const contentWidth = width - margin * 2;
         let y = height - margin;
 
-        for (let i = 0; i < 35; i++) {
+        for (let i = 0; i < 30; i++) {
             page.drawText('CASHBACKWALLAH', {
                 x: margin - 5,
-                y: height - margin - i * 20,
+                y: height - margin - 8 - i * 18,
                 size: 8,
                 font: fontBold,
                 color: lightBlue
             });
             page.drawText('CASHBACKWALLAH', {
                 x: width - margin - 95,
-                y: height - margin - i * 20,
+                y: height - margin - 8 - i * 18,
                 size: 8,
                 font: fontBold,
                 color: lightBlue
             });
         }
 
-        y -= 30;
+        for (let i = 0; i < 22; i++) {
+            page.drawText('CASHBACKWALLAH', {
+                x: 5,
+                y: height / 2 - 50 - i * 18,
+                size: 8,
+                font: fontBold,
+                color: lightBlue
+            });
+            page.drawText('CASHBACKWALLAH', {
+                x: width - 100,
+                y: height / 2 - 50 - i * 18,
+                size: 8,
+                font: fontBold,
+                color: lightBlue
+            });
+        }
+
+        y -= 35;
         page.drawRectangle({
-            x: margin, y: y - 90,
-            width: contentWidth, height: 90,
+            x: margin, y: y - 95,
+            width: contentWidth, height: 95,
             borderColor: black, borderWidth: 1
         });
 
         y -= 15;
         page.drawText('Ship To', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
-        y -= 18;
-        page.drawText(receiver.name || '', { x: margin + 10, y: y, size: 12, font: fontBold, color: black });
         y -= 16;
-        page.drawText(receiver.address || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
-        page.drawText(`${receiver.city || ''}, ${receiver.state || ''}, India`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
+        page.drawText(this.escapePdf(receiver.name || ''), { x: margin + 10, y: y, size: 14, font: fontBold, color: black });
+        y -= 16;
+        const addrLines = this.wrapText(this.escapePdf(receiver.address || ''), 55);
+        addrLines.forEach(line => {
+            page.drawText(line, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+            y -= 12;
+        });
+        page.drawText(`${this.escapePdf(receiver.city || '')}, ${this.escapePdf(receiver.state || '')}, ${receiver.country || 'India'}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 12;
         page.drawText(receiver.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
+        y -= 12;
         page.drawText(receiver.phone || '', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
 
-        y -= 20;
+        y -= 25;
         page.drawRectangle({
-            x: margin, y: y - 70,
-            width: contentWidth, height: 70,
+            x: margin, y: y - 75,
+            width: contentWidth, height: 75,
             borderColor: black, borderWidth: 1
         });
 
         y -= 15;
-        const dim = order.length && order.width && order.height ? `${order.length}x${order.width}x${order.height}` : '1x1x1';
+        const dim = (order.length || order.width || order.height) ? `${order.length || 1}x${order.width || 1}x${order.height || 1}` : '1x1x1';
         const paymentMode = (order.payment_mode || 'PREPAID').toUpperCase();
         const totalAmount = Number(order.total_amount || 0);
-        
-        page.drawText(`Dimensions: ${dim}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        page.drawText(`Payment: ${paymentMode}`, { x: margin + 10, y: y - 14, size: 9, font: fontRegular, color: black });
-        page.drawText(`Order Total: Rs.${this.formatINR(totalAmount)}`, { x: margin + 10, y: y - 28, size: 9, font: fontRegular, color: black });
-        page.drawText(`Weight: ${order.weight || 0.2} kg`, { x: margin + 10, y: y - 42, size: 9, font: fontRegular, color: black });
 
-        page.drawText(order.courier_name || '', { x: width - margin - 140, y: y, size: 12, font: fontBold, color: black });
-        page.drawText(`AWB: ${order.tracking_number || ''}`, { x: width - margin - 140, y: y - 16, size: 10, font: fontBold, color: black });
+        page.drawText(`Dimensions: ${dim}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        page.drawText(`Payment: ${paymentMode}`, { x: margin + 10, y: y - 12, size: 9, font: fontRegular, color: black });
+        page.drawText(`Order Total: Rs.${this.formatINR(totalAmount)}`, { x: margin + 10, y: y - 24, size: 9, font: fontRegular, color: black });
+        page.drawText(`Weight: ${order.weight || 0.2} kg`, { x: margin + 10, y: y - 36, size: 9, font: fontRegular, color: black });
+
+        page.drawText(order.courier_name || '', { x: width - margin - 150, y: y, size: 12, font: fontBold, color: black });
+        page.drawText(`AWB: ${order.tracking_number || ''}`, { x: width - margin - 150, y: y - 14, size: 10, font: fontBold, color: black });
 
         const { barcodePath, qrcodePath } = await this.generateImages(order);
-        
+
         if (barcodePath && fs.existsSync(barcodePath)) {
             const barcodeImg = fs.readFileSync(barcodePath);
             const barcodePng = await pdfDoc.embedPng(barcodeImg);
             page.drawImage(barcodePng, {
-                x: width - margin - 180,
-                y: y - 55,
+                x: width - margin - 190,
+                y: y - 50,
                 width: 160,
-                height: 40
+                height: 38
             });
         }
 
-        y -= 90;
+        y -= 95;
         page.drawRectangle({
-            x: margin, y: y - 100,
-            width: contentWidth, height: 100,
+            x: margin, y: y - 105,
+            width: contentWidth, height: 105,
             borderColor: black, borderWidth: 1
         });
 
         y -= 15;
         page.drawText('Shipped By (if undelivered, return to)', { x: margin + 10, y: y, size: 10, font: fontBold, color: black });
-        y -= 16;
-        page.drawText(pickup.name || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
         y -= 14;
-        page.drawText(pickup.address || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
-        page.drawText(`${pickup.city || ''}, ${pickup.state || ''}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
-        page.drawText(pickup.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 14;
-        page.drawText(pickup.phone || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        y -= 28;
-        page.drawText('Customer Care: 1800-123-4567', { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
+        page.drawText(this.escapePdf(pickup.name || ''), { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
         y -= 12;
+        const pickupAddrLines = this.wrapText(this.escapePdf(pickup.address || ''), 55);
+        pickupAddrLines.forEach(line => {
+            page.drawText(line, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+            y -= 12;
+        });
+        page.drawText(`${this.escapePdf(pickup.city || '')}, ${this.escapePdf(pickup.state || '')}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 12;
+        page.drawText(pickup.pincode || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 12;
+        page.drawText(pickup.phone || '', { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
+        y -= 24;
+        page.drawText('Customer Care: 1800-123-4567', { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
+        y -= 10;
         page.drawText(`Email: ${pickup.email || 'shiprocket.com'}`, { x: margin + 10, y: y, size: 8, font: fontRegular, color: gray });
 
-        page.drawText(`Order #: ${orderId}`, { x: width - margin - 140, y: y + 75, size: 10, font: fontBold, color: black });
-        page.drawText(`Invoice No: ${order.invoice_no || `Retail${String(orderId).slice(-6)}`}`, { x: width - margin - 140, y: y + 60, size: 9, font: fontRegular, color: black });
-        page.drawText(`Invoice Date: ${this.formatDate(order.invoice_date || order.created_at)}`, { x: width - margin - 140, y: y + 46, size: 9, font: fontRegular, color: black });
-        page.drawText(`Order Date: ${this.formatDate(order.created_at)}`, { x: width - margin - 140, y: y + 32, size: 9, font: fontRegular, color: black });
-        page.drawText(`GSTIN: ${user?.gst_number || 'N/A'}`, { x: width - margin - 140, y: y + 18, size: 9, font: fontRegular, color: black });
+        const rightColY = y + 75;
+        page.drawText(`Order #: ${orderId}`, { x: width - margin - 150, y: rightColY, size: 10, font: fontBold, color: black });
+        page.drawText(`Invoice No: ${order.invoice_no || `Retail${String(orderId).slice(-6)}`}`, { x: width - margin - 150, y: rightColY - 12, size: 9, font: fontRegular, color: black });
+        page.drawText(`Invoice Date: ${this.formatDate(order.invoice_date || order.created_at)}`, { x: width - margin - 150, y: rightColY - 24, size: 9, font: fontRegular, color: black });
+        page.drawText(`Order Date: ${this.formatDate(order.created_at)}`, { x: width - margin - 150, y: rightColY - 36, size: 9, font: fontRegular, color: black });
+        page.drawText(`GSTIN: ${user?.gst_number || 'N/A'}`, { x: width - margin - 150, y: rightColY - 48, size: 9, font: fontRegular, color: black });
 
-        y -= 120;
+        y -= 130;
         page.drawRectangle({
             x: margin, y: y - 30,
             width: contentWidth, height: 30,
             borderColor: black, borderWidth: 1
         });
-        
-        const products = order.products || [];
-        page.drawText('Item', { x: margin + 10, y: y - 5, size: 8, font: fontBold, color: black });
-        page.drawText('SKU', { x: margin + 100, y: y - 5, size: 8, font: fontBold, color: black });
-        page.drawText('Qty', { x: margin + 180, y: y - 5, size: 8, font: fontBold, color: black });
-        page.drawText('Price', { x: margin + 230, y: y - 5, size: 8, font: fontBold, color: black });
-        page.drawText('Total', { x: margin + 320, y: y - 5, size: 8, font: fontBold, color: black });
 
-        let productY = y - 22;
-        const displayProducts = products.length > 0 ? products : [{name: 'N/A', sku: 'N/A', quantity: 1, price: 0}];
-        
-        displayProducts.forEach((product, idx) => {
-            if (idx < 3) {
-                const name = (product.name || product.product_name || 'N/A').substring(0, 12);
-                const sku = (product.sku || product.channel_sku || 'N/A').substring(0, 8);
-                const qty = product.quantity || 1;
-                const price = Number(product.price || product.selling_price || 0);
-                const total = price * qty;
-                
-                page.drawText(name, { x: margin + 10, y: productY, size: 8, font: fontRegular, color: black });
-                page.drawText(sku, { x: margin + 100, y: productY, size: 8, font: fontRegular, color: black });
-                page.drawText(String(qty), { x: margin + 180, y: productY, size: 8, font: fontRegular, color: black });
-                page.drawText(`Rs.${this.formatINR(price)}`, { x: margin + 230, y: productY, size: 8, font: fontRegular, color: black });
-                page.drawText(`Rs.${this.formatINR(total)}`, { x: margin + 320, y: productY, size: 8, font: fontRegular, color: black });
-                productY -= 14;
-            }
+        page.drawText('Item', { x: margin + 10, y: y - 5, size: 8, font: fontBold, color: black });
+        page.drawText('SKU', { x: margin + 120, y: y - 5, size: 8, font: fontBold, color: black });
+        page.drawText('Qty', { x: margin + 220, y: y - 5, size: 8, font: fontBold, color: black });
+        page.drawText('Price', { x: margin + 280, y: y - 5, size: 8, font: fontBold, color: black });
+        page.drawText('Total', { x: margin + 380, y: y - 5, size: 8, font: fontBold, color: black });
+
+        let productY = y - 20;
+        const products = order.products || [];
+        const displayProducts = products.length > 0 ? products : [{ name: 'N/A', sku: 'N/A', quantity: 1, price: 0 }];
+
+        displayProducts.slice(0, 3).forEach((product) => {
+            const name = (product.name || product.product_name || 'N/A').substring(0, 15);
+            const sku = (product.sku || product.channel_sku || 'N/A').substring(0, 12);
+            const qty = product.quantity || 1;
+            const price = Number(product.price || product.selling_price || 0);
+            const total = price * qty;
+
+            page.drawText(name, { x: margin + 10, y: productY, size: 8, font: fontRegular, color: black });
+            page.drawText(sku, { x: margin + 120, y: productY, size: 8, font: fontRegular, color: black });
+            page.drawText(String(qty), { x: margin + 220, y: productY, size: 8, font: fontRegular, color: black });
+            page.drawText(`Rs.${this.formatINR(price)}`, { x: margin + 280, y: productY, size: 8, font: fontRegular, color: black });
+            page.drawText(`Rs.${this.formatINR(total)}`, { x: margin + 380, y: productY, size: 8, font: fontRegular, color: black });
+            productY -= 12;
         });
 
-        y -= 50;
+        y -= 35;
         page.drawRectangle({
-            x: margin, y: y - 45,
-            width: contentWidth, height: 45,
+            x: margin, y: y - 40,
+            width: contentWidth, height: 40,
             borderColor: black, borderWidth: 1
         });
 
         const platformFee = Number(order.platform_fee || 0);
         const shippingCharge = Number(order.shipping_charge || 0);
         const discount = Number(order.discount || 0);
-        const collectable = order.payment_mode === 'COD' ? Number(order.cod_amount || 0) : 0;
+        const collectable = Number(order.cod_amount || 0);
 
-        y -= 15;
+        y -= 12;
         page.drawText(`Platform Fee: Rs.${this.formatINR(platformFee)}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
-        page.drawText(`Discount: Rs.${this.formatINR(discount)}`, { x: width - margin - 120, y: y, size: 9, font: fontRegular, color: black });
-        page.drawText(`Shipping: Rs.${this.formatINR(shippingCharge)}`, { x: margin + 10, y: y - 18, size: 9, font: fontRegular, color: black });
-        page.drawText(`Collectable: Rs.${this.formatINR(collectable)}`, { x: width - margin - 130, y: y - 18, size: 10, font: fontBold, color: black });
+        page.drawText(`Discount: Rs.${this.formatINR(discount)}`, { x: width - margin - 110, y: y, size: 9, font: fontRegular, color: black });
+        page.drawText(`Shipping: Rs.${this.formatINR(shippingCharge)}`, { x: margin + 10, y: y - 14, size: 9, font: fontRegular, color: black });
+        page.drawText(`Collectable: Rs.${this.formatINR(collectable)}`, { x: width - margin - 130, y: y - 14, size: 10, font: fontBold, color: black });
 
-        y -= 55;
+        y -= 50;
         page.drawRectangle({
-            x: margin, y: y - 30,
-            width: contentWidth, height: 30,
+            x: margin, y: y - 28,
+            width: contentWidth, height: 28,
             borderColor: black, borderWidth: 1
         });
-        page.drawText('All disputes subject to Haryana Jurisdiction only. Goods once sold as per exchange policy.', {
+        page.drawText('All disputes are subject to Haryana Jurisdiction only. Goods once sold will only be taken back or exchanged as per store exchange policy.', {
             x: margin + 10, y: y - 10, size: 7, font: fontRegular, color: gray
         });
-        page.drawText('Auto generated label - no signature required.', {
-            x: margin + 10, y: y - 22, size: 7, font: fontRegular, color: gray
+        page.drawText('This is an auto generated label and does not require any signature.', {
+            x: margin + 10, y: y - 20, size: 7, font: fontRegular, color: gray
         });
 
-        const footerY = y - 120;
-        
+        const footerY = y - 100;
+
         if (qrcodePath && fs.existsSync(qrcodePath)) {
             const qrImg = fs.readFileSync(qrcodePath);
             const qrPng = await pdfDoc.embedPng(qrImg);
             page.drawImage(qrPng, {
                 x: margin + 30,
-                y: footerY - 50,
-                width: 60,
-                height: 60
+                y: footerY - 40,
+                width: 55,
+                height: 55
             });
-            page.drawText('Get Cashback', { x: margin + 35, footerY: footerY - 60, size: 7, font: fontBold, color: black });
-            page.drawText('on WhatsApp', { x: margin + 38, footerY: footerY - 70, size: 7, font: fontBold, color: black });
+            page.drawText('Get Instant Cashback', { x: margin + 35, y: footerY - 50, size: 7, font: fontBold, color: black });
+            page.drawText('Offers on WhatsApp', { x: margin + 30, y: footerY - 60, size: 7, font: fontBold, color: black });
         }
 
         page.drawText('CASHBACKWALLAH', {
-            x: width / 2 - 100, y: footerY - 20,
-            size: 22, font: fontBold, color: purple
+            x: width / 2 - 90, y: footerY - 15,
+            size: 24, font: fontBold, color: purple
         });
-        page.drawText("WORLD'S LARGEST FLAT CASHBACK PLATFORM", {
-            x: width / 2 - 90, y: footerY - 38,
-            size: 8, font: fontRegular, color: purple
+        page.drawText("WORLD'S LARGEST & MOST TRUSTED FLAT CASHBACK PLATFORM", {
+            x: width / 2 - 110, y: footerY - 32,
+            size: 7, font: fontRegular, color: purple
         });
         page.drawText('+91 92511 20521 | +91 95096 98208', {
-            x: width / 2 - 70, y: footerY - 55,
+            x: width / 2 - 65, y: footerY - 45,
             size: 9, font: fontRegular, color: green
         });
         page.drawText('@cashbackwallahuniverse', {
-            x: width / 2 - 70, y: footerY - 70,
+            x: width / 2 - 65, y: footerY - 58,
             size: 9, font: fontRegular, color: purple
         });
 
@@ -526,20 +507,20 @@ class LatexLabelGenerator {
             const qrImg = fs.readFileSync(qrcodePath);
             const qrPng = await pdfDoc.embedPng(qrImg);
             page.drawImage(qrPng, {
-                x: width - margin - 90,
-                y: footerY - 50,
-                width: 60,
-                height: 60
+                x: width - margin - 85,
+                y: footerY - 40,
+                width: 55,
+                height: 55
             });
-            page.drawText('Get Cashback', { x: width - margin - 85, footerY: footerY - 60, size: 7, font: fontBold, color: black });
-            page.drawText('on Instagram', { x: width - margin - 85, footerY: footerY - 70, size: 7, font: fontBold, color: black });
+            page.drawText('Get Instant Cashback', { x: width - margin - 80, y: footerY - 50, size: 7, font: fontBold, color: black });
+            page.drawText('Offers on Instagram', { x: width - margin - 80, y: footerY - 60, size: 7, font: fontBold, color: black });
         }
 
         const pdfBytes = await pdfDoc.save();
         const filename = `label_${orderId}_${timestamp}.pdf`;
         const pdfPath = path.join(this.labelsDir, filename);
         fs.writeFileSync(pdfPath, pdfBytes);
-        console.log(`[LatexLabel] PDF (pdf-lib) written: ${pdfPath}`);
+        console.log(`[LatexLabel] PDF written: ${pdfPath}`);
 
         try {
             const uploadResult = await uploadPdfToCloudinary(Buffer.from(pdfBytes), 'cashbackwallah/labels');
@@ -549,9 +530,31 @@ class LatexLabelGenerator {
             return `/labels/${filename}`;
         } finally {
             [barcodePath, qrcodePath].forEach(f => {
-                try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) {}
+                try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) { }
             });
         }
+    }
+
+    escapePdf(text) {
+        if (!text) return '';
+        return String(text).replace(/([\\${}])/g, '\\$1');
+    }
+
+    wrapText(text, maxChars) {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = '';
+
+        words.forEach(word => {
+            if ((currentLine + ' ' + word).trim().length <= maxChars) {
+                currentLine = (currentLine + ' ' + word).trim();
+            } else {
+                if (currentLine) lines.push(currentLine);
+                currentLine = word;
+            }
+        });
+        if (currentLine) lines.push(currentLine);
+        return lines.length ? lines : [''];
     }
 }
 
