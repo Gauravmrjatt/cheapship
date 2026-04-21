@@ -317,11 +317,12 @@ class LatexLabelGenerator {
         y -= 15;
         const dim = (order.length || order.width || order.height) ? `${order.length || 1}x${order.width || 1}x${order.height || 1}` : '1x1x1';
         const paymentMode = (order.payment_mode || 'PREPAID').toUpperCase();
-        const totalAmount = Number(order.total_amount || 0);
+        const products = order.products || [];
+        const itemsTotal = products.reduce((sum, p) => sum + (Number(p.price || p.selling_price || 0) * (p.quantity || 1)), 0);
 
         page.drawText(`Dimensions: ${dim}`, { x: margin + 10, y: y, size: 9, font: fontRegular, color: black });
         page.drawText(`Payment: ${paymentMode}`, { x: margin + 10, y: y - 12, size: 9, font: fontRegular, color: black });
-        page.drawText(`Order Total: Rs.${this.formatINR(totalAmount)}`, { x: margin + 10, y: y - 24, size: 9, font: fontRegular, color: black });
+        page.drawText(`Order Total: Rs.${this.formatINR(itemsTotal)}`, { x: margin + 10, y: y - 24, size: 9, font: fontRegular, color: black });
         page.drawText(`Weight: ${order.weight || 0.2} kg`, { x: margin + 10, y: y - 36, size: 9, font: fontRegular, color: black });
 
         page.drawText(order.courier_name || '', { x: width - margin - 150, y: y, size: 12, font: fontBold, color: black });
