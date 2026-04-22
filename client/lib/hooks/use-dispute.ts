@@ -79,6 +79,7 @@ export interface RTODispute {
   reason: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   action_reason: string | null;
+  rto_awb: string | null;
   created_at: string;
   updated_at: string;
   order?: {

@@ -97,6 +97,7 @@ export const ActionsCell = ({
                   ? row.original.label_url
                   : `${BASE_URL}${row.original.label_url}`
               }
+              download
               target="_blank"
               rel="noopener noreferrer"
               className="w-full flex gap-3 items-center"

@@ -963,6 +963,11 @@ const createOrder = async (req, res) => {
         }
       });
 
+      const updatedUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: { wallet_balance: true, security_deposit: true }
+      });
+
       const {
         base_shipping_charge,
         global_commission_rate,
@@ -972,7 +977,11 @@ const createOrder = async (req, res) => {
         ...sanitizedOrder
       } = updatedOrder;
 
-      res.status(201).json(sanitizedOrder);
+      res.status(201).json({
+        ...sanitizedOrder,
+        wallet_balance: updatedUser?.wallet_balance,
+        security_deposit: updatedUser?.security_deposit
+      });
     });
   } catch (error) {
     console.error(error);
@@ -1107,7 +1116,7 @@ const getOrderById = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const order = await prisma.order.findUnique({
+const order = await prisma.order.findUnique({
       where: {
         id: BigInt(id)
       },
@@ -1117,9 +1126,9 @@ const getOrderById = async (req, res) => {
       }
     });
 
-    if (!order || order.user_id !== userId) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
+    const productValue = Array.isArray(order?.products) 
+      ? order.products.reduce((sum, p) => sum + (Number(p.price) * Number(p.quantity || 1)), 0) 
+      : 0;
 
     const {
       base_shipping_charge,
@@ -1130,7 +1139,7 @@ const getOrderById = async (req, res) => {
       ...sanitizedOrder
     } = order;
 
-    res.json(sanitizedOrder);
+    res.json({ ...sanitizedOrder, productValue });
   } catch (error) {
     console.error(error);
     if (error.code === 'P2023') {

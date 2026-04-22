@@ -134,7 +134,15 @@ const getUserSecurityDeposits = async (req, res) => {
                             id: true,
                             shipment_status: true,
                             total_amount: true,
-                            shipping_charge: true
+                            shipping_charge: true,
+                            tracking_number: true,
+                            courier_name: true,
+                            shiprocket_order_id: true,
+                            shiprocket_shipment_id: true,
+                            order_type: true,
+                            payment_mode: true,
+                            created_at: true,
+                            delivered_at: true
                         }
                     }
                 },

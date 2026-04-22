@@ -1081,7 +1081,15 @@ const getAllSecurityDeposits = async (req, res) => {
               id: true,
               shipment_status: true,
               total_amount: true,
-              shipping_charge: true
+              shipping_charge: true,
+              tracking_number: true,
+              courier_name: true,
+              shiprocket_order_id: true,
+              shiprocket_shipment_id: true,
+              order_type: true,
+              payment_mode: true,
+              created_at: true,
+              delivered_at: true
             }
           },
           user: {
@@ -1650,6 +1658,35 @@ const getAllCODOrders = async (req, res) => {
       }
     });
 
+    const allUserOrders = await prisma.order.findMany({
+      where: {
+        user_id: { in: userIds },
+        ...baseWhere
+      },
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true,
+        user_id: true,
+        cod_amount: true,
+        shipment_status: true,
+        created_at: true,
+        tracking_number: true
+      },
+      take: 50
+    });
+
+    const ordersByUser = allUserOrders.reduce((acc, order) => {
+      if (!acc[order.user_id]) acc[order.user_id] = [];
+      acc[order.user_id].push({
+        id: order.id.toString(),
+        cod_amount: order.cod_amount,
+        shipment_status: order.shipment_status,
+        created_at: order.created_at.toISOString(),
+        tracking_number: order.tracking_number
+      });
+      return acc;
+    }, {});
+
     const ordersMap = latestOrders.reduce((acc, order) => {
       acc[order.user_id] = order;
       return acc;
@@ -1688,7 +1725,7 @@ const getAllCODOrders = async (req, res) => {
         order_pickup_address: latestOrder?.order_pickup_address,
         order_receiver_address: latestOrder?.order_receiver_address,
         pickup_location: latestOrder?.pickup_location,
-        orders: []
+        orders: ordersByUser[user.id] || []
       };
     });
 
@@ -1876,8 +1913,13 @@ const getOrderById = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    const productValue = Array.isArray(order.products) 
+      ? order.products.reduce((sum, p) => sum + (Number(p.price) * Number(p.quantity || 1)), 0) 
+      : 0;
+
     res.json({
       ...order,
+      productValue,
       price_breakdown: {
         base_shipping_charge: order.base_shipping_charge,
         global_commission_rate: order.global_commission_rate,

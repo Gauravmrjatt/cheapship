@@ -937,7 +937,8 @@ const adminCreateRTODispute = async (req, res) => {
     const {
         order_id,
         amount,
-        reason
+        reason,
+        rto_awb
     } = req.body;
 
     try {
@@ -1075,7 +1076,16 @@ const adminCreateRTODispute = async (req, res) => {
                     user_id: order.user_id,
                     reason: reason || 'RTO charge',
                     status: 'ACCEPTED',
-                    action_reason: `RTO processed. Amount: ₹${amountValue}`
+                    action_reason: `RTO processed. Amount: ₹${amountValue}`,
+                    rto_awb: rto_awb || null
+                }
+            });
+
+            // Also update the order status to RTO (second RTO in history)
+            await tx.order.update({
+                where: { id: orderId },
+                data: {
+                    shipment_status: 'RTO'
                 }
             });
 

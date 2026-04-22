@@ -304,7 +304,7 @@ export default function SignInForm() {
         <form onSubmit={otpForm.handleSubmit(onVerifyOtp)}>
           <CardContent className="grid gap-6">
             <div className="text-center space-y-2">
-              <p className="text-sm text-muted-foreground">OTP sent to your {state.otpTab}</p>
+              <p className="text-sm text-muted-foreground">OTP sent to your email{/*state.otpTab */}</p>
               <p className="font-bold text-lg">{state.otpTab === "email" ? state.email : `+91 ${otpRequestForm.getValues("mobile")}`}</p>
             </div>
             <Field>

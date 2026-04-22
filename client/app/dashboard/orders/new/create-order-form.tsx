@@ -28,6 +28,7 @@ import {
   SelectGroup,
 } from "@/components/ui/select";
 import { useHttp } from "@/lib/hooks/use-http";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { useCheckPhoneVerificationMutation, useUndeliveredSummary } from "@/lib/hooks/use-orders";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -189,6 +190,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   const draftId = searchParams.get("id");
   const http = useHttp();
   const queryClient = useQueryClient();
+  const { user, setUser } = useAuth();
   const { data: rateCalculatorData, clearRateData } = useRateCalculatorStore();
   const isFromCalculator = !!rateCalculatorData;
   const pickupForm = useForm<z.infer<typeof shiprocketPickupSchema>>({
@@ -249,6 +251,16 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
         }
         setCreatedOrderId(data.id?.toString() || null);
         setShipped(true);
+        
+        if (data.wallet_balance !== undefined) {
+          setUser({
+            ...user,
+            wallet_balance: data.wallet_balance,
+            security_deposit: data.security_deposit
+          } as any);
+        }
+        queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+        
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
 
         // Auto-save addresses if the user wants to or if it's default behavior
@@ -285,7 +297,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     resolver: zodResolver(createOrderSchema) as any,
     defaultValues: {
       order_type: "SURFACE", shipment_type: "DOMESTIC", payment_mode: "PREPAID",
-      total_amount: 0, cod_amount: undefined, weight: 500, length: 1, width: 1, height: 1,
+      total_amount: 0, cod_amount: 100, weight: 500, length: 1, width: 1, height: 1,
       pickup_location: "",
       pickup_address: { name: "", phone: "", email: "", address: "", city: "", state: "", pincode: "", },
       receiver_address: { name: "", phone: "", email: "", address: "", city: "", state: "", pincode: "", },
@@ -1243,51 +1255,55 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               </Field>
             </div>
             {formValues.payment_mode === "COD" && (
-              <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount (Max ₹1,00,000)</FieldLabel>
-                <div className="relative">
-                  <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-                  <Input
-                    type="number"
-                    max={100000}
-                    {...form.register("cod_amount", {
-                      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                        const value = e.target.value;
-                        if (value === "") {
-                          form.setValue("cod_amount", undefined as any);
-                        } else {
-                          const num = parseInt(value) || 0;
-                          if (num > 100000) {
-                            form.setValue("cod_amount", 100000);
-                          } else {
-                            form.setValue("cod_amount", num);
-                          }
-                        }
-                      }
-                    })}
-                    aria-invalid={!!errors.cod_amount}
-                    className="pl-9"
-                  />
-                </div>
-                <FieldError errors={[errors.cod_amount]} className="text-[10px] font-bold uppercase" />
-              </Field>
+              <p className="text-muted-foreground">
+                Products Value will be considered as COD Amount
+              </p>
+              // <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount (Max ₹1,00,000)</FieldLabel>
+              //   <div className="relative">
+              //     <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
+              //     <Input
+              //       type="number"
+              //       value={100}
+              //       max={100000}
+              //       {...form.register("cod_amount", {
+              //         onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+              //           const value = e.target.value;
+              //           if (value === "") {
+              //             form.setValue("cod_amount", undefined as any);
+              //           } else {
+              //             const num = parseInt(value) || 0;
+              //             if (num > 100000) {
+              //               form.setValue("cod_amount", 100000);
+              //             } else {
+              //               form.setValue("cod_amount", num);
+              //             }
+              //           }
+              //         }
+              //       })}
+              //       aria-invalid={!!errors.cod_amount}
+              //       className="pl-9"
+              //     />
+              //   </div>
+              //   <FieldError errors={[errors.cod_amount]} className="text-[10px] font-bold uppercase" />
+              // </Field>
             )}
             <Separator />
             <div className="space-y-4">
               <Field data-invalid={!!errors.weight}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Dead Weight (g)</FieldLabel>
                 <div className="relative">
                   <HugeiconsIcon icon={Package01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={16} />
-                <Input
-  type="number"
-  onFocus={(e) => {
-    form.onFocus?.(e);
-    e.target.value = ""; // clear the field
-  }}
-  step="1"
-  max={1000000}
-  {...form.register("weight", { valueAsNumber: true })}
-  aria-invalid={!!errors.weight}
-  className="h-11 font-bold text-lg pl-10"
-/> </div>
+                  <Input
+                    type="number"
+                    onFocus={(e) => {
+                      form.onFocus?.(e);
+                      e.target.value = ""; // clear the field
+                    }}
+                    step="1"
+                    max={1000000}
+                    {...form.register("weight", { valueAsNumber: true })}
+                    aria-invalid={!!errors.weight}
+                    className="h-11 font-bold text-lg pl-10"
+                  /> </div>
                 <FieldError errors={[errors.weight]} className="text-[10px] font-bold uppercase" />
               </Field>
               <div className="grid grid-cols-3 gap-3">

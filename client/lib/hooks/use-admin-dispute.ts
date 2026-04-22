@@ -163,6 +163,7 @@ export interface AdminRTODispute {
   reason: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   action_reason: string | null;
+  rto_awb: string | null;
   created_at: string;
   updated_at: string;
   order?: {
@@ -207,6 +208,7 @@ export interface CreateRTOPayload {
   order_id: string;
   amount: number;
   reason: string;
+  rto_awb?: string;
 }
 
 export interface RTOResponse {

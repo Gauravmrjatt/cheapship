@@ -53,7 +53,8 @@ import {
   MapPinIcon,
   ArrowDownDoubleIcon,
   PackageSentIcon,
-  PackageReceiveIcon
+  PackageReceiveIcon,
+  PackageIcon
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { DataTablePagination } from "./orders-table-components"
@@ -106,6 +107,13 @@ export interface CODUserGroup {
   total_remitted_amount: number
   pending_amount: number
   remittance_status: string
+  orders?: {
+    id: string
+    cod_amount: number
+    shipment_status: string
+    created_at: string
+    tracking_number?: string
+  }[]
   order_pickup_address?: {
     name: string
     address?: string
@@ -209,12 +217,16 @@ export function CODOrdersDataTable({
   }, [filters, onFilterChange, isMounted])
 
   const openDialog = (order: CODOrder) => {
+    const totalAmount = Number(order.cod_amount) || 0;
+    const commission = totalAmount * 0.02;
+    const remittedAmount = totalAmount - commission;
+    
     setSelectedOrder(order)
     setRemittanceForm({
       remittance_status: order.remittance_status || "REMITTED",
       payout_status: order.payout_status || "PENDING",
-      remitted_amount: order.cod_amount?.toString() || "",
-      remittance_ref_id: order.remittance_ref_id || "",
+      remitted_amount: remittedAmount.toString(),
+      remittance_ref_id: `₹${Math.round(remittedAmount)}`,
     })
     setShowDialog(true)
   }
@@ -266,7 +278,18 @@ export function CODOrdersDataTable({
         const tracking = row.original.tracking_number;
         return (
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-foreground">{tracking || "-"}</span>
+            {tracking ? (
+              <a
+                href={`/track?awb=${tracking}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono font-medium text-primary hover:underline"
+              >
+                {tracking}
+              </a>
+            ) : (
+              <span className="text-xs text-muted-foreground">-</span>
+            )}
           </div>
         );
       },
@@ -583,6 +606,7 @@ export function CODUserGroupsDataTable({
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [selectedUserGroup, setSelectedUserGroup] = React.useState<CODUserGroup | null>(null)
   const [showDialog, setShowDialog] = React.useState(false)
+  const [showOrdersDialog, setShowOrdersDialog] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
   const [remittanceForm, setRemittanceForm] = React.useState({
     remittance_status: "REMITTED",
@@ -601,14 +625,23 @@ export function CODUserGroupsDataTable({
   }, [filters, onFilterChange, isMounted])
 
   const openDialog = (userGroup: CODUserGroup) => {
+    const totalAmount = Number(userGroup.total_cod_amount) || 0;
+    const commission = totalAmount * 0.02;
+    const remittedAmount = totalAmount - commission;
+    
     setSelectedUserGroup(userGroup)
     setRemittanceForm({
       remittance_status: userGroup.remittance_status || "REMITTED",
       payout_status: "PENDING",
-      remitted_amount: userGroup.total_cod_amount?.toString() || "",
-      remittance_ref_id: "",
+      remitted_amount: remittedAmount.toString(),
+      remittance_ref_id: `₹${Math.round(remittedAmount)}`,
     })
     setShowDialog(true)
+  }
+
+  const openOrdersDialog = (userGroup: CODUserGroup) => {
+    setSelectedUserGroup(userGroup)
+    setShowOrdersDialog(true)
   }
 
   const handleUpdate = () => {
@@ -647,9 +680,12 @@ export function CODUserGroupsDataTable({
       accessorKey: "order_count",
       header: "Orders",
       cell: ({ row }) => (
-        <div className="font-medium">
+        <button
+          onClick={() => openOrdersDialog(row.original)}
+          className="font-medium text-primary hover:underline cursor-pointer"
+        >
           {row.original.order_count} order{row.original.order_count !== 1 ? 's' : ''}
-        </div>
+        </button>
       ),
     },
     {
@@ -935,6 +971,21 @@ export function CODUserGroupsDataTable({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="p-3 rounded-lg bg-muted">
+              <div className="flex justify-between text-sm">
+                <span>Total COD Amount:</span>
+                <span className="font-medium">{formatCurrency(selectedUserGroup?.total_cod_amount || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-red-600">
+                <span>Admin Commission (2%):</span>
+                <span className="font-medium">-{formatCurrency((Number(selectedUserGroup?.total_cod_amount) || 0) * 0.02)}</span>
+              </div>
+              <div className="border-t mt-2 pt-2 flex justify-between font-semibold">
+                <span>User Will Receive:</span>
+                <span className="text-green-600">{formatCurrency((Number(selectedUserGroup?.total_cod_amount) || 0) * 0.98)}</span>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Remittance Status</Label>
               <Select
@@ -1004,6 +1055,49 @@ export function CODUserGroupsDataTable({
               ) : (
                 "Update All Orders"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showOrdersDialog} onOpenChange={setShowOrdersDialog}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={PackageIcon} size={20} />
+              Orders for {selectedUserGroup?.user?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedUserGroup?.order_count} orders - Total COD: {formatCurrency(selectedUserGroup?.total_cod_amount || 0)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {selectedUserGroup?.orders?.map((order) => (
+              <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                <div className="flex flex-col">
+                  <span className="font-medium">Order #{order.id}</span>
+                  {order.tracking_number && (
+                    <span className="text-xs text-muted-foreground">{order.tracking_number}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(order.created_at).toLocaleDateString('en-IN')}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="font-medium">{formatCurrency(order.cod_amount)}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {order.shipment_status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+            {(!selectedUserGroup?.orders || selectedUserGroup.orders.length === 0) && (
+              <p className="text-center text-muted-foreground py-4">No orders found</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOrdersDialog(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

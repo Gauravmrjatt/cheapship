@@ -511,6 +511,7 @@ export function OrdersDataTable({
             {labelUrl && labelUrl !== null && (
               <a
                 href={labelUrl}
+                download
                 target="_blank"
                 rel="noopener noreferrer"
                 className="

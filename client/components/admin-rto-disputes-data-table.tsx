@@ -60,6 +60,7 @@ export type AdminRTODispute = {
   order_id: string;
   reason: string;
   status: string;
+  rto_awb: string | null;
   created_at: string;
   user?: {
     name?: string;
@@ -187,7 +188,46 @@ export function AdminRTODisputesDataTable({
               </div>
             ) : (
               <span className="text-muted-foreground text-left text-xs">-</span>
-              // <></>
+            )}
+
+
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "rto_awb",
+      header: "RTO AWB",
+      cell: ({ row }) => {
+        const rtoAwb = row.original.rto_awb;
+
+        return (
+          <div className="flex flex-col gap-2">
+            {rtoAwb ? (
+              <div className="flex items-center gap-1">
+                <a
+                  href={`/track?awb=${rtoAwb}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="
+                  inline-flex items-center
+                  text-xs font-mono font-medium
+                  text-orange-600
+                  bg-orange-50
+                  hover:bg-orange-100
+                  transition-colors
+                  px-3 py-2.5
+                  rounded-md
+                  w-full
+                "
+                >
+                  {rtoAwb} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
+                </a>
+                <Button size="icon" className="bg-muted rounded-md" variant="outline" onClick={() => { copy(rtoAwb); sileo.success({ title: "Copied to clipboard", description: "RTO AWB copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
+
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-left text-xs">-</span>
             )}
 
 

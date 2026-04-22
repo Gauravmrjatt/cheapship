@@ -68,7 +68,9 @@ export function RemittanceDialog({
   onUpdate,
   isUpdating,
 }: RemittanceDialogProps) {
-  const amountToPay = (selectedOrder?.cod_amount || 0) -  getPercentage(2, selectedOrder?.cod_amount || 0) ;
+  const totalCOD = selectedOrder?.cod_amount || 0;
+  const commission = getPercentage(2, totalCOD);
+  const amountToPay = totalCOD - commission;
   const upiString = `upi://pay?pa=${selectedOrder?.user?.upi_id}&am=${amountToPay}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiString)}`;
 
@@ -82,10 +84,24 @@ export function RemittanceDialog({
             Update Remittance Status
           </DialogTitle>
           <DialogDescription>
-            Order #{selectedOrder?.id?.slice(0, 8)} - COD Amount: {formatCurrency(selectedOrder?.cod_amount || 0)}
+            Order #{selectedOrder?.id?.slice(0, 8)} - COD Amount: {formatCurrency(totalCOD)}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          <div className="p-3 rounded-lg bg-muted">
+            <div className="flex justify-between text-sm">
+              <span>Total COD Amount:</span>
+              <span className="font-medium">{formatCurrency(totalCOD)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-red-600">
+              <span>Admin Commission (2%):</span>
+              <span className="font-medium">-{formatCurrency(commission)}</span>
+            </div>
+            <div className="border-t mt-2 pt-2 flex justify-between font-semibold">
+              <span>User Will Receive:</span>
+              <span className="text-green-600">{formatCurrency(amountToPay)}</span>
+            </div>
+          </div>
           <div className="space-y-2">
             <Label>Remittance Status (From Shiprocket)</Label>
             <Select
@@ -131,7 +147,7 @@ export function RemittanceDialog({
                 className="rounded-md shadow-sm bg-white p-2 object-contain mix-blend-multiply"
               />
               <p className="text-xs font-medium text-black text-center">{selectedOrder.user.upi_id}</p>
-              <p className="text-[10px] text-muted-foreground text-center">Scan to pay exactly {formatCurrency(amountToPay)}</p>
+              <p className="text-[10px] text-muted-foreground text-center">Scan to pay ₹{Math.round(amountToPay)} (after 2% commission)</p>
             </div>
           )}
 

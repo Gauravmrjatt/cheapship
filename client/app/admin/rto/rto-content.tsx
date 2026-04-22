@@ -58,6 +58,7 @@ function Rtocontent() {
 
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [rtoAwb, setRtoAwb] = useState("");
 
   const [isFormSubmitted, setIsFormSubmitted] = useState(false);
 
@@ -91,7 +92,8 @@ function Rtocontent() {
     const payload: CreateRTOPayload = {
       order_id: selectedOrder.id.toString(),
       amount: parseFloat(amount),
-      reason: reason
+      reason: reason,
+      rto_awb: rtoAwb || undefined
     };
 
     try {
@@ -111,6 +113,7 @@ function Rtocontent() {
     setSelectedOrder(null);
     setAmount("");
     setReason("");
+    setRtoAwb("");
   };
 
   return (
@@ -201,6 +204,19 @@ function Rtocontent() {
                     onChange={(e) => setReason(e.target.value)}
                     rows={3}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rtoAwb">RTO AWB (Optional)</Label>
+                  <Input
+                    id="rtoAwb"
+                    placeholder="Enter RTO tracking AWB"
+                    value={rtoAwb}
+                    onChange={(e) => setRtoAwb(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter the AWB number for the RTO shipment to track it
+                  </p>
                 </div>
 
                 <Button

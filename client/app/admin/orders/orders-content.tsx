@@ -497,6 +497,7 @@ function OrdersContent() {
             {labelUrl && labelUrl !== null && (
               <a
                 href={labelUrl}
+                download
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
@@ -598,6 +599,7 @@ function OrdersContent() {
                         ? order.label_url
                         : `${BASE_URL}${order.label_url}`
                     }
+                    download
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex items-center"

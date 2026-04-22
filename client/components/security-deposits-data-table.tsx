@@ -62,7 +62,18 @@ export type SecurityDeposit = {
   status: string
   created_at?: string
   order?: {
+    id: string
     shipment_status?: string
+    total_amount?: number
+    shipping_charge?: number
+    tracking_number?: string | null
+    courier_name?: string | null
+    shiprocket_order_id?: string | null
+    shiprocket_shipment_id?: string | null
+    order_type?: string
+    payment_mode?: string
+    created_at?: string
+    delivered_at?: string | null
   }
 }
 
@@ -159,11 +170,65 @@ export function SecurityDepositsDataTable({
 
   const columns = React.useMemo<ColumnDef<SecurityDeposit>[]>(() => [
     {
-      accessorKey: "order_id",
-      header: "Order ID",
-      cell: ({ row }) => (
-        <span className="font-medium">#{row.original.order_id.toString()}</span>
-      )
+      id: "order_id",
+      header: "Order",
+      cell: ({ row }) => {
+        const order = row.original.order;
+        return (
+          <Popover>
+            <PopoverTrigger render={
+              <div className="cursor-pointer hover:text-primary">
+                <span className="font-medium">#{row.original.order_id.toString()}</span>
+                {order?.tracking_number && (
+                  <span className="text-xs text-muted-foreground ml-1 block">{order.tracking_number}</span>
+                )}
+              </div>
+            } />
+            <PopoverContent className="w-80 p-3" side="right">
+              <div className="space-y-2">
+                <div className="font-semibold border-b pb-2">Order Details</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="text-muted-foreground">Order ID:</div>
+                  <div className="font-medium">#{row.original.order_id}</div>
+                  
+                  <div className="text-muted-foreground">Tracking:</div>
+                  <div className="font-mono">{order?.tracking_number || '-'}</div>
+                  
+                  <div className="text-muted-foreground">Shiprocket OID:</div>
+                  <div className="font-mono">{order?.shiprocket_order_id || '-'}</div>
+                  
+                  <div className="text-muted-foreground">Shiprocket SID:</div>
+                  <div className="font-mono">{order?.shiprocket_shipment_id || '-'}</div>
+                  
+                  <div className="text-muted-foreground">Status:</div>
+                  <div>{order?.shipment_status || '-'}</div>
+                  
+                  <div className="text-muted-foreground">Courier:</div>
+                  <div>{order?.courier_name || '-'}</div>
+                  
+                  <div className="text-muted-foreground">Order Type:</div>
+                  <div>{order?.order_type || '-'}</div>
+                  
+                  <div className="text-muted-foreground">Payment:</div>
+                  <div>{order?.payment_mode || '-'}</div>
+                  
+                  <div className="text-muted-foreground">Total Amount:</div>
+                  <div>{formatCurrency(order?.total_amount || 0)}</div>
+                  
+                  <div className="text-muted-foreground">Shipment Charge:</div>
+                  <div>{formatCurrency(order?.shipping_charge || 0)}</div>
+                  
+                  <div className="text-muted-foreground">Created:</div>
+                  <div>{order?.created_at ? formatDate(order.created_at) : '-'}</div>
+                  
+                  <div className="text-muted-foreground">Delivered:</div>
+                  <div>{order?.delivered_at ? formatDate(order.delivered_at) : '-'}</div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        );
+      }
     },
     {
       accessorKey: "order",

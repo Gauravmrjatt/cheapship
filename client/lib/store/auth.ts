@@ -7,6 +7,7 @@ export interface User {
   name: string;
   mobile?: string;
   wallet_balance?: number;
+  security_deposit?: number;
   user_type?: string;
   is_active?: boolean;
   min_commission_rate?: string;

@@ -26,7 +26,9 @@ export const useAssignAWB = () => {
         onSuccess: (_, { orderId }) => {
           sileo.success({ title: "AWB Assigned", description: "AWB has been successfully assigned to the shipment." });
           queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+          queryClient.invalidateQueries({ queryKey: ["admin-order", orderId] });
           queryClient.invalidateQueries({ queryKey: ["orders"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
         },
         onError: (error: any) => {
           sileo.error({ title: "Failed to assign AWB", description: error.message || "An error occurred while assigning AWB." });
@@ -69,7 +71,9 @@ export const useGenerateLabel = () => {
         onSuccess: (_, { orderId }) => {
           sileo.success({ title: "Label Generated", description: "Shipping label has been successfully generated." });
           queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+          queryClient.invalidateQueries({ queryKey: ["admin-order", orderId] });
           queryClient.invalidateQueries({ queryKey: ["orders"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
         },
         onError: (error: any) => {
           sileo.error({ title: "Failed to generate label", description: error.message || "An error occurred while generating label." });
