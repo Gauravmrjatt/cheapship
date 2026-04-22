@@ -1913,13 +1913,15 @@ const getOrderById = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    const productValue = Array.isArray(order.products) 
-      ? order.products.reduce((sum, p) => sum + (Number(p.price) * Number(p.quantity || 1)), 0) 
+    const products = order?.products || [];
+    const productValue = Array.isArray(products) 
+      ? products.reduce((sum, p) => sum + (Number(p.price) * Number(p.quantity || 1)), 0) 
       : 0;
 
     res.json({
       ...order,
       productValue,
+      products,
       price_breakdown: {
         base_shipping_charge: order.base_shipping_charge,
         global_commission_rate: order.global_commission_rate,

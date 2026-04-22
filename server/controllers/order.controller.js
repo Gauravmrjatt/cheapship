@@ -1126,8 +1126,9 @@ const order = await prisma.order.findUnique({
       }
     });
 
-    const productValue = Array.isArray(order?.products) 
-      ? order.products.reduce((sum, p) => sum + (Number(p.price) * Number(p.quantity || 1)), 0) 
+    const products = order?.products || [];
+    const productValue = Array.isArray(products) 
+      ? products.reduce((sum, p) => sum + (Number(p.price) * Number(p.quantity || 1)), 0) 
       : 0;
 
     const {
@@ -1139,7 +1140,7 @@ const order = await prisma.order.findUnique({
       ...sanitizedOrder
     } = order;
 
-    res.json({ ...sanitizedOrder, productValue });
+    res.json({ ...sanitizedOrder, productValue, products });
   } catch (error) {
     console.error(error);
     if (error.code === 'P2023') {

@@ -437,6 +437,34 @@ export default function OrderDetailsPage({
           </CardContent>
         </Card>
 
+        {(order as any).products && (order as any).products.length > 0 && (
+          <Card className="rounded-xl shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <HugeiconsIcon icon={PackageIcon} className="h-5 w-5" />
+                  Product Details
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(order as any).products.map((product: any, index: number) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                  <div className="flex flex-col">
+                    <span className="font-medium">{product.name || 'Product'}</span>
+                    <span className="text-xs text-muted-foreground">Qty: {product.quantity || 1}</span>
+                  </div>
+                  <div className="font-semibold">₹{Number(product.price || 0) * Number(product.quantity || 1)}</div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-primary text-primary-foreground">
+                <span className="font-semibold">Total Product Value</span>
+                <span className="font-bold text-lg">₹{(order as any).productValue || 0}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {(order.label_url || order.track_url || liveStatus?.live_status) && (
           <Card className="rounded-xl shadow-sm">
             <CardHeader className="pb-3">
