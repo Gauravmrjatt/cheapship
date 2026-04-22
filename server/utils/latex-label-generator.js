@@ -149,12 +149,15 @@ class LatexLabelGenerator {
         const timestamp = Date.now();
         const orderId = order.id;
 
-        console.log(`[LatexLabel] Generating label for order ${orderId}...`);
+        console.log(`[LatexLabel] === START label generation for order ${orderId} ===`);
+        console.log(`[LatexLabel] Order data: ${JSON.stringify({ id: orderId, total_amount: order.total_amount, products: order.products?.length })}`);
 
         try {
-            return await this.generatePdfLib(order, user, timestamp);
+            const result = await this.generatePdfLib(order, user, timestamp);
+            console.log(`[LatexLabel] === END label generation === URL: ${result}`);
+            return result;
         } catch (error) {
-            console.error('[LatexLabel] Error generating label:', error);
+            console.error(`[LatexLabel] === FAILED ===`, error);
             throw error;
         }
     }
@@ -263,9 +266,13 @@ class LatexLabelGenerator {
     }
 
     async generatePdfLib(order, user, timestamp) {
+        console.log('[LatexLabel] Starting pdf-lib generation...');
+
         const pdfDoc = await PDFDocument.create();
         const page = pdfDoc.addPage([600, 800]);
         const { width, height } = page.getSize();
+
+        console.log('[LatexLabel] PDF page created, dimensions:', width, height);
 
         const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -282,6 +289,8 @@ class LatexLabelGenerator {
         const lineGap = 12;
 
         let y = height - margin;
+
+        console.log('[LatexLabel] Creating boxes and content...');
 
         const drawBox = (boxHeight) => {
             y -= boxHeight;
@@ -369,9 +378,12 @@ class LatexLabelGenerator {
             font: fontBold
         });
 
+        console.log('[LatexLabel] Generating barcode and QR codes...');
         const { barcodePath, qrcodePath, qrcodePath2 } = await this.generateImages(order);
+        console.log('[LatexLabel] Images generated:', { barcodePath: !!barcodePath, qrcodePath: !!qrcodePath, qrcodePath2: !!qrcodePath2 });
 
         if (barcodePath && fs.existsSync(barcodePath)) {
+            console.log('[LatexLabel] Embedding barcode image...');
             const img = await pdfDoc.embedPng(fs.readFileSync(barcodePath));
             page.drawImage(img, {
                 x: rightX,
@@ -501,14 +513,15 @@ class LatexLabelGenerator {
         const filename = `label_${order.id}_${timestamp}.pdf`;
         const filePath = path.join(this.labelsDir, filename);
         fs.writeFileSync(filePath, pdfBytes);
-        console.log('[LatexLabel] PDF written to local:', filePath);
+        console.log('[LatexLabel] PDF saved to:', filePath);
 
         try {
-            console.log('[LatexLabel] Attempting Cloudinary upload...');
+            console.log('[LatexLabel] Uploading to Cloudinary...');
             const uploadResult = await uploadPdfToCloudinary(pdfBytes, 'cashbackwallah/labels');
+            console.log('[LatexLabel] Upload SUCCESS:', uploadResult.secure_url);
             return uploadResult.secure_url;
         } catch (uploadError) {
-            console.error('[LatexLabel] Cloudinary upload failed:', uploadError.message);
+            console.error('[LatexLabel] Upload FAILED:', uploadError.message);
             return filePath;
         }
     }
