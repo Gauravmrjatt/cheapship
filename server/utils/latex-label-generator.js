@@ -476,14 +476,14 @@ class LatexLabelGenerator {
             const qr = await pdfDoc.embedPng(fs.readFileSync(qrcodePath));
             page.drawImage(qr, { x: margin + 10, y: footerY, width: 50, height: 50 });
             page.drawText('Get Instant Cashback', { x: margin + 10, y: footerY - 8, size: 7, font: fontBold });
-            page.drawText('Offers on WhatsApp', { x: margin + 10, y: footerY - 18, size: 7, font: fontBold });
+            page.drawText('Offers on Instagram', { x: width - margin - 60, y: footerY - 18, size: 7, font: fontBold });
         }
-
+        
         if (qrcodePath2 && fs.existsSync(qrcodePath2)) {
             const qr2 = await pdfDoc.embedPng(fs.readFileSync(qrcodePath2));
             page.drawImage(qr2, { x: width - margin - 60, y: footerY, width: 50, height: 50 });
             page.drawText('Get Instant Cashback', { x: width - margin - 60, y: footerY - 8, size: 7, font: fontBold });
-            page.drawText('Offers on Instagram', { x: width - margin - 60, y: footerY - 18, size: 7, font: fontBold });
+            page.drawText('Offers on WhatsApp', { x: margin + 10, y: footerY - 18, size: 7, font: fontBold });
         }
 
         page.drawText('CASHBACKWALLAH', {
@@ -501,11 +501,11 @@ class LatexLabelGenerator {
             color: purple
         });
 
-        page.drawText('+91 92511 20521 | +91 95096 98208', {
+        page.drawText('+91 9251220521 | +91 95096 98208', {
             x: width / 2 - 90,
             y: footerY - 5,
             size: 10,
-            color: green
+            color: purple
         });
 
         // SAVE

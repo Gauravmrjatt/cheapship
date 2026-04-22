@@ -97,7 +97,7 @@ app.use((err, req, res, next) => {
   }
 
   // Otherwise render error page
-  res.render('error', {
+  res.json({
     message: err.message,
     error: isDev ? err : {}
   });
