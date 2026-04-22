@@ -360,10 +360,12 @@ class LatexLabelGenerator {
 
         const dim = `${order.length || 1}x${order.width || 1}x${order.height || 1}`;
         const paymentMode = (order.payment_mode || 'PREPAID').toUpperCase();
+        const collectableAmount = paymentMode === 'COD' ? Number(order.cod_amount || 0) : 0;
 
         page.drawText(`Dimensions: ${dim}`, { x: margin + 10, y: innerY, size: 9 });
         page.drawText(`Payment: ${paymentMode}`, { x: margin + 10, y: innerY - 14, size: 9 });
         page.drawText(`Weight: ${order.weight || 0.2} kg`, { x: margin + 10, y: innerY - 28, size: 9 });
+        page.drawText(`Collectable: Rs.${this.formatINR(collectableAmount)}`, { x: margin + 10, y: innerY - 42, size: 9, font: fontBold });
 
         const rightX = width - margin - 180;
 
