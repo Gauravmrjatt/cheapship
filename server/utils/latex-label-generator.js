@@ -518,10 +518,18 @@ class LatexLabelGenerator {
         try {
             console.log('[LatexLabel] Uploading to Cloudinary...');
             const uploadResult = await uploadPdfToCloudinary(pdfBytes, 'cashbackwallah/labels');
-            console.log('[LatexLabel] Upload SUCCESS:', uploadResult.secure_url);
+            console.log('[LatexLabel] Upload SUCCESS, deleting local file...');
+
+            try {
+                fs.unlinkSync(filePath);
+                console.log('[LatexLabel] Local file deleted');
+            } catch (deleteErr) {
+                console.warn('[LatexLabel] Failed to delete local file:', deleteErr.message);
+            }
+
             return uploadResult.secure_url;
         } catch (uploadError) {
-            console.error('[LatexLabel] Upload FAILED:', uploadError.message);
+            console.error('[LatexLabel] Upload FAILED, using local fallback:', uploadError.message);
             return filePath;
         }
     }
