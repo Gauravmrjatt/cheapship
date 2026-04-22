@@ -91,17 +91,20 @@ class LatexLabelGenerator {
     async generateImages(order) {
         const timestamp = Date.now();
         const barcodePath = path.join(this.tempDir, `barcode_${timestamp}.png`);
+        const barcodeOrderPath = path.join(this.tempDir, `barcode_order_${timestamp}.png`);
         const qrcodePath = path.join(this.tempDir, `qrcode_${timestamp}.png`);
         const qrcodePath2 = path.join(this.tempDir, `qrcode2_${timestamp}.png`);
         const awbCode = order.tracking_number || '';
+        const orderCode = String(order.id);
 
         await Promise.all([
             awbCode ? this.generateBarcode(awbCode, barcodePath) : Promise.resolve(null),
+            this.generateBarcode(orderCode, barcodeOrderPath),
             this.generateQR('https://instagram.com/cashbackwallahuniverse', qrcodePath),
             this.generateQR('https://wa.me/9251220521', qrcodePath2)
         ]);
 
-        return { barcodePath, qrcodePath, qrcodePath2 };
+        return { barcodePath, barcodeOrderPath, qrcodePath, qrcodePath2 };
     }
 
     buildProductRows(products) {
@@ -379,11 +382,11 @@ class LatexLabelGenerator {
         });
 
         console.log('[LatexLabel] Generating barcode and QR codes...');
-        const { barcodePath, qrcodePath, qrcodePath2 } = await this.generateImages(order);
-        console.log('[LatexLabel] Images generated:', { barcodePath: !!barcodePath, qrcodePath: !!qrcodePath, qrcodePath2: !!qrcodePath2 });
+        const { barcodePath, barcodeOrderPath, qrcodePath, qrcodePath2 } = await this.generateImages(order);
+        console.log('[LatexLabel] Images generated:', { barcodePath: !!barcodePath, barcodeOrderPath: !!barcodeOrderPath, qrcodePath: !!qrcodePath, qrcodePath2: !!qrcodePath2 });
 
         if (barcodePath && fs.existsSync(barcodePath)) {
-            console.log('[LatexLabel] Embedding barcode image...');
+            console.log('[LatexLabel] Embedding AWB barcode...');
             const img = await pdfDoc.embedPng(fs.readFileSync(barcodePath));
             page.drawImage(img, {
                 x: rightX,
@@ -391,6 +394,18 @@ class LatexLabelGenerator {
                 width: 150,
                 height: 30
             });
+        }
+
+        if (barcodeOrderPath && fs.existsSync(barcodeOrderPath)) {
+            console.log('[LatexLabel] Embedding Order ID barcode...');
+            const imgOrder = await pdfDoc.embedPng(fs.readFileSync(barcodeOrderPath));
+            page.drawImage(imgOrder, {
+                x: width / 2 - 80,
+                y: 25,
+                width: 100,
+                height: 25
+            });
+            page.drawText(`Order ID: ${order.id}`, { x: width / 2 - 40, y: 15, size: 8, font: fontRegular });
         }
 
         // =========================
