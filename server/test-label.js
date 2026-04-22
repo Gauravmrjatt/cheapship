@@ -1,3 +1,4 @@
+require('dotenv').config();
 const latexLabelGenerator = require('./utils/latex-label-generator');
 
 const dummyOrder = {

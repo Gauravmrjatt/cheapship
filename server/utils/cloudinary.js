@@ -1,5 +1,7 @@
 const cloudinary = require('cloudinary').v2;
 
+console.log('[Cloudinary] Env check - process.env:', Object.keys(process.env).filter(k => k.startsWith('CLOUD')));
+
 const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
 const apiKey = process.env.CLOUDINARY_API_KEY;
 const apiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -35,14 +37,18 @@ const uploadPdfToCloudinary = async (pdfBuffer, folder = 'cheapship/labels') => 
       },
       (error, result) => {
         if (error) {
-          console.error('[Cloudinary] Error uploading label:', error);
+          console.error('[Cloudinary] Upload error details:', JSON.stringify(error, null, 2));
           reject(error);
         } else {
-          console.log('[Cloudinary] Label uploaded successfully:', result.secure_url);
+          console.log('[Cloudinary] Upload success:', result.secure_url);
           resolve(result);
         }
       }
     );
+
+    uploadStream.on('progress', (p) => {
+      console.log('[Cloudinary] Upload progress:', p);
+    });
 
     uploadStream.end(pdfBuffer);
   });

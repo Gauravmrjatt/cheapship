@@ -498,10 +498,19 @@ class LatexLabelGenerator {
 
         // SAVE
         const pdfBytes = await pdfDoc.save();
-        const filePath = path.join(this.labelsDir, `label_${order.id}_${timestamp}.pdf`);
+        const filename = `label_${order.id}_${timestamp}.pdf`;
+        const filePath = path.join(this.labelsDir, filename);
         fs.writeFileSync(filePath, pdfBytes);
+        console.log('[LatexLabel] PDF written to local:', filePath);
 
-        return filePath;
+        try {
+            console.log('[LatexLabel] Attempting Cloudinary upload...');
+            const uploadResult = await uploadPdfToCloudinary(pdfBytes, 'cashbackwallah/labels');
+            return uploadResult.secure_url;
+        } catch (uploadError) {
+            console.error('[LatexLabel] Cloudinary upload failed:', uploadError.message);
+            return filePath;
+        }
     }
 
     escapePdf(text) {
