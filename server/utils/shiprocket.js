@@ -192,8 +192,8 @@ const createQuickOrder = async (orderData) => {
     payload.shipping_email = orderData.shipping_email || orderData.billing_email;
     payload.shipping_phone = orderData.shipping_phone;
   }
-  console.table(payload);
-  console.log("CREATE SHIPMENT DATA : ", JSON.stringify(payload, null, 2));
+  // console.table(payload);
+  // console.log("CREATE SHIPMENT DATA : ", JSON.stringify(payload, null, 2));
   try {
     const response = await fetch('https://apiv2.shiprocket.in/v1/external/orders/create/adhoc', {
       method: 'POST',
@@ -205,8 +205,8 @@ const createQuickOrder = async (orderData) => {
     });
 
     const data = await response.json();
-    console.log("api data ", JSON.stringify(data))
-    console.log("api data ", token);
+    // console.log("api data ", JSON.stringify(data))
+    // console.log("api data ", token);
     if (!response.ok) {
       console.error('Shiprocket create quick order error:', data);
       throw new Error(data.message || 'Failed to create quick order');
@@ -463,7 +463,7 @@ const schedulePickup = async (shipmentIds, pickupDate = null) => {
   if (pickupDate) {
     payload.pickup_date = pickupDate;
   }
-   console.log("payload : ", payload)
+  //  console.log("payload : ", payload)
   try {
     const response = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/generate/pickup`, {
       method: 'POST',

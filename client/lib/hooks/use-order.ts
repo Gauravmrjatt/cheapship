@@ -46,7 +46,7 @@ export const useSchedulePickup = () => {
     ...post<any, { orderId: string; pickup_date?: string }>(
       ({ orderId, pickup_date }) => `/orders/${orderId}/pickup`,
       {
-        onSuccess: (_, { orderId }) => {
+        onSuccess: (data: any, { orderId }) => {
           sileo.success({ title: "Pickup Scheduled", description: "Pickup has been successfully scheduled." });
           queryClient.invalidateQueries({ queryKey: ["order", orderId] });
           queryClient.invalidateQueries({ queryKey: ["orders"] });

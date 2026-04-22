@@ -2276,8 +2276,23 @@ const scheduleOrderPickup = async (req, res) => {
     const pickupResult = await schedulePickup([order.shiprocket_shipment_id], pickupDateStr);
 
     if (pickupResult.Status === false) {
+      if (pickupResult.message && pickupResult.message.includes('Already in Pickup Queue')) {
+        return res.status(400).json({ 
+          message: 'Order is already in pickup queue',
+          already_in_queue: true
+        });
+      }
       return res.status(400).json({ message: pickupResult.message || 'Failed to schedule pickup' });
     }
+
+    const pickupScheduledDate = pickupResult.response?.pickup_scheduled_date 
+      ? new Date(pickupResult.response.pickup_scheduled_date)
+      : new Date();
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { pickup_scheduled_date: pickupScheduledDate }
+    });
 
     res.json({
       message: 'Pickup scheduled successfully',
