@@ -375,7 +375,7 @@ class CustomLabelGenerator {
             });
 
             y -= 16;
-            page.drawText('Support: +91 92511 20527', {
+            page.drawText('Support: +91 9251220521', {
                 x: centerX - 90, y: y,
                 size: 12, font: fontRegular, color: rgb(0.3,0.3,0.3)
             });

@@ -125,7 +125,7 @@ export default function ShippingLabel() {
         <div className="text-center p-5">
           <h1 className="text-4xl font-bold text-blue-600">CHEAPSHIP</h1>
           <p>Insta: @cheapship.in</p>
-          <p>Support: +91 92511 20527</p>
+          <p>Support: +91 9251220521</p>
         </div>
 
       </div>

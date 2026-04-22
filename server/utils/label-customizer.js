@@ -87,7 +87,7 @@ class LabelCustomizer {
                 color: rgb(0.14, 0.39, 0.92),
             });
 
-            firstPage.drawText('Support: +91 92511 20521', {
+            firstPage.drawText('Support: +91 9251220521', {
                 x: margin + 12,
                 y: margin + 15,
                 size: 9,

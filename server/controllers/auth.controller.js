@@ -20,10 +20,10 @@ const getGlobalCommissionLimits = async (prisma) => {
     prisma.systemSetting.findUnique({ where: { key: 'min_commission_rate' } }),
     prisma.systemSetting.findUnique({ where: { key: 'max_commission_rate' } })
   ]);
-  console.group('Commission Limits');
-  console.log('minSetting:', minSetting);
-  console.log('maxSetting:', maxSetting);
-  console.groupEnd('Commission Limits');
+  // console.group('Commission Limits');
+  // console.log('minSetting:', minSetting);
+  // console.log('maxSetting:', maxSetting);
+  // console.groupEnd('Commission Limits');
   return {
     min_rate: minSetting ? parseFloat(minSetting.value) : 0,
     max_rate: maxSetting ? parseFloat(maxSetting.value) : 100

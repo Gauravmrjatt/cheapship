@@ -297,7 +297,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     resolver: zodResolver(createOrderSchema) as any,
     defaultValues: {
       order_type: "SURFACE", shipment_type: "DOMESTIC", payment_mode: "PREPAID",
-      total_amount: 0, cod_amount: 100, weight: 500, length: 1, width: 1, height: 1,
+      total_amount: 0, cod_amount: undefined, weight: 500, length: 1, width: 1, height: 1,
       pickup_location: "",
       pickup_address: { name: "", phone: "", email: "", address: "", city: "", state: "", pincode: "", },
       receiver_address: { name: "", phone: "", email: "", address: "", city: "", state: "", pincode: "", },
@@ -313,12 +313,12 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   const formValues = form.watch();
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "products" });
 
-  // useEffect(() => {
-  //   const productsTotal = formValues.products?.reduce((sum: number, p: any) => sum + ((p.quantity || 0) * (p.price || 0)), 0) || 0;
-  //   if (productsTotal !== formValues.total_amount) {
-  //     form.setValue("total_amount", productsTotal, { shouldValidate: false });
-  //   }
-  // }, [formValues.products, form.setValue]);
+  useEffect(() => {
+    const productsTotal = formValues.products?.reduce((sum: number, p: any) => sum + ((p.quantity || 0) * (p.price || 0)), 0) || 0;
+    if (productsTotal !== formValues.total_amount) {
+      form.setValue("total_amount", productsTotal, { shouldValidate: false });
+    }
+  }, [formValues.products, form.setValue]);
 
   useEffect(() => {
     if (rateCalculatorData) {
@@ -343,6 +343,13 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
       clearRateData();
     }
   }, [rateCalculatorData, clearRateData, form, formValues, preSelectedCourier]);
+
+  // Auto-set COD amount to total amount when payment mode is COD
+  useEffect(() => {
+    if (formValues.payment_mode === "COD") {
+      form.setValue("cod_amount", formValues.total_amount || 0, { shouldValidate: true });
+    }
+  }, [formValues.payment_mode, formValues.total_amount, form]);
 
   useEffect(() => {
     if (preSelectedCourier) {
@@ -1255,38 +1262,43 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               </Field>
             </div>
             {formValues.payment_mode === "COD" && (
-              <p className="text-muted-foreground">
-                Products Value will be considered as COD Amount
-              </p>
-              // <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount (Max ₹1,00,000)</FieldLabel>
-              //   <div className="relative">
-              //     <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-              //     <Input
-              //       type="number"
-              //       value={100}
-              //       max={100000}
-              //       {...form.register("cod_amount", {
-              //         onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-              //           const value = e.target.value;
-              //           if (value === "") {
-              //             form.setValue("cod_amount", undefined as any);
-              //           } else {
-              //             const num = parseInt(value) || 0;
-              //             if (num > 100000) {
-              //               form.setValue("cod_amount", 100000);
-              //             } else {
-              //               form.setValue("cod_amount", num);
-              //             }
-              //           }
-              //         }
-              //       })}
-              //       aria-invalid={!!errors.cod_amount}
-              //       className="pl-9"
-              //     />
-              //   </div>
-              //   <FieldError errors={[errors.cod_amount]} className="text-[10px] font-bold uppercase" />
-              // </Field>
-            )}
+               // <p className="text-muted-foreground">
+               //   Products Value will be considered as COD Amount
+               // </p>
+               <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount (Max ₹1,00,000)</FieldLabel>
+                 <div className="relative">
+                   <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
+                    <Input
+                      type="number"
+                      max={100000}
+                      {...form.register("cod_amount", {
+                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                          // Prevent manual changes when payment mode is COD
+                          if (formValues.payment_mode === "COD") {
+                            e.preventDefault();
+                            return;
+                          }
+                          const value = e.target.value;
+                          if (value === "") {
+                            form.setValue("cod_amount", undefined as any);
+                          } else {
+                            const num = parseInt(value) || 0;
+                            if (num > 100000) {
+                              form.setValue("cod_amount", 100000);
+                            } else {
+                              form.setValue("cod_amount", num);
+                            }
+                          }
+                        }
+                      })}
+                      aria-invalid={!!errors.cod_amount}
+                      className="pl-9"
+                      readOnly={formValues.payment_mode === "COD"}
+                    />
+                 </div>
+                 <FieldError errors={[errors.cod_amount]} className="text-[10px] font-bold uppercase" />
+               </Field>
+             )}
             <Separator />
             <div className="space-y-4">
               <Field data-invalid={!!errors.weight}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Dead Weight (g)</FieldLabel>
