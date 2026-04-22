@@ -235,7 +235,8 @@ export function AdminSecurityDepositsDataTable({
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium">{row.original.user?.name || 'N/A'}</span>
-          <span className="text-xs text-muted-foreground">{row.original.user?.email || row.original.user?.mobile || ''}</span>
+          <span className="text-xs text-muted-foreground">{row.original.user?.email || '-'}</span>
+          <span className="text-xs text-blue-600 font-medium">{row.original.user?.mobile || ''}</span>
         </div>
       )
     },
