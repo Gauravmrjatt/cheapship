@@ -20,7 +20,7 @@ const sanitizeErrorMessage = (message) => {
 
 const generateLabelAsync = async (orderId, shipmentId) => {
   const prisma = require('../utils/prisma');
-const latexLabelGenerator = require('../utils/latex-label-generator');
+  const latexLabelGenerator = require('../utils/latex-label-generator');
 
   console.log(`[Async Label] Starting custom label generation for order ${orderId}, shipment ${shipmentId}`);
 
@@ -1116,7 +1116,7 @@ const getOrderById = async (req, res) => {
   const userId = req.user.id;
 
   try {
-const order = await prisma.order.findUnique({
+    const order = await prisma.order.findUnique({
       where: {
         id: BigInt(id)
       },
@@ -1127,8 +1127,8 @@ const order = await prisma.order.findUnique({
     });
 
     const products = order?.products || [];
-    const productValue = Array.isArray(products) 
-      ? products.reduce((sum, p) => sum + (Number(p.price) * Number(p.quantity || 1)), 0) 
+    const productValue = Array.isArray(products)
+      ? products.reduce((sum, p) => sum + (Number(p.price) * Number(p.quantity || 1)), 0)
       : 0;
 
     const {
@@ -2278,7 +2278,16 @@ const scheduleOrderPickup = async (req, res) => {
 
     if (pickupResult.Status === false) {
       if (pickupResult.message && pickupResult.message.includes('Already in Pickup Queue')) {
-        return res.status(400).json({ 
+        const pickupScheduledDate = pickupResult.response?.pickup_scheduled_date
+          ? new Date(pickupResult.response.pickup_scheduled_date)
+          : new Date();
+
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { pickup_scheduled_date: pickupScheduledDate }
+        });
+
+        return res.status(400).json({
           message: 'Order is already in pickup queue',
           already_in_queue: true
         });
@@ -2286,7 +2295,7 @@ const scheduleOrderPickup = async (req, res) => {
       return res.status(400).json({ message: pickupResult.message || 'Failed to schedule pickup' });
     }
 
-    const pickupScheduledDate = pickupResult.response?.pickup_scheduled_date 
+    const pickupScheduledDate = pickupResult.response?.pickup_scheduled_date
       ? new Date(pickupResult.response.pickup_scheduled_date)
       : new Date();
 
