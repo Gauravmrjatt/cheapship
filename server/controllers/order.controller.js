@@ -26,7 +26,7 @@ const generateLabelAsync = async (orderId, shipmentId) => {
 
   try {
     const order = await prisma.order.findUnique({
-      where: { id: orderId },
+      where: { id: BigInt(id) },
       include: {
         order_pickup_address: true,
         order_receiver_address: true,
@@ -50,7 +50,7 @@ const generateLabelAsync = async (orderId, shipmentId) => {
 
     if (labelUrl) {
       await prisma.order.update({
-        where: { id: orderId },
+        where: { id: BigInt(id) },
         data: { label_url: labelUrl }
       });
 
@@ -2283,7 +2283,7 @@ const scheduleOrderPickup = async (req, res) => {
           : new Date();
 
         await prisma.order.update({
-          where: { id: orderId },
+          where: { id: BigInt(id) },
           data: { pickup_scheduled_date: pickupScheduledDate }
         });
 
@@ -2300,7 +2300,7 @@ const scheduleOrderPickup = async (req, res) => {
       : new Date();
 
     await prisma.order.update({
-      where: { id: orderId },
+      where: { id: BigInt(id) },
       data: { pickup_scheduled_date: pickupScheduledDate }
     });
 
