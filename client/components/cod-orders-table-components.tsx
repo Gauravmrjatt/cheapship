@@ -146,7 +146,7 @@ export function RemittanceDialog({
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Account:</span>
-                        <span className="font-medium">XXXX{selectedOrder.user.account_number?.slice(-4)}</span>
+                        <span className="font-medium">{selectedOrder.user.account_number}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">IFSC:</span>

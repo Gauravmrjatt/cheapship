@@ -174,7 +174,7 @@ export default function AdminWithdrawalsPage() {
             <span className="text-[10px] text-green-600">{row.original.user.upi_id}</span>
           )}
           {row.original.user?.bank_name && (
-            <span className="text-[10px] text-green-600">{row.original.user.bank_name} - A/C: XXXX{row.original.user.account_number?.slice(-4)}</span>
+            <span className="text-[10px] text-green-600">{row.original.user.bank_name} - A/C: {row.original.user.account_number}</span>
           )}
         </div>
       ),
@@ -493,7 +493,7 @@ export default function AdminWithdrawalsPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Account:</span>
-                          <span className="font-medium">XXXX{selectedUserGroup.user.account_number?.slice(-4)}</span>
+                          <span className="font-medium">{selectedUserGroup.user.account_number}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">IFSC:</span>

@@ -35,6 +35,7 @@ function CODOrdersContent() {
     remitted_amount?: number; 
     remittance_ref_id?: string;
     payout_status?: string;
+    remittance_payment_method?: string;
   }) => {
     updateRemittanceMutation.mutate({
       userId: userGroup.user.id,

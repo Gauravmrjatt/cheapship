@@ -83,6 +83,10 @@ export interface CODOrder {
     email: string
     upi_id?: string
     mobile?: string
+    bank_name?: string
+    beneficiary_name?: string
+    account_number?: string
+    ifsc_code?: string
   }
   order_receiver_address?: {
     name: string
@@ -155,7 +159,7 @@ interface CODOrdersDataTableProps {
   onPageChange?: (page: number) => void
   onPageSizeChange?: (pageSize: number) => void
   onFilterChange?: (filters: { status: string; search: string; order_source: string }) => void
-  onUpdateRemittance?: (order: CODOrder, data: { remittance_status: string; payout_status?: string; remitted_amount?: number; remittance_ref_id?: string }) => void
+  onUpdateRemittance?: (order: CODOrder, data: { remittance_status: string; payout_status?: string; remitted_amount?: number; remittance_ref_id?: string; remittance_payment_method?: string }) => void
   isUpdating?: boolean
 }
 
@@ -582,7 +586,7 @@ interface CODUserGroupsDataTableProps {
   onPageChange?: (page: number) => void
   onPageSizeChange?: (pageSize: number) => void
   onFilterChange?: (filters: { status: string; search: string; order_source: string }) => void
-  onUpdateRemittance?: (userGroup: CODUserGroup, data: { remittance_status: string; payout_status?: string; remitted_amount?: number; remittance_ref_id?: string }) => void
+  onUpdateRemittance?: (userGroup: CODUserGroup, data: { remittance_status: string; payout_status?: string; remitted_amount?: number; remittance_ref_id?: string; remittance_payment_method?: string }) => void
   isUpdating?: boolean
 }
 
@@ -678,7 +682,7 @@ export function CODUserGroupsDataTable({
               <span className="text-xs text-green-600">{user.upi_id}</span>
             )}
             {user?.bank_name && (
-              <span className="text-xs text-green-600">{user.bank_name} - A/C: XXXX{user.account_number?.slice(-4)}</span>
+              <span className="text-xs text-green-600">{user.bank_name} - A/C: {user.account_number}</span>
             )}
           </div>
         )
@@ -1015,7 +1019,7 @@ export function CODUserGroupsDataTable({
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Account:</span>
-                          <span className="font-medium">XXXX{selectedUserGroup.user.account_number?.slice(-4)}</span>
+                          <span className="font-medium">{selectedUserGroup.user.account_number}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">IFSC:</span>
