@@ -5,11 +5,6 @@ RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates \
     locales \
-    texlive-latex-base \
-    texlive-latex-extra \
-    texlive-fonts-recommended \
-    texlive-pictures \
-    texlive-font-utils \
     ghostscript \
     && rm -rf /var/lib/apt/lists/*
 
