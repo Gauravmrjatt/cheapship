@@ -1767,7 +1767,7 @@ return {
 const updateOrderRemittance = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { id } = req.params;
-  const { remittance_status, remitted_amount, remittance_ref_id, remittance_payment_method, payout_status } = req.body;
+  const { remittance_status, remitted_amount, remittance_ref_id, payout_status } = req.body;
 
   try {
     const order = await prisma.order.findUnique({
@@ -1791,9 +1791,6 @@ const updateOrderRemittance = async (req, res) => {
         updateData.remitted_at = new Date();
         if (remittance_ref_id) {
           updateData.remittance_ref_id = remittance_ref_id;
-        }
-        if (remittance_payment_method) {
-          updateData.remittance_payment_method = remittance_payment_method;
         }
       }
     } else if (remittance_status) {
@@ -1839,7 +1836,7 @@ const updateOrderRemittance = async (req, res) => {
 const updateUserCODRemittance = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { userId } = req.params;
-  const { remittance_status, remitted_amount, remittance_ref_id, remittance_payment_method, payout_status } = req.body;
+  const { remittance_status, remitted_amount, remittance_ref_id, payout_status } = req.body;
 
   const adminId = req.user.id;
 
@@ -1871,9 +1868,6 @@ const updateUserCODRemittance = async (req, res) => {
         updateData.remitted_at = new Date();
         if (remittance_ref_id) {
           updateData.remittance_ref_id = remittance_ref_id;
-        }
-        if (remittance_payment_method) {
-          updateData.remittance_payment_method = remittance_payment_method;
         }
       } else {
         updateData.remittance_status = remittance_status;
