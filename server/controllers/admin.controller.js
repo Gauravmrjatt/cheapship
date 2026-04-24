@@ -693,7 +693,7 @@ const userGroups = await prisma.user.findMany({
           account_number: user.account_number,
           ifsc_code: user.ifsc_code
         },
-        request_count: user._count.commissionWithdrawal,
+        request_count: user._count.withdrawals,
         total_amount: totalPending + totalApproved + totalRejected,
         pending_amount: totalPending,
         approved_amount: totalApproved,

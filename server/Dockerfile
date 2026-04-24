@@ -23,7 +23,6 @@ COPY . .
 RUN npx prisma migrate resolve --applied 20260227000000_add_transaction_categories || true
 RUN npx prisma migrate resolve --applied 20260423000001_add_bank_fields_and_payment_method || true
 RUN npx prisma migrate deploy
-RUN npx prisma db pull
 RUN npx prisma generate
 
 EXPOSE 3001
