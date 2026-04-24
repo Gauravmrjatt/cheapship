@@ -44,6 +44,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  TabsContent,
 } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -87,7 +88,8 @@ export default function AdminWithdrawalsPage() {
   const [showDialog, setShowDialog] = React.useState(false);
   const [withdrawalForm, setWithdrawalForm] = React.useState({
     status: "APPROVED",
-    reference_id: ""
+    reference_id: "",
+    payment_method: "UPI" as "UPI" | "BANK"
   });
 
   const tableData = React.useMemo(() => data?.data || [], [data?.data]);
@@ -96,7 +98,8 @@ export default function AdminWithdrawalsPage() {
     setSelectedUserGroup(userGroup);
     setWithdrawalForm({
       status: "APPROVED",
-      reference_id: ""
+      reference_id: "",
+      payment_method: userGroup.user.upi_id ? "UPI" : "BANK"
     });
     setShowDialog(true);
   };
@@ -107,7 +110,8 @@ export default function AdminWithdrawalsPage() {
       { 
         userId: selectedUserGroup.user.id, 
         status: withdrawalForm.status as 'APPROVED' | 'REJECTED',
-        reference_id: withdrawalForm.reference_id || undefined
+        reference_id: withdrawalForm.reference_id || undefined,
+        payment_method: withdrawalForm.payment_method
       },
       {
         onSuccess: () => {
@@ -168,6 +172,9 @@ export default function AdminWithdrawalsPage() {
           )}
           {row.original.user?.upi_id && (
             <span className="text-[10px] text-green-600">{row.original.user.upi_id}</span>
+          )}
+          {row.original.user?.bank_name && (
+            <span className="text-[10px] text-green-600">{row.original.user.bank_name} - A/C: XXXX{row.original.user.account_number?.slice(-4)}</span>
           )}
         </div>
       ),
@@ -445,18 +452,57 @@ export default function AdminWithdrawalsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {selectedUserGroup?.user?.upi_id && (
-              <div className="p-4 bg-muted/50 rounded-lg flex flex-col items-center justify-center gap-3">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pay via UPI</p>
-                <Image
-                  src={qrUrl || ""}
-                  alt="UPI QR Code"
-                  width={150}
-                  height={150}
-                  className="rounded-md shadow-sm bg-white p-2 object-contain mix-blend-multiply"
-                />
-                <p className="text-xs font-medium text-center">{selectedUserGroup.user.upi_id}</p>
-                <p className="text-[10px] text-muted-foreground text-center">Scan to pay exactly {formatCurrency(selectedUserGroup.pending_amount)}</p>
+            {(selectedUserGroup?.user?.upi_id || selectedUserGroup?.user?.bank_name) && (
+              <div className="space-y-2">
+                <Label>Payment Method</Label>
+                <Tabs value={withdrawalForm.payment_method} onValueChange={(v) => setWithdrawalForm(prev => ({ ...prev, payment_method: v as "UPI" | "BANK" }))} className="w-full">
+                  <TabsList className="w-full grid grid-cols-2">
+                    {selectedUserGroup?.user?.upi_id && <TabsTrigger value="UPI">UPI</TabsTrigger>}
+                    {selectedUserGroup?.user?.bank_name && <TabsTrigger value="BANK">Bank Transfer</TabsTrigger>}
+                  </TabsList>
+                  {selectedUserGroup?.user?.upi_id && (
+                    <TabsContent value="UPI">
+                      <div className="p-4 bg-muted/50 rounded-lg flex flex-col items-center justify-center gap-3">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pay via UPI</p>
+                        <Image
+                          src={qrUrl || ""}
+                          alt="UPI QR Code"
+                          width={150}
+                          height={150}
+                          className="rounded-md shadow-sm bg-white p-2 object-contain mix-blend-multiply"
+                        />
+                        <p className="text-xs font-medium text-center">{selectedUserGroup.user.upi_id}</p>
+                        <p className="text-[10px] text-muted-foreground text-center">Scan to pay exactly {formatCurrency(selectedUserGroup.pending_amount)}</p>
+                      </div>
+                    </TabsContent>
+                  )}
+                  {selectedUserGroup?.user?.bank_name && (
+                    <TabsContent value="BANK">
+                      <div className="p-4 bg-muted/50 rounded-lg space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Bank:</span>
+                          <span className="font-medium">{selectedUserGroup.user.bank_name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Beneficiary:</span>
+                          <span className="font-medium">{selectedUserGroup.user.beneficiary_name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Account:</span>
+                          <span className="font-medium">XXXX{selectedUserGroup.user.account_number?.slice(-4)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">IFSC:</span>
+                          <span className="font-medium">{selectedUserGroup.user.ifsc_code}</span>
+                        </div>
+                        <div className="border-t pt-2 mt-2 flex justify-between font-semibold">
+                          <span>Amount to Transfer:</span>
+                          <span className="text-green-600">{formatCurrency(selectedUserGroup.pending_amount)}</span>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  )}
+                </Tabs>
               </div>
             )}
 

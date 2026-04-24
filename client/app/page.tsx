@@ -216,7 +216,7 @@ export default function LandingPage() {
                 className="rounded-lg"
               />
             </div>
-            <span className="text-xl font-bold">Cashbackwallah</span>
+            <span className="text-xl font-bold hidden md:block ">Cashbackwallah</span>
           </div>
           <nav className="hidden lg:flex items-center gap-8">
             <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -255,7 +255,7 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="min-h-dvh flex flex-col justify-around">
-        <div className="absolute inset-0 mt-15">
+        <div className="absolute inset-0 mt-15 hidden md:block">
           <WorldMap
           />
         </div>
@@ -283,9 +283,9 @@ export default function LandingPage() {
                     <HugeiconsIcon icon={ArrowRight01Icon} className="ml-2" size={18} />
                   </Button>
                 </Link>
-                <Link href="/dashboard/calculator">
+                <Link href="/track">
                   <Button size="lg" variant="outline" className="h-12 px-8">
-                    Calculate Rates
+                    Track Order Now
                   </Button>
                 </Link>
               </div>

@@ -38,6 +38,10 @@ model User {
   active_discount            Decimal                   @default(0) @db.Decimal(5, 2)
   security_deposit           Decimal                   @default(0) @db.Decimal(12, 2)
   upi_id                     String?                   @db.VarChar(100)
+  bank_name                  String?                   @db.VarChar(100)
+  beneficiary_name           String?                   @db.VarChar(150)
+  account_number            String?                   @db.VarChar(25)
+  ifsc_code                  String?                   @db.VarChar(15)
   default_referred_pickup_id String?                   @db.Uuid
   addresses                  Address[]
   withdrawals                CommissionWithdrawal[]
@@ -262,6 +266,7 @@ model CommissionWithdrawal {
   updated_at      DateTime         @default(now()) @db.Timestamp(6)
   franchise_id    String?          @db.Uuid
   reference_id    String?          @db.VarChar(100)
+  payment_method PaymentMethod?
   user            User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("commission_withdrawals")
@@ -443,6 +448,11 @@ enum WithdrawalStatus {
   APPROVED
   REJECTED
   COMPLETED
+}
+
+enum PaymentMethod {
+  UPI
+  BANK
 }
 
 enum UserType {

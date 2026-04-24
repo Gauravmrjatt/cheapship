@@ -1,0 +1,7 @@
+{
+  "schema_version": "1",
+  "engine": "postgresql",
+  "created_at": "2026-04-23T00:00:00.000Z",
+  "description": "Add bank fields and payment method",
+  "created_by": "claude"
+}

@@ -232,19 +232,23 @@ class CustomLabelGenerator {
                 }
             });
 
-            // Right side order info
-            page.drawText(`Order #: ${order.id}`, { x: width - margin - 170, y: y, size: 11, font: fontBold, color: black });
-            
-            // Second barcode
-            let orderBarcodeY = y - 70;
-            if (barcodePattern.length > 0) {
-                drawBarcode(page, width - margin - 170, orderBarcodeY, 160, 50, barcodePattern);
+            // Second barcode (Order ID) at the top of the section
+            let orderBarcodePattern = [];
+            try { orderBarcodePattern = encodeCode128(String(order.id)); } catch (e) {}
+
+            if (orderBarcodePattern.length > 0) {
+                drawBarcode(page, width - margin - 170, y - 40, 160, 40, orderBarcodePattern);
+                y -= 45;
             }
 
-            y -= 80;
+            // Right side order info below barcode
+            page.drawText(`Order #: ${order.id}`, { x: width - margin - 170, y: y, size: 11, font: fontBold, color: black });
+            y -= 16;
             page.drawText(`Invoice No: ${invoiceNo}`, { x: width - margin - 170, y: y, size: 11, font: fontRegular, color: black });
-            page.drawText(`Order Date: ${orderDate}`, { x: width - margin - 170, y: y - 16, size: 11, font: fontRegular, color: black });
-            page.drawText(`GSTIN: ${user?.gst_number || 'N/A'}`, { x: width - margin - 170, y: y - 32, size: 11, font: fontRegular, color: black });
+            y -= 16;
+            page.drawText(`Order Date: ${orderDate}`, { x: width - margin - 170, y: y, size: 11, font: fontRegular, color: black });
+            y -= 16;
+            page.drawText(`GSTIN: ${user?.gst_number || 'N/A'}`, { x: width - margin - 170, y: y, size: 11, font: fontRegular, color: black });
 
             y -= 20;
 

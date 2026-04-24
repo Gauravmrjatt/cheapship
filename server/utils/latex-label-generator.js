@@ -355,7 +355,7 @@ class LatexLabelGenerator {
         // =========================
         // SHIPMENT BOX
         // =========================
-        top = drawBox(100);
+        top = drawBox(110);
         innerY = top - padding;
 
         const dim = `${order.length || 1}x${order.width || 1}x${order.height || 1}`;
@@ -398,18 +398,6 @@ class LatexLabelGenerator {
             });
         }
 
-        if (barcodeOrderPath && fs.existsSync(barcodeOrderPath)) {
-            console.log('[LatexLabel] Embedding Order ID barcode...');
-            const imgOrder = await pdfDoc.embedPng(fs.readFileSync(barcodeOrderPath));
-            page.drawImage(imgOrder, {
-                x: width / 2 - 80,
-                y: 25,
-                width: 100,
-                height: 25
-            });
-            page.drawText(`Order ID: ${order.id}`, { x: width / 2 - 40, y: 15, size: 8, font: fontRegular });
-        }
-
         // =========================
         // SENDER + ORDER DETAILS
         // =========================
@@ -438,7 +426,18 @@ class LatexLabelGenerator {
         const rightColX = width / 2 + 20;
         let rightY = top - padding;
 
-        page.drawText(`Order #: ${order.id}`, { x: rightColX, y: rightY, size: 9 });
+        if (barcodeOrderPath && fs.existsSync(barcodeOrderPath)) {
+            const imgOrder = await pdfDoc.embedPng(fs.readFileSync(barcodeOrderPath));
+            page.drawImage(imgOrder, {
+                x: rightX,
+                y: rightY - 30,
+                width: 150,
+                height: 30
+            });
+            rightY -= 35;
+        }
+
+        page.drawText(`Order #: ${order.id}`, { x: rightColX, y: rightY, size: 9, font: fontBold });
         rightY -= lineGap;
 
         page.drawText(`Invoice: ${order.invoice_no || ''}`, { x: rightColX, y: rightY, size: 9 });
@@ -493,14 +492,14 @@ class LatexLabelGenerator {
             const qr = await pdfDoc.embedPng(fs.readFileSync(qrcodePath));
             page.drawImage(qr, { x: margin + 10, y: footerY, width: 50, height: 50 });
             page.drawText('Get Instant Cashback', { x: margin + 10, y: footerY - 8, size: 7, font: fontBold });
-            page.drawText('Offers on Instagram', { x: width - margin - 60, y: footerY - 18, size: 7, font: fontBold });
+            page.drawText('Offers on Instagram', { x: margin + 10, y: footerY - 18, size: 7, font: fontBold });
         }
-        
+
         if (qrcodePath2 && fs.existsSync(qrcodePath2)) {
             const qr2 = await pdfDoc.embedPng(fs.readFileSync(qrcodePath2));
             page.drawImage(qr2, { x: width - margin - 60, y: footerY, width: 50, height: 50 });
             page.drawText('Get Instant Cashback', { x: width - margin - 60, y: footerY - 8, size: 7, font: fontBold });
-            page.drawText('Offers on WhatsApp', { x: margin + 10, y: footerY - 18, size: 7, font: fontBold });
+            page.drawText('Offers on WhatsApp', { x: width - margin - 60, y: footerY - 18, size: 7, font: fontBold });
         }
 
         page.drawText('CASHBACKWALLAH', {
@@ -511,7 +510,7 @@ class LatexLabelGenerator {
             color: purple
         });
 
-        page.drawText("WORLD'S MOST TRUSTED CASHBACK PLATFORM", {
+        page.drawText("WORLD'S LARGEST & MOST TRUSTED CASHBACK PLATFORM", {
             x: width / 2 - 110,
             y: footerY + 12,
             size: 8,
@@ -548,6 +547,11 @@ class LatexLabelGenerator {
         } catch (uploadError) {
             console.error('[LatexLabel] Upload FAILED, using local fallback:', uploadError.message);
             return filePath;
+        } finally {
+            // Cleanup temp images
+            [barcodePath, barcodeOrderPath, qrcodePath, qrcodePath2].forEach(f => {
+                try { if (f && fs.existsSync(f)) fs.unlinkSync(f); } catch (e) { }
+            });
         }
     }
 

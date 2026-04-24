@@ -36,11 +36,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   LeftToRightListBulletIcon,
@@ -60,7 +55,9 @@ import { cn } from "@/lib/utils"
 import { DataTablePagination } from "./orders-table-components"
 import { CODStatsCards, RemittanceDialog } from "./cod-orders-table-components"
 import Link from "next/link"
+import Image from "next/image"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
@@ -101,6 +98,10 @@ export interface CODUserGroup {
     email: string
     upi_id?: string
     mobile?: string
+    bank_name?: string
+    beneficiary_name?: string
+    account_number?: string
+    ifsc_code?: string
   }
   order_count: number
   total_cod_amount: number
@@ -200,6 +201,7 @@ export function CODOrdersDataTable({
   const [selectedOrder, setSelectedOrder] = React.useState<CODOrder | null>(null)
   const [showDialog, setShowDialog] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
+  const [paymentMethod, setPaymentMethod] = React.useState<"UPI" | "BANK">("UPI")
   const [remittanceForm, setRemittanceForm] = React.useState({
     remittance_status: "REMITTED",
     payout_status: "PENDING",
@@ -608,6 +610,7 @@ export function CODUserGroupsDataTable({
   const [showDialog, setShowDialog] = React.useState(false)
   const [showOrdersDialog, setShowOrdersDialog] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
+  const [paymentMethod, setPaymentMethod] = React.useState<"UPI" | "BANK">("UPI")
   const [remittanceForm, setRemittanceForm] = React.useState({
     remittance_status: "REMITTED",
     payout_status: "PENDING",
@@ -671,6 +674,9 @@ export function CODUserGroupsDataTable({
             )}
             {user?.upi_id && (
               <span className="text-xs text-green-600">{user.upi_id}</span>
+            )}
+            {user?.bank_name && (
+              <span className="text-xs text-green-600">{user.bank_name} - A/C: XXXX{user.account_number?.slice(-4)}</span>
             )}
           </div>
         )
@@ -971,6 +977,59 @@ export function CODUserGroupsDataTable({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {(selectedUserGroup?.user?.upi_id || selectedUserGroup?.user?.bank_name) && (
+              <div className="space-y-2">
+                <Label>Payment Method</Label>
+                <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "UPI" | "BANK")} className="w-full">
+                  <TabsList className="w-full grid grid-cols-2">
+                    {selectedUserGroup?.user?.upi_id && <TabsTrigger value="UPI">UPI</TabsTrigger>}
+                    {selectedUserGroup?.user?.bank_name && <TabsTrigger value="BANK">Bank Transfer</TabsTrigger>}
+                  </TabsList>
+                  {selectedUserGroup?.user?.upi_id && (
+                    <TabsContent value="UPI" className="space-y-2">
+                      <div className="p-3 bg-muted rounded-lg flex flex-col items-center justify-center gap-2">
+                        <Image
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`upi://pay?pa=${selectedUserGroup.user.upi_id}&am=${Math.round(Number(selectedUserGroup?.total_cod_amount || 0) * 0.98)}`)}`}
+                          alt="UPI QR Code"
+                          width={120}
+                          height={120}
+                          className="rounded-md shadow-sm bg-white p-2"
+                        />
+                        <p className="text-xs font-medium text-center">{selectedUserGroup.user.upi_id}</p>
+                        <p className="text-[10px] text-muted-foreground text-center">Amount after 2% deduction: {formatCurrency(Number(selectedUserGroup?.total_cod_amount || 0) * 0.98)}</p>
+                      </div>
+                    </TabsContent>
+                  )}
+                  {selectedUserGroup?.user?.bank_name && (
+                    <TabsContent value="BANK" className="space-y-2">
+                      <div className="p-3 bg-muted rounded-lg space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Bank:</span>
+                          <span className="font-medium">{selectedUserGroup.user.bank_name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Beneficiary:</span>
+                          <span className="font-medium">{selectedUserGroup.user.beneficiary_name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Account:</span>
+                          <span className="font-medium">XXXX{selectedUserGroup.user.account_number?.slice(-4)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">IFSC:</span>
+                          <span className="font-medium">{selectedUserGroup.user.ifsc_code}</span>
+                        </div>
+                        <div className="border-t pt-2 mt-2 flex justify-between font-semibold">
+                          <span>Amount to Transfer:</span>
+                          <span className="text-green-600">{formatCurrency(Number(selectedUserGroup?.total_cod_amount || 0) * 0.98)}</span>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  )}
+                </Tabs>
+              </div>
+            )}
+
             <div className="p-3 rounded-lg bg-muted">
               <div className="flex justify-between text-sm">
                 <span>Total COD Amount:</span>

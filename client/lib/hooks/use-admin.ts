@@ -338,6 +338,10 @@ export interface WithdrawalUserGroup {
     upi_id?: string;
     mobile?: string;
     wallet_balance: number;
+    bank_name?: string;
+    beneficiary_name?: string;
+    account_number?: string;
+    ifsc_code?: string;
   };
   request_count: number;
   total_amount: number;
@@ -378,14 +382,14 @@ export const useProcessUserWithdrawals = () => {
   const queryClient = useQueryClient();
   const http = useHttp();
   return useMutation({
-    mutationFn: async ({ userId, status, reference_id }: { userId: string, status: 'APPROVED' | 'REJECTED', reference_id?: string }) => {
+    mutationFn: async ({ userId, status, reference_id, payment_method }: { userId: string, status: 'APPROVED' | 'REJECTED', reference_id?: string, payment_method?: 'UPI' | 'BANK' }) => {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/withdrawals/user/${userId}/process`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
         },
-        body: JSON.stringify({ status, reference_id })
+        body: JSON.stringify({ status, reference_id, payment_method })
       });
       if (!response.ok) throw new Error('Failed to process withdrawals');
       return response.json();
@@ -861,6 +865,10 @@ export interface CODUserGroup {
     email: string;
     upi_id?: string;
     mobile?: string;
+    bank_name?: string;
+    beneficiary_name?: string;
+    account_number?: string;
+    ifsc_code?: string;
   };
   order_count: number;
   total_cod_amount: number;

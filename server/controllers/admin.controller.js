@@ -621,7 +621,7 @@ const getWithdrawals = async (req, res) => {
 
     const validUserIds = userIdsWithWithdrawals.map(w => w.user_id);
 
-    const userGroups = await prisma.user.findMany({
+const userGroups = await prisma.user.findMany({
       where: {
         id: { in: validUserIds }
       },
@@ -632,6 +632,10 @@ const getWithdrawals = async (req, res) => {
         wallet_balance: true,
         upi_id: true,
         mobile: true,
+        bank_name: true,
+        beneficiary_name: true,
+        account_number: true,
+        ifsc_code: true,
         _count: {
           select: {
             withdrawals: {
@@ -683,7 +687,11 @@ const getWithdrawals = async (req, res) => {
           email: user.email,
           upi_id: user.upi_id,
           mobile: user.mobile,
-          wallet_balance: user.wallet_balance
+          wallet_balance: user.wallet_balance,
+          bank_name: user.bank_name,
+          beneficiary_name: user.beneficiary_name,
+          account_number: user.account_number,
+          ifsc_code: user.ifsc_code
         },
         request_count: user._count.commissionWithdrawal,
         total_amount: totalPending + totalApproved + totalRejected,
@@ -753,50 +761,29 @@ const processWithdrawal = async (req, res) => {
               is_franchise_withdrawn: false
             },
             data: {
-              is_franchise_withdrawn: true,
-              franchise_commission_amount: 0
+              is_franchise_withdrawn: true
             }
           });
-        } else {
-          // This is a multi-level referral commission withdrawal
-          // Commission records are already marked as withdrawn when request was created
-          // Just verify they exist and are marked properly
-          const withdrawnCommissions = await tx.orderReferralCommission.findMany({
+        }
+        // No need to debit wallet balance here as commissions are tracked separately.
+        // We also don't create a wallet transaction record since wallet balance wasn't affected.
+      } else if (status === 'REJECTED') {
+        // If it's a multi-level referral commission withdrawal, unmark commissions so they can be withdrawn again
+        if (!withdrawal.franchise_id) {
+          await tx.orderReferralCommission.updateMany({
             where: {
               referrer_id: withdrawal.user_id,
               is_withdrawn: true,
-              withdrawn_at: {
-                gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
-              }
+              // Ideally we'd link commissions to the withdrawal request, but since we don't, 
+              // we unmark commissions that were marked recently or we might need a more robust link.
+              // For now, we follow the existing pattern of unmarking based on user.
+            },
+            data: {
+              is_withdrawn: false,
+              withdrawn_at: null
             }
           });
-
-          if (withdrawnCommissions.length === 0) {
-            console.warn(`No withdrawn commission records found for withdrawal ${withdrawal.id}`);
-          }
         }
-
-        // Record the DEBIT transaction (funds already withheld on request)
-        const currentUser = await tx.user.findUnique({
-          where: { id: withdrawal.user_id },
-          select: { wallet_balance: true }
-        });
-
-        await tx.transaction.create({
-          data: {
-            user_id: withdrawal.user_id,
-            amount: withdrawal.amount,
-            closing_balance: Number(currentUser.wallet_balance),
-            type: 'DEBIT',
-            category: 'COMMISSION',
-            status: 'SUCCESS',
-            description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
-            reference_id: withdrawal.id
-          }
-        });
-      } else if (status === 'REJECTED') {
-        // Just mark as rejected - no wallet credit, funds stay debited
-        // User can withdraw again from their available balance
       }
       return updatedWithdrawal;
     });
@@ -811,10 +798,14 @@ const processWithdrawal = async (req, res) => {
 const processUserWithdrawals = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { userId } = req.params;
-  const { status, reference_id } = req.body;
+  const { status, reference_id, payment_method } = req.body;
 
   if (!['APPROVED', 'REJECTED'].includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
+  }
+
+  if (status === 'APPROVED' && payment_method && !['UPI', 'BANK'].includes(payment_method)) {
+    return res.status(400).json({ message: 'Invalid payment method. Must be UPI or BANK' });
   }
 
   try {
@@ -838,6 +829,9 @@ const processUserWithdrawals = async (req, res) => {
           if (reference_id) {
             updateData.reference_id = reference_id;
           }
+          if (payment_method) {
+            updateData.payment_method = payment_method;
+          }
 
           await tx.commissionWithdrawal.update({
             where: { id: withdrawal.id },
@@ -852,38 +846,34 @@ const processUserWithdrawals = async (req, res) => {
                 is_franchise_withdrawn: false
               },
               data: {
-                is_franchise_withdrawn: true,
-                franchise_commission_amount: 0
+                is_franchise_withdrawn: true
               }
             });
           }
-
-          const currentUser = await tx.user.findUnique({
-            where: { id: withdrawal.user_id },
-            select: { wallet_balance: true }
-          });
-
-          await tx.transaction.create({
-            data: {
-              user_id: withdrawal.user_id,
-              amount: withdrawal.amount,
-              closing_balance: Number(currentUser.wallet_balance),
-              type: 'DEBIT',
-              category: 'COMMISSION',
-              status: 'SUCCESS',
-              description: withdrawal.franchise_id ? 'Franchise Commission Withdrawal Approved' : 'Referral Commission Withdrawal Approved',
-              reference_id: withdrawal.id
-            }
-          });
         }
       });
     } else if (status === 'REJECTED') {
-      await prisma.commissionWithdrawal.updateMany({
-        where: {
-          user_id: userId,
-          status: 'PENDING'
-        },
-        data: { status: 'REJECTED' }
+      await prisma.$transaction(async (tx) => {
+        // Update withdrawal records
+        await tx.commissionWithdrawal.updateMany({
+          where: {
+            user_id: userId,
+            status: 'PENDING'
+          },
+          data: { status: 'REJECTED' }
+        });
+
+        // Unmark multi-level referral commissions if any
+        await tx.orderReferralCommission.updateMany({
+          where: {
+            referrer_id: userId,
+            is_withdrawn: true
+          },
+          data: {
+            is_withdrawn: false,
+            withdrawn_at: null
+          }
+        });
       });
     }
 
@@ -1599,6 +1589,10 @@ const getAllCODOrders = async (req, res) => {
         email: true,
         upi_id: true,
         mobile: true,
+        bank_name: true,
+        beneficiary_name: true,
+        account_number: true,
+        ifsc_code: true,
         _count: {
           select: {
             orders: {
@@ -1709,13 +1703,18 @@ const getAllCODOrders = async (req, res) => {
 
       const latestOrder = ordersMap[user.id];
 
-      return {
+return {
         user: {
           id: user.id,
           name: user.name,
           email: user.email,
           upi_id: user.upi_id,
-          mobile: user.mobile
+          mobile: user.mobile,
+          wallet_balance: user.wallet_balance,
+          bank_name: user.bank_name,
+          beneficiary_name: user.beneficiary_name,
+          account_number: user.account_number,
+          ifsc_code: user.ifsc_code
         },
         order_count: user._count.orders,
         total_cod_amount: totalCOD,

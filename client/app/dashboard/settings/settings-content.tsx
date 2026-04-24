@@ -59,6 +59,10 @@ interface UserData {
   mobile: string;
   kyc_status: string;
   upi_id?: string;
+  bank_name?: string;
+  beneficiary_name?: string;
+  account_number?: string;
+  ifsc_code?: string;
 }
 
 export default function SettingsPage() {
@@ -185,7 +189,11 @@ function ProfileTab({ http }: { http: any }) {
     name: "",
     email: "",
     mobile: "",
-    upi_id: ""
+    upi_id: "",
+    bank_name: "",
+    beneficiary_name: "",
+    account_number: "",
+    ifsc_code: ""
   });
 
   const { data: userData, isLoading } = useQuery<UserData>(
@@ -198,7 +206,11 @@ function ProfileTab({ http }: { http: any }) {
         name: userData.name || "",
         email: userData.email || "",
         mobile: userData.mobile || "",
-        upi_id: userData.upi_id || ""
+        upi_id: userData.upi_id || "",
+        bank_name: userData.bank_name || "",
+        beneficiary_name: userData.beneficiary_name || "",
+        account_number: userData.account_number || "",
+        ifsc_code: userData.ifsc_code || ""
       });
     }
   }, [userData]);
@@ -291,6 +303,49 @@ function ProfileTab({ http }: { http: any }) {
                   onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
                   className="pl-10"
                   placeholder="yourname@upi"
+                />
+              </div>
+            </div>
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-sm font-semibold mb-4">Bank Details (for withdrawals)</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bank_name" className="text-sm font-medium">Bank Name</Label>
+                <Input
+                  id="bank_name"
+                  value={formData.bank_name}
+                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                  placeholder="e.g., HDFC Bank"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="beneficiary_name" className="text-sm font-medium">Beneficiary Name</Label>
+                <Input
+                  id="beneficiary_name"
+                  value={formData.beneficiary_name}
+                  onChange={(e) => setFormData({ ...formData, beneficiary_name: e.target.value })}
+                  placeholder="As per bank records"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="account_number" className="text-sm font-medium">Account Number</Label>
+                <Input
+                  id="account_number"
+                  value={formData.account_number}
+                  onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                  placeholder="9-18 digit account number"
+                  maxLength={18}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ifsc_code" className="text-sm font-medium">IFSC Code</Label>
+                <Input
+                  id="ifsc_code"
+                  value={formData.ifsc_code}
+                  onChange={(e) => setFormData({ ...formData, ifsc_code: e.target.value.toUpperCase() })}
+                  placeholder="e.g., HDFC0001234"
+                  maxLength={11}
                 />
               </div>
             </div>

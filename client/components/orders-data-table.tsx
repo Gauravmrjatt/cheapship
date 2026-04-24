@@ -62,7 +62,7 @@ import {
   LayoutIcon,
   ArrowDown01Icon,
   Add01Icon,
-
+  BulletIcon,
   Loading03Icon,
   SearchIcon,
   FilterIcon,
@@ -396,35 +396,35 @@ export function OrdersDataTable({
     {
       accessorKey: "pickup",
       header: () => <div className="text-center">Pickup</div>,
-   cell: ({ row }) => {
-  const blockedStatuses = ["DRAFT", "CANCELLED"];
+      cell: ({ row }) => {
+        const blockedStatuses = ["DRAFT", "CANCELLED"];
 
-  if (blockedStatuses.includes(row.original?.shipment_status)) {
-    return <>-</>;
-  }
+        if (blockedStatuses.includes(row.original?.shipment_status)) {
+          return <>-</>;
+        }
 
-  return (
-    <div className="text-center flex justify-center flex-col w-full px-5">
-      {row.original?.pickup_scheduled_date ? (
-        <span className="text-xs text-primary font-medium flex gap-1 justify-center items-center">
-          <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" />
-          <p className="font-semibold text-primary">
-            {formatDateOnly(row.original.pickup_scheduled_date)}
-          </p>
-        </span>
-      ) : (
-        <Button
-          render={<Link href={`/dashboard/orders/${row.original.id}`} />}
-          variant="secondary"
-          className="font-bold text-green-500 flex gap-1 items-center justify-center"
-        >
-          <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" />
-          Schedule Now
-        </Button>
-      )}
-    </div>
-  );
-},
+        return (
+          <div className="text-center flex justify-center flex-col w-full px-5">
+            {row.original?.pickup_scheduled_date ? (
+              <span className="text-xs text-primary font-medium flex gap-1 justify-center items-center">
+                <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" />
+                <p className="font-semibold text-primary">
+                  {formatDateOnly(row.original.pickup_scheduled_date)}
+                </p>
+              </span>
+            ) : (
+              <Button
+                render={<Link href={`/dashboard/orders/${row.original.id}`} />}
+                variant="secondary"
+                className="font-bold text-green-500 flex gap-1 items-center justify-center"
+              >
+                <HugeiconsIcon icon={DateTimeIcon} className="h-4 w-4" />
+                Schedule Now
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "cod_amount",
@@ -473,6 +473,7 @@ export function OrdersDataTable({
         const tracking = row.original.tracking_number;
         const trackUrl = row.original.track_url;
         const isAbsoluteUrl = (url: string): boolean => /^https?:\/\//i.test(url);
+        const blockedStatuses = ["DRAFT", "CANCELLED"];
 
         const labelUrl: string = row.original.label_url ? (isAbsoluteUrl(row.original.label_url || "")
           ? row.original.label_url || ""
@@ -508,10 +509,10 @@ export function OrdersDataTable({
               // <></>
             )}
 
-            {labelUrl && labelUrl !== null && (
+            {labelUrl && labelUrl !== null ? (
               <a
                 href={labelUrl}
-                download
+                download={`label-${tracking}.pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
@@ -537,7 +538,32 @@ export function OrdersDataTable({
                 />
                 Download Label
               </a>
-            )}
+            ) : (!blockedStatuses.includes(row.original.shipment_status)) && (<>  <a
+              href={`/dashboard/orders/${row.original.id}`}
+             
+              
+              className="
+    text-xs font-medium
+    text-foreground
+    bg-primary
+    border border-border
+    hover:bg-primary/50
+    hover:text-foreground
+    transition-colors
+    px-2 py-2
+    rounded-md
+    w-full
+    text-center gap-4
+    flex items-center
+  "
+            >
+
+              <HugeiconsIcon
+                icon={BulletIcon}
+                className=" size-5 "
+              />
+              Generate Label
+            </a></>)}
           </div>
         );
       },

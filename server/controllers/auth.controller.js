@@ -964,6 +964,10 @@ const getMe = async (req, res) => {
         kyc_status: true,
         security_deposit: true,
         upi_id: true,
+        bank_name: true,
+        beneficiary_name: true,
+        account_number: true,
+        ifsc_code: true,
         created_at: true,
         updated_at: true
       }
@@ -986,7 +990,7 @@ const updateProfile = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { name, email: rawEmail, mobile, upi_id } = req.body;
+  const { name, email: rawEmail, mobile, upi_id, bank_name, beneficiary_name, account_number, ifsc_code } = req.body;
   const email = rawEmail?.trim().toLowerCase();
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
@@ -1020,7 +1024,11 @@ const updateProfile = async (req, res) => {
         ...(name && { name }),
         ...(email && { email }),
         ...(mobile && { mobile }),
-        ...(upi_id !== undefined && { upi_id })
+        ...(upi_id !== undefined && { upi_id }),
+        ...(bank_name !== undefined && { bank_name }),
+        ...(beneficiary_name !== undefined && { beneficiary_name }),
+        ...(account_number !== undefined && { account_number }),
+        ...(ifsc_code !== undefined && { ifsc_code })
       },
       select: {
         id: true,
@@ -1037,6 +1045,10 @@ const updateProfile = async (req, res) => {
         kyc_status: true,
         security_deposit: true,
         upi_id: true,
+        bank_name: true,
+        beneficiary_name: true,
+        account_number: true,
+        ifsc_code: true,
         created_at: true,
         updated_at: true
       }

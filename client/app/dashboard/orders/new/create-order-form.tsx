@@ -1925,7 +1925,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
                 {formValues.products?.[0]?.name && (
                   <div className="col-span-2 md:col-span-4 pt-4 border-t">
                     <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Product</p>
-                    <p className="font-medium">{formValues.products[0].name} × {formValues.products[0].quantity}</p>
+                    <p className="font-medium">{formValues.products[0].name} × {formValues.products[0].quantity} ×  ₹ {formValues.products[0].price} </p>
                   </div>
                 )}
               </div>

@@ -15,6 +15,10 @@ export interface User {
   assigned_rates?: Record<string, { rate: number; slab: number }>;
   kyc_status?: "PENDING" | "SUBMITTED" | "VERIFIED" | "REJECTED";
   upi_id?: string;
+  bank_name?: string;
+  beneficiary_name?: string;
+  account_number?: string;
+  ifsc_code?: string;
   _count?: {
     orders: number;
   };

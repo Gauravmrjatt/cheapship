@@ -284,7 +284,7 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
               render={<a href={isAdmin ? "/admin" : "/dashboard"} />}
             >
               <HugeiconsIcon icon={ShippingTruck01Icon} strokeWidth={2} className="size-5!" />
-              <span className="text-base font-semibold">{user?.user_type === "ADMIN" ? "Admin Panel" : "Cheap Ship"}</span>
+              <span className="text-base font-semibold">{user?.user_type === "ADMIN" ? "Admin Panel" : "CW"}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

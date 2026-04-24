@@ -191,44 +191,24 @@ const withdrawCommission = async (req, res) => {
     return res.status(400).json({ message: `Insufficient withdrawable balance. Available: ₹${available_balance}` });
   }
 
-  // Lock funds: check wallet balance and debit immediately to prevent double-spend
-  const result = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({
-      where: { id: userId },
-      select: { wallet_balance: true }
-    });
-
-    if (!user || Number(user.wallet_balance) < amount) {
-      throw new Error('Insufficient wallet balance to place withdrawal request');
+  // Create withdrawal request
+  const withdrawal = await prisma.commissionWithdrawal.create({
+    data: {
+      user_id: userId,
+      franchise_id: franchiseId,
+      amount: amount,
+      status: 'PENDING'
     }
-
-    // Debit wallet (hold funds pending admin review)
-    await tx.user.update({
-      where: { id: userId },
-      data: { wallet_balance: { decrement: amount } }
-    });
-
-    // Create withdrawal request
-    const withdrawal = await tx.commissionWithdrawal.create({
-      data: {
-        user_id: userId,
-        franchise_id: franchiseId,
-        amount: amount,
-        status: 'PENDING'
-      }
-    });
-
-    return withdrawal;
   });
 
-    res.json({
-      message: 'Withdrawal request submitted successfully',
-      withdrawal: result
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
+  res.json({
+    message: 'Withdrawal request submitted successfully',
+    withdrawal
+  });
+} catch (error) {
+  console.error(error);
+  res.status(500).json({ message: 'Internal Server Error' });
+}
 };
 
 // Get current user's referral code and link

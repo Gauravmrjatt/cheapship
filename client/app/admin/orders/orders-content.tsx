@@ -94,7 +94,8 @@ import {
   PackageOutOfStockIcon,
   DeliveryView01Icon,
   PackageReceiveIcon,
-  ArrowDownDoubleIcon
+  ArrowDownDoubleIcon,
+  BulletIcon
 } from "@hugeicons/core-free-icons";
 
 import copy from 'copy-to-clipboard';
@@ -459,6 +460,7 @@ function OrdersContent() {
         const tracking = row.original.tracking_number;
         const trackUrl = row.original.track_url;
         const isAbsoluteUrl = (url: string): boolean => /^https?:\/\//i.test(url);
+        const blockedStatuses = ["DRAFT", "CANCELLED"];
 
         const labelUrl: string = row.original.label_url ? (isAbsoluteUrl(row.original.label_url || "")
           ? row.original.label_url || ""
@@ -473,17 +475,17 @@ function OrdersContent() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="
-                  inline-flex items-center
-                  text-xs font-mono font-medium
-                  text-primary
-                  bg-muted
-                  hover:bg-primary/10
-                  hover:text-primary
-                  transition-colors
-                  px-3 py-2.5
-                  rounded-md
-                  w-full
-                "
+            inline-flex items-center
+            text-xs font-mono font-medium
+            text-primary
+            bg-muted
+            hover:bg-primary/10
+            hover:text-primary
+            transition-colors
+            px-3 py-2.5
+            rounded-md
+            w-full
+          "
                 >
                   {tracking} <HugeiconsIcon icon={LinkCircle02Icon} strokeWidth={2} className="size-3 ml-auto" />
                 </a>     <Button size="icon" className="bg-muted rounded-md" variant="outline" onClick={() => { copy(tracking); sileo.success({ title: "Copied to clipboard", description: "Tracking number copied to clipboard" }) }}><HugeiconsIcon icon={CopyIcon} /></Button>
@@ -494,27 +496,27 @@ function OrdersContent() {
               // <></>
             )}
 
-            {labelUrl && labelUrl !== null && (
+            {labelUrl && labelUrl !== null ? (
               <a
                 href={labelUrl}
-                download
+                download={`label-${tracking}.pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
-          
-          text-xs font-medium
-          text-foreground
-          bg-muted
-          border border-border
-          hover:bg-muted
-          hover:text-foreground
-          transition-colors
-          px-2 py-2
-          rounded-md
-          w-full
-          text-center gap-4
-          flex items-center
-        "
+    
+    text-xs font-medium
+    text-foreground
+    bg-muted
+    border border-border
+    hover:bg-muted
+    hover:text-foreground
+    transition-colors
+    px-2 py-2
+    rounded-md
+    w-full
+    text-center gap-4
+    flex items-center
+  "
               >
 
                 <HugeiconsIcon
@@ -523,7 +525,32 @@ function OrdersContent() {
                 />
                 Download Label
               </a>
-            )}
+            ) : (!blockedStatuses.includes(row.original.shipment_status)) && (<>  <a
+              href={`/dashboard/orders/${row.original.id}`}
+             
+       
+              className="
+    text-xs font-medium
+    text-foreground
+    bg-muted
+    border border-border
+    hover:bg-muted
+    hover:text-foreground
+    transition-colors
+    px-2 py-2
+    rounded-md
+    w-full
+    text-center gap-4
+    flex items-center
+  "
+            >
+
+              <HugeiconsIcon
+                icon={BulletIcon}
+                className=" size-5 "
+              />
+              Generate Label
+            </a></>)}
           </div>
         );
       },

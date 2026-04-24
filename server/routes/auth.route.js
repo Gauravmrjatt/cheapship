@@ -32,7 +32,21 @@ router.get('/login-history', authMiddleware, authController.getLoginHistory);
 router.put('/profile', authMiddleware, [
   check('name').optional().isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
   check('email').optional().isEmail().withMessage('Invalid email format'),
-  check('upi_id').optional().matches(/^[\w.-]+@[\w.-]+$/).withMessage('Invalid UPI format')
+  check('upi_id').optional().matches(/^[\w.-]+@[\w.-]+$/).withMessage('Invalid UPI format'),
+  check('bank_name').optional().isLength({ min: 2, max: 100 }).withMessage('Bank name must be 2-100 characters'),
+  check('beneficiary_name').optional().isLength({ min: 2, max: 150 }).withMessage('Beneficiary name must be 2-150 characters'),
+  check('account_number').optional().custom((value) => {
+    if (value && value.length > 0 && !/^\d{9,18}$/.test(value)) {
+      throw new Error('Account number must be 9-18 digits');
+    }
+    return true;
+  }),
+  check('ifsc_code').optional().custom((value) => {
+    if (value && value.length > 0 && !/^[A-Z]{4}\d{7}$/i.test(value)) {
+      throw new Error('Invalid IFSC code format');
+    }
+    return true;
+  })
 ], authController.updateProfile);
 
 /**
