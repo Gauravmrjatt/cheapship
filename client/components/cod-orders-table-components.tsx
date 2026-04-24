@@ -14,6 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -102,6 +108,61 @@ export function RemittanceDialog({
               <span className="text-green-600">{formatCurrency(amountToPay)}</span>
             </div>
           </div>
+
+          {(selectedOrder?.user?.upi_id || selectedOrder?.user?.bank_name) && (
+            <div className="space-y-2">
+              <Label>Payment Details</Label>
+              <Tabs defaultValue={selectedOrder?.user?.upi_id ? "UPI" : "BANK"} className="w-full">
+                <TabsList className="w-full grid grid-cols-2">
+                  {selectedOrder?.user?.upi_id && <TabsTrigger value="UPI">UPI</TabsTrigger>}
+                  {selectedOrder?.user?.bank_name && <TabsTrigger value="BANK">Bank Transfer</TabsTrigger>}
+                </TabsList>
+                {selectedOrder?.user?.upi_id && (
+                  <TabsContent value="UPI">
+                    <div className="p-4 bg-muted/50 rounded-lg flex flex-col items-center justify-center gap-3">
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pay via UPI</p>
+                      <Image
+                        src={qrUrl}
+                        alt="UPI QR Code"
+                        width={120}
+                        height={120}
+                        className="rounded-md shadow-sm bg-white p-2 object-contain mix-blend-multiply"
+                      />
+                      <p className="text-xs font-medium text-center">{selectedOrder.user.upi_id}</p>
+                      <p className="text-[10px] text-muted-foreground text-center">Scan to pay exactly {formatCurrency(amountToPay)}</p>
+                    </div>
+                  </TabsContent>
+                )}
+                {selectedOrder?.user?.bank_name && (
+                  <TabsContent value="BANK">
+                    <div className="p-4 bg-muted/50 rounded-lg space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Bank:</span>
+                        <span className="font-medium">{selectedOrder.user.bank_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Beneficiary:</span>
+                        <span className="font-medium">{selectedOrder.user.beneficiary_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Account:</span>
+                        <span className="font-medium">XXXX{selectedOrder.user.account_number?.slice(-4)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">IFSC:</span>
+                        <span className="font-medium">{selectedOrder.user.ifsc_code}</span>
+                      </div>
+                      <div className="border-t pt-2 mt-2 flex justify-between font-semibold">
+                        <span>Amount to Transfer:</span>
+                        <span className="text-green-600">{formatCurrency(amountToPay)}</span>
+                      </div>
+                    </div>
+                  </TabsContent>
+                )}
+              </Tabs>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Remittance Status (From Shiprocket)</Label>
             <Select

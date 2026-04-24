@@ -240,6 +240,7 @@ export function CODOrdersDataTable({
       payout_status: remittanceForm.payout_status,
       remitted_amount: parseFloat(remittanceForm.remitted_amount) || undefined,
       remittance_ref_id: remittanceForm.remittance_ref_id || undefined,
+      remittance_payment_method: paymentMethod,
     })
     setShowDialog(false)
     setSelectedOrder(null)
@@ -654,6 +655,7 @@ export function CODUserGroupsDataTable({
       payout_status: remittanceForm.payout_status,
       remitted_amount: parseFloat(remittanceForm.remitted_amount) || undefined,
       remittance_ref_id: remittanceForm.remittance_ref_id || undefined,
+      remittance_payment_method: paymentMethod,
     })
     setShowDialog(false)
     setSelectedUserGroup(null)

@@ -22,6 +22,11 @@ export interface UserProfile {
   franchise_type: string | null;
   is_active: boolean;
   kyc_status: "PENDING" | "SUBMITTED" | "VERIFIED" | "REJECTED";
+  upi_id?: string;
+  bank_name?: string;
+  beneficiary_name?: string;
+  account_number?: string;
+  ifsc_code?: string;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +48,10 @@ export const useUser = () => {
         user_type: query.data.user_type,
         kyc_status: query.data.kyc_status,
         upi_id: query.data.upi_id || "",
+        bank_name: query.data.bank_name || "",
+        beneficiary_name: query.data.beneficiary_name || "",
+        account_number: query.data.account_number || "",
+        ifsc_code: query.data.ifsc_code || "",
       });
     }
   }, [query.data, setUser]);

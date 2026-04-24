@@ -919,12 +919,14 @@ export const useUpdateUserCODRemittance = () => {
       remittance_status, 
       remitted_amount, 
       remittance_ref_id,
+      remittance_payment_method,
       payout_status 
     }: { 
       userId: string; 
       remittance_status: string; 
       remitted_amount?: number; 
       remittance_ref_id?: string;
+      remittance_payment_method?: string;
       payout_status?: string;
     }) => {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/cod-orders/user/${userId}/remittance`, {
@@ -933,7 +935,13 @@ export const useUpdateUserCODRemittance = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
         },
-        body: JSON.stringify({ remittance_status, remitted_amount, remittance_ref_id, payout_status })
+        body: JSON.stringify({ 
+          remittance_status, 
+          remitted_amount, 
+          remittance_ref_id, 
+          remittance_payment_method,
+          payout_status 
+        })
       });
       if (!response.ok) throw new Error('Failed to update remittance');
       return response.json();

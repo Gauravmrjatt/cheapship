@@ -306,10 +306,14 @@ function ProfileTab({ http }: { http: any }) {
                 />
               </div>
             </div>
-            <div className="border-t pt-4 mt-4">
-              <h3 className="text-sm font-semibold mb-4">Bank Details (for withdrawals)</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          </div>
+
+          <div className="pt-6 border-t">
+            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+              <HugeiconsIcon icon={Building06Icon} size={18} className="text-primary" />
+              Bank Details (for withdrawals)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="bank_name" className="text-sm font-medium">Bank Name</Label>
                 <Input

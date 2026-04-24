@@ -205,6 +205,7 @@ model Order {
   remittance_status           RemittanceStatus          @default(NOT_APPLICABLE)
   remitted_amount             Decimal?                  @db.Decimal(12, 2)
   remitted_at                 DateTime?                 @db.Timestamp(6)
+  remittance_payment_method   PaymentMethod?
   is_draft                    Boolean                   @default(false)
   is_vyom                     Boolean                   @default(false)
   payout_status               PayoutStatus              @default(PENDING)

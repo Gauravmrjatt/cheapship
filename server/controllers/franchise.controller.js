@@ -56,7 +56,8 @@ const getFranchises = async (req, res) => {
         },
         withdrawals: {
           select: {
-            amount: true
+            amount: true,
+            status: true
           }
         }
       },
@@ -179,7 +180,7 @@ const withdrawCommission = async (req, res) => {
   // Only count withdrawals for THIS specific franchise (same franchise_id)
   const total_withdrawn = franchise.withdrawals.reduce((sum, w) => {
     // Only count if this withdrawal is for the same franchise
-    if (w.franchise_id === franchiseId && ['COMPLETED', 'APPROVED', 'PENDING'].includes(w.status)) {
+    if (['COMPLETED', 'APPROVED', 'PENDING'].includes(w.status)) {
       return sum + parseFloat(w.amount || 0);
     }
     return sum;
@@ -189,6 +190,19 @@ const withdrawCommission = async (req, res) => {
 
   if (amount > available_balance) {
     return res.status(400).json({ message: `Insufficient withdrawable balance. Available: ₹${available_balance}` });
+  }
+
+  // Check if there is already a pending withdrawal for this specific franchise
+  const existingPending = await prisma.commissionWithdrawal.findFirst({
+    where: {
+      user_id: userId,
+      franchise_id: franchiseId,
+      status: 'PENDING'
+    }
+  });
+
+  if (existingPending) {
+    return res.status(400).json({ message: 'You already have a pending withdrawal request for this franchise.' });
   }
 
   // Create withdrawal request

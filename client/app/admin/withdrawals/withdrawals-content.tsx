@@ -455,7 +455,11 @@ export default function AdminWithdrawalsPage() {
             {(selectedUserGroup?.user?.upi_id || selectedUserGroup?.user?.bank_name) && (
               <div className="space-y-2">
                 <Label>Payment Method</Label>
-                <Tabs value={withdrawalForm.payment_method} onValueChange={(v) => setWithdrawalForm(prev => ({ ...prev, payment_method: v as "UPI" | "BANK" }))} className="w-full">
+                <Tabs 
+                  value={withdrawalForm.payment_method} 
+                  onValueChange={(v) => setWithdrawalForm(prev => ({ ...prev, payment_method: v as "UPI" | "BANK" }))} 
+                  className="w-full"
+                >
                   <TabsList className="w-full grid grid-cols-2">
                     {selectedUserGroup?.user?.upi_id && <TabsTrigger value="UPI">UPI</TabsTrigger>}
                     {selectedUserGroup?.user?.bank_name && <TabsTrigger value="BANK">Bank Transfer</TabsTrigger>}

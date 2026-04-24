@@ -721,7 +721,7 @@ const userGroups = await prisma.user.findMany({
 const processWithdrawal = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { id } = req.params;
-  const { status, reference_id } = req.body;
+  const { status, reference_id, payment_method } = req.body;
 
   if (!['APPROVED', 'REJECTED'].includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
@@ -738,8 +738,9 @@ const processWithdrawal = async (req, res) => {
 
       // Update withdrawal status
       const updateData = { status };
-      if (status === 'APPROVED' && reference_id) {
-        updateData.reference_id = reference_id;
+      if (status === 'APPROVED') {
+        if (reference_id) updateData.reference_id = reference_id;
+        if (payment_method) updateData.payment_method = payment_method;
       }
 
       const updatedWithdrawal = await tx.commissionWithdrawal.update({
@@ -1766,7 +1767,7 @@ return {
 const updateOrderRemittance = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { id } = req.params;
-  const { remittance_status, remitted_amount, remittance_ref_id, payout_status } = req.body;
+  const { remittance_status, remitted_amount, remittance_ref_id, remittance_payment_method, payout_status } = req.body;
 
   try {
     const order = await prisma.order.findUnique({
@@ -1791,6 +1792,9 @@ const updateOrderRemittance = async (req, res) => {
         if (remittance_ref_id) {
           updateData.remittance_ref_id = remittance_ref_id;
         }
+        if (remittance_payment_method) {
+          updateData.remittance_payment_method = remittance_payment_method;
+        }
       }
     } else if (remittance_status) {
       return res.status(400).json({ message: 'Invalid remittance status' });
@@ -1811,7 +1815,16 @@ const updateOrderRemittance = async (req, res) => {
       data: updateData,
       include: {
         user: {
-          select: { id: true, name: true, email: true, upi_id: true }
+          select: { 
+            id: true, 
+            name: true, 
+            email: true, 
+            upi_id: true,
+            bank_name: true,
+            beneficiary_name: true,
+            account_number: true,
+            ifsc_code: true
+          }
         }
       }
     });
@@ -1826,7 +1839,7 @@ const updateOrderRemittance = async (req, res) => {
 const updateUserCODRemittance = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const { userId } = req.params;
-  const { remittance_status, remitted_amount, remittance_ref_id, payout_status } = req.body;
+  const { remittance_status, remitted_amount, remittance_ref_id, remittance_payment_method, payout_status } = req.body;
 
   const adminId = req.user.id;
 
@@ -1850,7 +1863,7 @@ const updateUserCODRemittance = async (req, res) => {
     const amountToRemit = remitted_amount !== undefined ? remitted_amount : totalCODAmount;
 
     const updateData = {};
-    
+
     if (remittance_status && ['NOT_APPLICABLE', 'PENDING', 'PROCESSING', 'REMITTED', 'FAILED'].includes(remittance_status)) {
       if (remittance_status === 'REMITTED') {
         updateData.remittance_status = remittance_status;
@@ -1858,6 +1871,9 @@ const updateUserCODRemittance = async (req, res) => {
         updateData.remitted_at = new Date();
         if (remittance_ref_id) {
           updateData.remittance_ref_id = remittance_ref_id;
+        }
+        if (remittance_payment_method) {
+          updateData.remittance_payment_method = remittance_payment_method;
         }
       } else {
         updateData.remittance_status = remittance_status;
