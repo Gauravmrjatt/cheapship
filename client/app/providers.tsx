@@ -24,7 +24,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     documents: data.documents,
   })
   return (
-    <KBarProvider actions={actions} key={userType}>
+    <KBarProvider actions={actions}>
       <QueryClientProvider client={queryClient}>
         {children}</QueryClientProvider>
     </KBarProvider>

@@ -3,7 +3,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useUser } from "@/lib/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { RupeeSquareIcon, PlusSignIcon, SecurityLockIcon, CallIcon, ArrowDown01Icon } from "@hugeicons/core-free-icons";
+import { RupeeSquareIcon, PlusSignIcon, SecurityLockIcon,  CustomerSupportIcon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { WalletTopUp } from "@/components/wallet-top-up";
 import {
@@ -48,13 +48,13 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
         <div className="flex items-center gap-2 md:gap-4">
           <DropdownMenu>
             <ButtonGroup>
-              <Button render={<Link href={`tel:+919509698208`} />} variant="secondary" className="font-bold bg-background pr-0 hover:bg-muted/0 active:bg-muted/0 focus:bg-muted/0">   +91-9509698208</Button>
+              {/* <Button render={<Link href={`tel:+919509698208`} />} variant="secondary" className="font-bold bg-background pr-0 hover:bg-muted/0 active:bg-muted/0 focus:bg-muted/0">   +91-9509698208</Button> */}
               <DropdownMenuTrigger
                 render={
                   <Button
                     variant="secondary"
-                    className="bg-background pl-1 hover:bg-muted/0 active:bg-muted/0 focus:bg-muted/0"
-                  > <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} />
+                    className="bg-background "
+                  > <HugeiconsIcon icon={CustomerSupportIcon} strokeWidth={2} />
                     <span className="sr-only">Open menu</span></Button>
                 }
               >
@@ -62,7 +62,10 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
             </ButtonGroup>
             <DropdownMenuContent>
               <DropdownMenuGroup>
-                <DropdownMenuLabel>Other</DropdownMenuLabel>
+                <DropdownMenuLabel>Call us</DropdownMenuLabel>
+                <DropdownMenuItem render={<Link href={`tel:+919509698208`} />}>
+                  +91-9509698208
+                </DropdownMenuItem>
                 <DropdownMenuItem render={<Link href={`tel:+919251220521`} />}>
                   +91-9251220521
                 </DropdownMenuItem>

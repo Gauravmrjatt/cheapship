@@ -15,4 +15,5 @@ export interface DashboardData {
   weightDisputeOrders: number;
   monthlyGrowth: string;
   actionRequired: number;
+  graphData?: any[];
 }

@@ -5,7 +5,9 @@ import { sileo } from "sileo";
 import { useAuth } from "./use-auth";
 import { useRouter } from "next/navigation";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL + "/api/v1" || "http://localhost:3000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1` 
+  : "http://localhost:3000/api/v1";
 
 interface HttpOptions<TData, TVariables = any> {
   onSuccess?: (data: TData, variables: TVariables) => void;

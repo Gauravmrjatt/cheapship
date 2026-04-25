@@ -8,7 +8,7 @@ import {
   UserCircle02Icon,
   Notification03Icon,
   Shield01Icon,
-  Palette,
+  PaintBoardIcon,
   CheckmarkCircle01Icon,
 } from "@hugeicons/core-free-icons"
 
@@ -90,7 +90,7 @@ export function useKbarActions({
         id: "settings-appearance",
         name: "Appearance",
         section: "Settings",
-        icon: <HugeiconsIcon icon={Palette} strokeWidth={2} />,
+        icon: <HugeiconsIcon icon={PaintBoardIcon} strokeWidth={2} />,
         keywords: "appearance theme light dark mode",
         perform: () => router.push("/dashboard/settings?tab=appearance"),
       },

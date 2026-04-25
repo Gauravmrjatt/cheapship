@@ -58,7 +58,7 @@ function AdminLayout({
   }
 
   if (user?.user_type !== 'ADMIN') {
-    return null;
+    return <AdminLayoutLoading />;
   }
 
   return (

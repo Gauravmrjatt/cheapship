@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { WorldMap } from "@/components/ui/map";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   SearchIcon,
@@ -90,8 +91,8 @@ function TrackContent() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 md:py-16 max-w-4xl">
+    <div className="min-h-screen bg-background relative">
+      <div className="container mx-auto px-4 py-8 md:py-16 max-w-4xl z-5">
         {!data && !isLoading ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
             <div className="w-full max-w-md text-center space-y-8">
@@ -332,21 +333,18 @@ function TrackingResult({ data }: { data: TrackingResponse }) {
               <div className="space-y-1">
                 {uniqueActivities.map((activity, index) => (
                   <div key={activity.id || index} className="relative flex items-start pl-4">
-                    <div className={`relative z-10 w-11 h-11 rounded-full border-4 border-background flex items-center justify-center ${
-                      index === 0 ? "bg-primary" : "bg-muted"
-                    }`}>
-                      <HugeiconsIcon 
-                        icon={getStatusIconName(activity.status)} 
-                        className={`w-5 h-5 ${
-                          index === 0 ? "text-primary-foreground" : "text-muted-foreground"
-                        }`} 
+                    <div className={`relative z-10 w-11 h-11 rounded-full border-4 border-background flex items-center justify-center ${index === 0 ? "bg-primary" : "bg-muted"
+                      }`}>
+                      <HugeiconsIcon
+                        icon={getStatusIconName(activity.status)}
+                        className={`w-5 h-5 ${index === 0 ? "text-primary-foreground" : "text-muted-foreground"
+                          }`}
                       />
                     </div>
                     <div className="flex-1 ml-4 pb-6">
                       <div className="flex items-center justify-between">
-                        <p className={`font-semibold ${
-                          index === 0 ? "text-primary" : "text-foreground"
-                        }`}>
+                        <p className={`font-semibold ${index === 0 ? "text-primary" : "text-foreground"
+                          }`}>
                           {activity.activity || activity.status}
                         </p>
                         <p className="text-xs text-muted-foreground">{formatDate(activity.status_date)}</p>

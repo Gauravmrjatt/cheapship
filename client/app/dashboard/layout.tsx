@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 function getPageTitle(pathname: string): string {
   const segments = pathname.split('/').filter(segment => segment !== '');
@@ -25,6 +26,8 @@ function DashboardLayout({
 }) {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
+  const { user } = useAuth();
+  const isAdmin = user?.user_type === "ADMIN";
 
   return (
     <SidebarProvider
@@ -35,7 +38,7 @@ function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" isAdmin={true} />
+      <AppSidebar variant="inset" isAdmin={isAdmin} />
       <SidebarInset>
         <SiteHeader pageTitle={pageTitle} />
         {children}

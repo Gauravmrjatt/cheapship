@@ -31,9 +31,13 @@ export default function withAuth<P extends object>(
     }, [token, isChecking, router]);
 
     // Only redirect if we're done checking and user is not authenticated
-    // During the checking phase, we render the wrapped component which can handle its own loading state
+    // Show a loading state during the redirect to ensure FCP
     if (!isChecking && !token) {
-      return null; // The effect will handle the redirect
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <Skeleton className="h-12 w-12 rounded-full animate-spin border-4 border-primary border-t-transparent" />
+        </div>
+      );
     }
 
     // Render the wrapped component - it can handle its own loading state
