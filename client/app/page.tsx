@@ -225,8 +225,8 @@ export default function LandingPage() {
             <Link href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               How it Works
             </Link>
-            <Link href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Pricing
+            <Link href="/rate-calculator" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Rate Calculator
             </Link>
             <Link href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Testimonials
@@ -653,7 +653,7 @@ export default function LandingPage() {
                 Create Free Account
               </Button>
             </Link>
-            <Link href="/dashboard/calculator">
+            <Link href="/rate-calculator">
               <Button size="lg" variant="outline" className="h-12 px-8 border-primary-foreground/20 hover:bg-primary-foreground/10">
                 Try Rate Calculator
               </Button>
@@ -684,7 +684,7 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/dashboard/calculator" className="hover:text-foreground">Rate Calculator</Link></li>
+                <li><Link href="/rate-calculator" className="hover:text-foreground">Rate Calculator</Link></li>
                 <li><Link href="#features" className="hover:text-foreground">Features</Link></li>
                 <li><Link href="#pricing" className="hover:text-foreground">Pricing</Link></li>
                 <li><Link href="#" className="hover:text-foreground">API</Link></li>

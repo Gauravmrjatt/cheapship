@@ -11,6 +11,9 @@ const adminRoute = require("./admin.route");
 const supportRoute = require("./support.route");
 const disputeRoute = require("./dispute.route");
 const feedbackRoute = require("./feedback.route");
+const publicRoute = require("./public.route");
+
+route.use('/public', publicRoute);
 
 route.use('/users', userRoute);
 route.use('/auth', authRoute);
@@ -23,6 +26,8 @@ route.use('/admin', adminRoute);
 route.use('/support', supportRoute);
 route.use('/disputes', disputeRoute);
 route.use('/feedback', feedbackRoute);
+
+route.use('/public', publicRoute);
 
 route.use('/track', require('./track.route'));
 

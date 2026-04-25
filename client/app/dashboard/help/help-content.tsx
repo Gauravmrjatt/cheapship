@@ -200,7 +200,7 @@ export default function HelpPage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="text-sm font-medium">support@cheapship.com</p>
+                  <p className="text-sm font-medium">cashbackwallahhelpline@cashbackwallah.com</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl">
