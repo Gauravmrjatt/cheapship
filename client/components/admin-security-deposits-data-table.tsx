@@ -193,10 +193,10 @@ export function AdminSecurityDepositsDataTable({
                   <div className="text-muted-foreground">Tracking:</div>
                   <div className="font-mono">{order?.tracking_number || '-'}</div>
                   
-                  <div className="text-muted-foreground">Shiprocket OID:</div>
+                  <div className="text-muted-foreground">OID:</div>
                   <div className="font-mono">{order?.shiprocket_order_id || '-'}</div>
                   
-                  <div className="text-muted-foreground">Shiprocket SID:</div>
+                  <div className="text-muted-foreground">SID:</div>
                   <div className="font-mono">{order?.shiprocket_shipment_id || '-'}</div>
                   
                   <div className="text-muted-foreground">Status:</div>

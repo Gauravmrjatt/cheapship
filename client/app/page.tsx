@@ -326,7 +326,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
       </section>
+
       {/* Features Section */}
       <section id="features" className="py-20">
         <div className="container mx-auto px-4">
