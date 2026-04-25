@@ -45,7 +45,7 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
           <h1 className="text-base font-medium">{pageTitle}</h1>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex items-center ">
           <DropdownMenu>
             <ButtonGroup>
               {/* <Button render={<Link href={`tel:+919509698208`} />} variant="secondary" className="font-bold bg-background pr-0 hover:bg-muted/0 active:bg-muted/0 focus:bg-muted/0">   +91-9509698208</Button> */}
@@ -75,7 +75,7 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
           </DropdownMenu>
           <div className="flex items-center hover:bg-muted/50 gap-1.5 md:gap-2 px-2 md:px-2.5 bg-muted/30 border rounded-2xl">
             <Popover>
-              <PopoverTrigger className="flex items-center gap-2 cursor-pointer  pr-2 py-1.5 rounded-lg transition">
+              <PopoverTrigger className="flex items-center gap-2 cursor-pointer   py-1.5 rounded-lg transition">
                 <HugeiconsIcon
                   color="green"
                   icon={RupeeSquareIcon}
@@ -150,7 +150,6 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
           </div>
         </div>
       </div>
-
       <WalletTopUp open={showTopUp} onOpenChange={setShowTopUp} />
     </header>
   )
