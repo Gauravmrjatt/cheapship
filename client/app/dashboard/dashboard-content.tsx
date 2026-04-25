@@ -20,7 +20,7 @@ export default function Dashboard() {
   const needsKycAction = kycStatus === "PENDING" || kycStatus === "REJECTED";
   
   const hasCodEnabled = kycStatus === "VERIFIED";
-  const needsUpi = !user?.upi_id || user?.upi_id === "";
+  const needsUpi =  !user?.upi_id || user?.upi_id === "";
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -63,7 +63,7 @@ export default function Dashboard() {
             </Card>
           </div>
         )}
-        {needsUpi && (
+        {needsUpi && user &&  (
           <div className="px-4 lg:px-6 pt-4">
             <Card className="border-0  bg-blue-600/10 shadow-none rounded-2xl">
               <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
