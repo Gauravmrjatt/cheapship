@@ -517,7 +517,7 @@ class LatexLabelGenerator {
             color: purple
         });
 
-        page.drawText('+91 9251220521 | +91 95096 98208', {
+        page.drawText('+91 92512 20521 | +91 95096 98208', {
             x: width / 2 - 90,
             y: footerY - 5,
             size: 10,

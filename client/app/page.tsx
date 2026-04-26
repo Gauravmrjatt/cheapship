@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { WorldMap } from "@/components/ui/map";
+import { CalculatorContent } from "@/app/rate-calculator/calculator-content";
 import { motion } from "framer-motion";
 
 export const metadata: Metadata = {
@@ -335,6 +336,9 @@ export default function LandingPage() {
                     Compare Rates Now
                   </Button>
                 </Link>
+              </div>
+              <div className="mt-8">
+                <CalculatorContent />
               </div>
               <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
                 <span className="flex items-center gap-2">
