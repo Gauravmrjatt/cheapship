@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { ToggleTheme } from "@/components/ui/toggle-theme"
 
 export const adminNav = [
   {
@@ -303,7 +304,10 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
           }}
         />
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="w-full">
+        <div className="flex w-full items-center justify-center pb-2">
+          <ToggleTheme />
+        </div>
         <NavUser user={displayUser} />
       </SidebarFooter>
 
