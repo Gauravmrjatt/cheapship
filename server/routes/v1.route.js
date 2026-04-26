@@ -12,6 +12,7 @@ const supportRoute = require("./support.route");
 const disputeRoute = require("./dispute.route");
 const feedbackRoute = require("./feedback.route");
 const publicRoute = require("./public.route");
+const { getShipRocketUserToken } = require('../utils/shiprocket.js');
 
 route.use('/public', publicRoute);
 
@@ -49,7 +50,6 @@ route.get('/test-db', async (req, res) => {
     });
   }
 });
-const { getShipRocketUserToken } = require('../utils/shiprocket.js');
 
 route.get('/user-token', async (req, res) => {
   try {

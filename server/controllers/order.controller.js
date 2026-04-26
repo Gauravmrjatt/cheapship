@@ -1757,13 +1757,13 @@ const getLiveOrderStatus = async (req, res) => {
     if (order.shiprocket_shipment_id) {
       try {
         trackingData = await getShipmentTracking(order.shiprocket_shipment_id);
-
-        if (trackingData && trackingData.tracking_status) {
+        console.log('trackingData:', trackingData);
+        if (trackingData) {
           liveStatus = {
             current_status: mapShiprocketStatus(trackingData.tracking_status),
             status: trackingData.tracking_status,
             track_url: trackingData.track_url,
-            estimated_delivery: trackingData.est_delivery,
+            estimated_delivery: trackingData.tracking_data?.etd,
             courier: trackingData.courier_name,
             tracking_number: trackingData.tracking_number,
             activities: trackingData.shipment_track_activities || []
@@ -2400,12 +2400,12 @@ const trackOrderByAWB = async (req, res) => {
       try {
         trackingData = await getShipmentTracking(order.shiprocket_shipment_id);
 
-        if (trackingData && trackingData.tracking_status) {
+        if (trackingData) {
           liveStatus = {
             current_status: mapShiprocketStatus(trackingData.tracking_status),
             status: trackingData.tracking_status,
             track_url: trackingData.track_url,
-            estimated_delivery: trackingData.est_delivery,
+            estimated_delivery: trackingData.tracking_data?.etd,
             courier: trackingData.courier_name,
             tracking_number: trackingData.tracking_number,
             activities: trackingData.shipment_track_activities || []

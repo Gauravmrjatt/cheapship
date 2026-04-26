@@ -41,6 +41,7 @@ import {
   Building02Icon,
   Store01Icon,
   CallIcon,
+  PackageSearch01Icon
   // FlashIcon
 } from "@hugeicons/core-free-icons";
 
@@ -225,9 +226,7 @@ export default function LandingPage() {
             <Link href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               How it Works
             </Link>
-            <Link href="/rate-calculator" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Rate Calculator
-            </Link>
+           
             <Link href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Testimonials
             </Link>
@@ -254,16 +253,64 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="min-h-dvh flex flex-col justify-around">
+      <section className="min-h-dvh flex flex-col justify-around ">
         <div className="absolute inset-0 mt-15 hidden md:block">
           <WorldMap
           />
         </div>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/20 pointer-events-none" />
-        <section className="relative pb-20 md:p-32 w-full h-full ">
-
-
+        <section className="relative pb-15 md:p-32 w-full h-full ">
           <div className="container mx-auto px-4 relative">
+
+            <form className="max-w-md mx-auto" action="/track" method="get">
+              <label
+                htmlFor="search"
+                className="block mb-2.5 text-sm font-medium text-heading sr-only"
+              >
+                Search
+              </label>
+
+              <div className="relative ">
+                <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none ">
+                  <svg
+                    className="w-4 h-4 text-body"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeWidth="2"
+                      d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
+                    />
+                  </svg>
+                </div>
+
+                <input
+                  type="text"
+                  name="awb"
+                  id="search-by-awb"
+                
+                  className="block w-full p-3 ps-9 border mb-9 rounded-2xl bg-background"
+                  placeholder="Search by AWB"
+                  required
+                />
+
+                <Button
+                 
+                  variant="ghost"
+                  type="submit"
+                  className="absolute end-1.5 bottom-1.5 rounded-2xl  border border-muted shadow-xs p-4"
+                >
+                  <HugeiconsIcon icon={PackageSearch01Icon} size={18}  />
+                </Button>
+              </div>
+            </form>
+
             <div className="max-w-3xl mx-auto text-center">
               <Badge variant="secondary" className="mb-6">
                 {/* <FlashIcon className="w-3 h-3 mr-1" /> */}
@@ -283,9 +330,9 @@ export default function LandingPage() {
                     <HugeiconsIcon icon={ArrowRight01Icon} className="ml-2" size={18} />
                   </Button>
                 </Link>
-                <Link href="/track">
+                <Link href="/rate-calculator">
                   <Button size="lg" variant="outline" className="h-12 px-8">
-                    Track Order Now
+                    Compare Rates Now
                   </Button>
                 </Link>
               </div>

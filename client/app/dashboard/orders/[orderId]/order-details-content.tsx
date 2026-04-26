@@ -47,7 +47,9 @@ import {
   Mail01Icon,
   SmartPhone01Icon,
   MapPinIcon,
-  CopyIcon
+  CopyIcon,
+  ArrowUpIcon,
+  TruckDeliveryIcon
 } from "@hugeicons/core-free-icons";
 
 import copy from "copy-to-clipboard";
@@ -345,7 +347,7 @@ export default function OrderDetailsPage({
               <p className="text-xs font-medium text-muted-foreground uppercase">Shipping Amount</p>
               <p className="font-semibold">₹{order.shipment_status === "DRAFT" ? <>0</> : order.total_amount}</p>
             </div>
-<div>
+            <div>
               <p className="text-xs font-medium text-muted-foreground uppercase">Product Value</p>
               <p className="font-semibold">₹{order.shipment_status === "DRAFT" ? <>0</> : (order as any).productValue || 0}</p>
             </div>
@@ -477,6 +479,18 @@ export default function OrderDetailsPage({
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {liveStatus?.live_status?.estimated_delivery && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                    <HugeiconsIcon icon={ClockIcon} className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase">Estimated Delivery</p>
+                    <p className="font-semibold text-blue-700 dark:text-blue-300">{formatDate(liveStatus.live_status.estimated_delivery)}</p>
+                  </div>
+                </div>
+              )}
+
               {liveStatus?.history && liveStatus.history.length > 0 && (
                 <ShipmentTimeline liveStatus={liveStatus} />
               )}
@@ -728,7 +742,20 @@ interface ShipmentHistory {
   location?: string;
   shipment_status: string;
 }
-
+const getStatusIconName = (status: string) => {
+  switch (status) {
+    case "DELIVERED":
+      return CheckmarkCircle01Icon;
+    case "PENDING":
+    case "OUT_FOR_PICKUP":
+      return ArrowUpIcon;
+    case "IN_TRANSIT":
+    case "PICKED_UP":
+      return TruckDeliveryIcon;
+    default:
+      return PackageIcon;
+  }
+};
 const ShipmentTimeline = ({ liveStatus }: { liveStatus: any }) => {
   const now = new Date();
 
@@ -747,7 +774,7 @@ const ShipmentTimeline = ({ liveStatus }: { liveStatus: any }) => {
     });
 
   return (
-    <div className="relative pl-4 border-l-2 p-0 m-0 border-dotted border-muted-foreground/20 max-h-[500px] overflow-scroll">
+    <div className="relative pl-4  p-0 m-0 border-dotted border-muted-foreground/20 max-h-[500px] overflow-scroll">
       {filteredHistory.map((history: ShipmentHistory, index: number) => {
         const date = new Date(history.status_date);
 
@@ -766,8 +793,10 @@ const ShipmentTimeline = ({ liveStatus }: { liveStatus: any }) => {
         });
 
         return (
-          <div key={history.id || index} className="relative pb-9 last:pb-0">
-            <div className="absolute -left-[28px] top-[10px] h-6 w-6 rounded-full bg-primary border-2 border-background" />
+          <div key={history.id || index} className="relative pb-9 pl-7 ml-4 border-l-2 p-0 m-0 border-dotted border-muted-foreground/20 last:pb-0">
+            <div className={`absolute  -left-[22px] top-[10px] z-10 w-11 h-11  rounded-full border-4 border-background flex items-center justify-center ${index === 0 ? 'bg-primary' : 'bg-background'}`} >
+              <HugeiconsIcon icon={getStatusIconName(history.shipment_status)} />
+            </div>
 
             <div className="flex gap-4">
               <div className="text-center flex-1">
@@ -786,7 +815,7 @@ const ShipmentTimeline = ({ liveStatus }: { liveStatus: any }) => {
                   </p>
                 )}
 
-<ShipmentStatus status={history.shipment_status} />
+                <ShipmentStatus status={history.shipment_status} />
               </div>
             </div>
           </div>

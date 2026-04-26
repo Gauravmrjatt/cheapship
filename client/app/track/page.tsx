@@ -20,27 +20,8 @@ import {
   UserIcon,
   MapsIcon,
 } from "@hugeicons/core-free-icons";
+import { ShipmentStatus } from "@/components/ui/status-chip";
 
-const getStatusBadge = (status: string) => {
-  const statusVariants: Record<string, "default" | "secondary" | "destructive" | "outline" | "success"> = {
-    PENDING: "secondary",
-    PICKED_UP: "default",
-    IN_TRANSIT: "default",
-    OUT_FOR_PICKUP: "default",
-    DELIVERED: "success",
-    RETURNED: "destructive",
-    RTO: "destructive",
-    CANCELLED: "destructive",
-  };
-
-  const variant = statusVariants[status] || "outline";
-
-  return (
-    <Badge variant={variant}>
-      {status?.replace(/_/g, " ")}
-    </Badge>
-  );
-};
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-IN", {
@@ -231,17 +212,17 @@ function TrackingResult({ data }: { data: TrackingResponse }) {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <Card>
-        <CardHeader className="bg-primary text-primary-foreground pb-6">
+      <Card className="p-0">
+        <CardHeader className="bg-secondary text-primary-foreground pb-6 pt-6">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-xl">Shipment Details</CardTitle>
               <p className="text-primary-foreground/70 text-sm mt-1">Order #{order.id}</p>
             </div>
-            {getStatusBadge(order.shipment_status)}
+            <ShipmentStatus status={order.shipment_status} />
           </div>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 pb-14">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -329,7 +310,7 @@ function TrackingResult({ data }: { data: TrackingResponse }) {
             <p className="text-center text-muted-foreground py-8">No tracking history available</p>
           ) : (
             <div className="relative">
-              <div className="absolute left-[22px] top-4 bottom-4 w-0.5 bg-border"></div>
+              <div className="absolute left-[38px] top-4 bottom-4 w-0.5 bg-border"></div>
               <div className="space-y-1">
                 {uniqueActivities.map((activity, index) => (
                   <div key={activity.id || index} className="relative flex items-start pl-4">
