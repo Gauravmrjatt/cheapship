@@ -41,15 +41,15 @@ export function ToggleTheme() {
 			initial={{ opacity: 0 }}
 			animate={{ opacity: 1 }}
 			transition={{ duration: 0.3 }}
-			className="bg-muted/80 flex w-full items-center justify-center overflow-hidden rounded-md border py-1"
+			className="bg-muted flex w-full items-center justify-center overflow-hidden rounded-2xl border "
 			role="radiogroup"
 		>
 			{THEME_OPTIONS.map((option) => (
 				<button
 					className={cn(
-						'relative flex flex-1 cursor-pointer items-center justify-center rounded-md py-1 transition-all',
+						'relative flex flex-1 cursor-pointer items-center  justify-center rounded-2xl py-1 transition-all',
 						theme === option.value
-							? 'text-foreground'
+							? 'text-foreground bg-background'
 							: 'text-muted-foreground hover:text-foreground',
 					)}
 					role="radio"
@@ -61,10 +61,10 @@ export function ToggleTheme() {
 						<motion.div
 							layoutId="theme-option"
 							transition={{ type: 'spring', bounce: 0.1, duration: 0.75 }}
-							className="border-muted-foreground/50 absolute inset-0 rounded-md border"
+							className="border-muted-foreground/50 absolute inset-0 rounded-2xl border"
 						/>
 					)}
-					<HugeiconsIcon icon={option.icon} className="size-3.5" />
+					<HugeiconsIcon icon={option.icon} className="size-4" />
 				</button>
 			))}
 		</motion.div>

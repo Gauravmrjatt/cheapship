@@ -125,6 +125,11 @@ export const adminNav = [
     url: "/admin/wallet-plans",
     icon: <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />,
   },
+  {
+    title: "Wallet Withdrawals",
+    url: "/admin/wallet-withdrawals",
+    icon: <HugeiconsIcon icon={Wallet02Icon} strokeWidth={2} />,
+  },
 ];
 
 export const data = {
@@ -311,8 +316,8 @@ export function AppSidebar({ isAdmin, ...props }: AppSidebarProps) {
           }}
         />
       </SidebarContent>
-      <SidebarFooter className="w-full">
-        <div className="flex w-full items-center justify-center pb-2">
+      <SidebarFooter className="w-full border rounded-2xl p-0 overflow-hidden ">
+        <div className="flex w-full items-center justify-center pb-2 p-2">
           <ToggleTheme />
         </div>
         <NavUser user={displayUser} />

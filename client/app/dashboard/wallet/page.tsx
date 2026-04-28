@@ -62,7 +62,7 @@ export default function WalletWithdrawalPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col md:px-6 px-2">
       <div className="flex flex-col gap-6 py-9">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Wallet Withdrawal</h1>

@@ -37,18 +37,18 @@ export function NavUser({
   const { logout } = useAuth();
 
   return (
-    <SidebarMenu>
+    <SidebarMenu >
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />
+              <SidebarMenuButton size="lg" className="aria-expanded:bg-muted bg-muted" />
             }
           >
             <Avatar className="size-8 rounded-lg grayscale">
               <AvatarFallback className="rounded-lg">{user.name ? user.name.charAt(0) : user.email.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
+            <div className="grid flex-1 text-left text-sm leading-tight bg-m">
               <span className="truncate font-medium">{user.name || user.email.split('@')[0]}</span>
               <span className="text-foreground/70 truncate text-xs">
                 {user.email}
