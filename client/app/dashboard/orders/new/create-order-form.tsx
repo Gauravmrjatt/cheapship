@@ -30,6 +30,7 @@ import {
 import { useHttp } from "@/lib/hooks/use-http";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useCheckPhoneVerificationMutation, useUndeliveredSummary } from "@/lib/hooks/use-orders";
+import { useSecurityFeeConfig } from "@/lib/hooks/use-settings";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -1761,8 +1762,21 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
   const undeliveredAmount = parseFloat(undeliveredSummary?.undelivered_amount || "0");
   const walletBalance = parseFloat(user?.wallet_balance || "0");
   const securityDeposit = parseFloat(undeliveredSummary?.security_deposit || "0");
-  const requiredBalance = (orderAmount * 2);
-  const securityForThisOrder = orderAmount;
+  
+  // Fetch security fee configuration from admin settings
+  const { data: securityFeeConfig } = useSecurityFeeConfig();
+  const feeType = securityFeeConfig?.feeType || 'TIMES';
+  const feeValue = securityFeeConfig?.feeValue || 1;
+  
+  // Calculate security based on admin configuration
+  let securityForThisOrder = 0;
+  if (feeType === 'PERCENTAGE') {
+    securityForThisOrder = orderAmount * (feeValue / 100);
+  } else {
+    securityForThisOrder = orderAmount * feeValue; // TIMES
+  }
+  
+  const requiredBalance = orderAmount + securityForThisOrder;
   const hasEnoughBalance = walletBalance >= requiredBalance;
 
   if (isShipped) return (
