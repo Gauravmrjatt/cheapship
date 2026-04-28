@@ -677,8 +677,8 @@ const createOrder = async (req, res) => {
             description: `Security deposit held for Order ${order_type}`,
           }
         })
-        })
       ]);
+
       // Save addresses if requested - check if address already exists first
       if (save_pickup_address) {
         // Check if similar address already exists (match on phone, pincode, and address)
