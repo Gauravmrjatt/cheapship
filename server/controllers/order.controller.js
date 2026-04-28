@@ -644,12 +644,16 @@ const createOrder = async (req, res) => {
         }
       });
 
-      // Calculate closing balances programmatically (transaction ensures atomicity)
-      const closingWalletBalance = Number(user.wallet_balance) - orderAmount;
-      const closingSecurityDeposit = Number(user.wallet_balance) - totalDeduction;
+      // Get updated wallet balance after deduction
+      const updatedUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: { wallet_balance: true }
+      });
+
+      const closingWalletBalance = Number(updatedUser.wallet_balance);
 
       // 4. Create transaction record for order payment (DEBIT)
-      // 5. Create transaction record for security deposit (CREDIT to security)
+      // 5. Create transaction record for security deposit (DEBIT from wallet)
       const [orderPaymentTransaction, securityDepositTransaction] = await Promise.all([
         tx.transaction.create({
           data: {
@@ -666,12 +670,13 @@ const createOrder = async (req, res) => {
           data: {
             user_id: userId,
             amount: securityDepositAmount,
-            closing_balance: closingSecurityDeposit,
+            closing_balance: closingWalletBalance,
             type: 'DEBIT',
             category: 'SECURITY_DEPOSIT',
             status: 'SUCCESS',
             description: `Security deposit held for Order ${order_type}`,
           }
+        })
         })
       ]);
       // Save addresses if requested - check if address already exists first
