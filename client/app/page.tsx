@@ -45,6 +45,7 @@ import {
   PackageSearch01Icon,
   FlashIcon
 } from "@hugeicons/core-free-icons";
+import { Suspense } from "react";
 
 const features = [
   {
@@ -254,13 +255,15 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="min-h-dvh flex flex-col justify-around ">
-        {/* <div className="absolute inset-0 mt-15 hidden md:block">
-          <WorldMap
-          />
-        </div> */}
-        {/* 
+      <section className="min-h-dvh flex flex-col  justify-around ">
+        <div className="absolute inset-0 mt-15 hidden md:block">
+          {/* <Suspense fallback={null}>
+            <WorldMap
+            />
+          </Suspense> */}
+        </div>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/20 pointer-events-none" />
+        {/* 
         <section className="relative pb-15 md:p-32 w-full h-full ">
           <div className="container mx-auto px-4 relative">
 
@@ -362,7 +365,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section> */}
-        <div className="mt-8 z-8">
+        <div className="mt-8 z-8 flex justify-center w-full">
           <CalculatorContent />
         </div>
         {/* Stats Section */}

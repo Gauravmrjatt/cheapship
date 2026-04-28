@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+  PackageSearch01Icon,
   InformationCircleIcon,
   Location01Icon,
   FlashIcon,
@@ -21,8 +22,11 @@ import {
   Search01Icon,
   RocketIcon,
   Cancel01Icon,
-  ArrowRight01Icon
+  ArrowRight01Icon,
+  CheckmarkCircle01Icon,
+  CallIcon
 } from "@hugeicons/core-free-icons";
+import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -126,7 +130,7 @@ export function CalculatorContent() {
 
   const fetchPincodeDetails = useCallback(async (pincode: string, type: "pickup" | "delivery") => {
     if (pincode.length !== 6) return;
-    
+
     if (type === "pickup") {
       setLoadingPickup(true);
     } else {
@@ -138,7 +142,7 @@ export function CalculatorContent() {
         `${API_BASE_URL}/api/v1/public/pincode-details?postcode=${pincode}`
       );
       const data = await response.json();
-      
+
       if (type === "pickup") {
         setPickupLocality(data);
       } else {
@@ -187,7 +191,7 @@ export function CalculatorContent() {
 
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const isValid = await form.trigger();
     if (!isValid) return;
 
@@ -210,11 +214,11 @@ export function CalculatorContent() {
       const response = await fetch(
         `${API_BASE_URL}/api/v1/public/calculate-rates?${params.toString()}`
       );
-      
+
       if (!response.ok) {
         throw new Error("Failed to fetch rates");
       }
-      
+
       const data = await response.json();
       setRatesData(data);
     } catch (error) {
@@ -292,11 +296,11 @@ export function CalculatorContent() {
         showRates && "flex flex-col-reverse lg:grid"
       )}>
 
-        <div className="w-full lg:col-span-4 space-y-8">
-          <Card className="shadow-sm border-border/50">
-            <CardHeader className="space-y-1.5 px-6 pt-6">
+        <div className="w-full lg:col-span-4 space-y-8  bg-transparent border-0 shadow-none max-w-md">
+          <Card className=" bg-transparent border-0 shadow-none ring-0" >
+            <CardHeader className="space-y-1.5 px-6 pt-6  bg-transparent border-0 shadow-none">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl font-bold">Shipment Parameters</CardTitle>
+                <CardTitle className="text-xl font-bold">Check Rates</CardTitle>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -461,7 +465,7 @@ export function CalculatorContent() {
             </CardContent>
           </Card>
 
-          <Card className="bg-primary/5 border-primary/10 shadow-none">
+          {/* <Card className="bg-primary/5 border-primary/10 shadow-none">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
@@ -483,7 +487,7 @@ export function CalculatorContent() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         <div className="w-full lg:col-span-8 space-y-6">
@@ -557,18 +561,107 @@ export function CalculatorContent() {
               <CalculationGuidelines />
             </div>
           ) : (
-            <div className="h-full min-h-dvh rounded-3xl  flex flex-col items-center justify-center p-12 text-center animate-in zoom-in-95 duration-1000">
-              <img src="/assets/svg/claculator.svg" className="h-70" />
-              <h3 className="text-xl font-bold tracking-tight">Ready to Calculate</h3>
-              <p className="text-muted-foreground max-w-sm mt-2">
-                Enter your shipment details on the left to see instant rates from our courier partners.
-              </p>
-              <div className="flex gap-2 mt-8">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary/20 animate-bounce" />
-                <div className="h-1.5 w-1.5 rounded-full bg-primary/20 animate-bounce [animation-delay:0.2s]" />
-                <div className="h-1.5 w-1.5 rounded-full bg-primary/20 animate-bounce [animation-delay:0.4s]" />
+            <section className="relative pb-15  w-full h-full ">
+              <div className="container mx-auto px-4 relative">
+
+                <form className="max-w-md mx-auto" action="/track" method="get">
+                  <label
+                    htmlFor="search"
+                    className="block mb-2.5 text-sm font-medium text-heading sr-only"
+                  >
+                    Search
+                  </label>
+
+                  <div className="relative ">
+                    <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none ">
+                      <svg
+                        className="w-4 h-4 text-body"
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeWidth="2"
+                          d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
+                        />
+                      </svg>
+                    </div>
+
+                    <input
+                      type="text"
+                      name="awb"
+                      id="search-by-awb"
+
+                      className="block w-full p-3 ps-9 border mb-9 rounded-2xl bg-background"
+                      placeholder="Search by AWB"
+                      required
+                    />
+
+                    <Button
+
+                      variant="ghost"
+                      type="submit"
+                      className="absolute end-1.5 bottom-1.5 rounded-2xl  border border-muted shadow-xs p-4"
+                    >
+                      <HugeiconsIcon icon={PackageSearch01Icon} size={18} />
+                    </Button>
+                  </div>
+                </form>
+
+                <div className="max-w-3xl mx-auto text-center">
+                  <Badge variant="secondary" className="mb-6">
+                    <HugeiconsIcon icon={FlashIcon} className="w-3 h-3 mr-1" />
+                    Now serving 27,000+ pin codes
+                  </Badge>
+                  <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
+                    Ship Smarter,
+                    <span className="text-primary"> Save Bigger</span>
+                  </h1>
+                  <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+                    Compare shipping rates from 25+ carriers in seconds. Save up to 40% on every shipment with India&apos;s smartest logistics platform.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <Link href="/dashboard">
+                      <Button size="lg" className="h-12 px-8">
+                        Start Shipping Free
+                        <HugeiconsIcon icon={ArrowRight01Icon} className="ml-2" size={18} />
+                      </Button>
+                    </Link>
+                    <Link href="/rate-calculator">
+                      <Button size="lg" variant="outline" className="h-12 px-8">
+                        Compare Rates Now
+                      </Button>
+                    </Link>
+                  </div>
+
+                  <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-2">
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="text-green-500" />
+                      No credit card required
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="text-green-500" />
+                      Free forever plan
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 flex md:hidden mt-5">
+                    <a href="tel:+919509698208" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                      <HugeiconsIcon icon={CallIcon} size={14} className="text-green-500" />
+                      <span className="">9509698208</span>
+                    </a>
+                    <span className="text-muted-foreground/30">|</span>
+                    <a href="tel:+919251220521" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                      <span className="">9251220521</span>
+                    </a>
+                  </div>
+                </div>
               </div>
-            </div>
+            </section>
           )}
         </div>
       </div>
