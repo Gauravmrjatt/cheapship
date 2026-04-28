@@ -264,10 +264,10 @@ export function CODOrdersDataTable({
           </Link>
 
           <span className="text-[10px]  tabular-nums">
-            {row.original.shiprocket_order_id ? `Shiprocket OID :   ${row.original.shiprocket_order_id}` : "-"}
+            {row.original.shiprocket_order_id ? ` OID:   ${row.original.shiprocket_order_id}` : "-"}
           </span>
           <span className="text-[10px]  tabular-nums">
-            {row.original.shiprocket_shipment_id ? `Shiprocket Ship ID :  ${row.original.shiprocket_shipment_id}` : "-"}
+            {row.original.shiprocket_shipment_id ? ` Ship ID :  ${row.original.shiprocket_shipment_id}` : "-"}
           </span>
 
           <span className="text-[10px]  tabular-nums">

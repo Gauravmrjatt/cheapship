@@ -280,12 +280,12 @@ export function CalculatorContent() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 space-y-10 animate-in fade-in duration-700 pb-32">
-      <div className="flex flex-col gap-2">
+    <div className=" mx-auto py-10 px-4 sm:px-6 lg:px-8 space-y-10 animate-in fade-in duration-700 pb-32">
+      {/* <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-extrabold tracking-tight lg:text-4xl text-foreground">
           Rate Calculator
         </h1>
-      </div>
+      </div> */}
 
       <div className={cn(
         "grid grid-cols-1 lg:grid-cols-12 gap-10 items-start",
@@ -557,7 +557,7 @@ export function CalculatorContent() {
               <CalculationGuidelines />
             </div>
           ) : (
-            <div className="h-full min-h-[500px]  rounded-3xl  flex flex-col items-center justify-center p-12 text-center animate-in zoom-in-95 duration-1000">
+            <div className="h-full min-h-dvh rounded-3xl  flex flex-col items-center justify-center p-12 text-center animate-in zoom-in-95 duration-1000">
               <img src="/assets/svg/claculator.svg" className="h-70" />
               <h3 className="text-xl font-bold tracking-tight">Ready to Calculate</h3>
               <p className="text-muted-foreground max-w-sm mt-2">

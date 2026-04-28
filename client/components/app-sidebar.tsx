@@ -199,6 +199,13 @@ export const data = {
         <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />
       ),
     },
+    {
+      title: "Withdraw Wallet",
+      url: "/dashboard/wallet",
+      icon: (
+        <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2} />
+      ),
+    },
   ],
   navSecondary: [
     {

@@ -42,8 +42,8 @@ import {
   Building02Icon,
   Store01Icon,
   CallIcon,
-  PackageSearch01Icon
-  // FlashIcon
+  PackageSearch01Icon,
+  FlashIcon
 } from "@hugeicons/core-free-icons";
 
 const features = [
@@ -227,7 +227,7 @@ export default function LandingPage() {
             <Link href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               How it Works
             </Link>
-           
+
             <Link href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Testimonials
             </Link>
@@ -255,10 +255,11 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="min-h-dvh flex flex-col justify-around ">
-        <div className="absolute inset-0 mt-15 hidden md:block">
+        {/* <div className="absolute inset-0 mt-15 hidden md:block">
           <WorldMap
           />
-        </div>
+        </div> */}
+        {/* 
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/20 pointer-events-none" />
         <section className="relative pb-15 md:p-32 w-full h-full ">
           <div className="container mx-auto px-4 relative">
@@ -295,26 +296,26 @@ export default function LandingPage() {
                   type="text"
                   name="awb"
                   id="search-by-awb"
-                
+
                   className="block w-full p-3 ps-9 border mb-9 rounded-2xl bg-background"
                   placeholder="Search by AWB"
                   required
                 />
 
                 <Button
-                 
+
                   variant="ghost"
                   type="submit"
                   className="absolute end-1.5 bottom-1.5 rounded-2xl  border border-muted shadow-xs p-4"
                 >
-                  <HugeiconsIcon icon={PackageSearch01Icon} size={18}  />
+                  <HugeiconsIcon icon={PackageSearch01Icon} size={18} />
                 </Button>
               </div>
             </form>
 
             <div className="max-w-3xl mx-auto text-center">
               <Badge variant="secondary" className="mb-6">
-                {/* <FlashIcon className="w-3 h-3 mr-1" /> */}
+                <HugeiconsIcon icon={FlashIcon} className="w-3 h-3 mr-1" />
                 Now serving 27,000+ pin codes
               </Badge>
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
@@ -337,9 +338,7 @@ export default function LandingPage() {
                   </Button>
                 </Link>
               </div>
-              <div className="mt-8">
-                <CalculatorContent />
-              </div>
+
               <div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
                 <span className="flex items-center gap-2">
                   <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="text-green-500" />
@@ -362,8 +361,10 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-        </section>
-
+        </section> */}
+        <div className="mt-8 z-8">
+          <CalculatorContent />
+        </div>
         {/* Stats Section */}
         <section className="py-12 border-y bg-muted/0 z-4">
           <div className="container mx-auto px-4">

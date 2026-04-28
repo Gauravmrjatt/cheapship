@@ -12,6 +12,7 @@ const supportRoute = require("./support.route");
 const disputeRoute = require("./dispute.route");
 const feedbackRoute = require("./feedback.route");
 const publicRoute = require("./public.route");
+const walletRoute = require("./wallet.route");
 const { getShipRocketUserToken } = require('../utils/shiprocket.js');
 
 route.use('/public', publicRoute);
@@ -27,6 +28,7 @@ route.use('/admin', adminRoute);
 route.use('/support', supportRoute);
 route.use('/disputes', disputeRoute);
 route.use('/feedback', feedbackRoute);
+route.use('/wallet', walletRoute);
 
 route.use('/public', publicRoute);
 

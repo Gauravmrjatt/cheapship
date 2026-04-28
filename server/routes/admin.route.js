@@ -118,5 +118,9 @@ router.post('/wallet-plans', adminController.createWalletPlan);
 router.put('/wallet-plans/:id', adminController.updateWalletPlan);
 router.delete('/wallet-plans/:id', adminController.deleteWalletPlan);
 
+// Wallet Withdrawals
+router.get('/wallet-withdrawals', adminController.getWalletWithdrawals);
+router.get('/wallet-withdrawals/:id', adminController.getWalletWithdrawalById);
+router.post('/wallet-withdrawals/:id/process', adminController.processWalletWithdrawal);
 
 module.exports = router;

@@ -890,6 +890,196 @@ const processUserWithdrawals = async (req, res) => {
   }
 };
 
+const getWalletWithdrawals = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { page = 1, limit = 20, status } = req.query;
+  const pageNum = parseInt(page) || 1;
+  const pageSizeNum = parseInt(limit) || 20;
+  const skip = (pageNum - 1) * pageSizeNum;
+
+  try {
+    const where = {};
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
+
+    const [withdrawals, total] = await Promise.all([
+      prisma.walletWithdrawal.findMany({
+        where,
+        skip,
+        take: pageSizeNum,
+        orderBy: { created_at: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              mobile: true,
+              wallet_balance: true,
+              upi_id: true,
+              bank_name: true,
+              beneficiary_name: true,
+              account_number: true,
+              ifsc_code: true
+            }
+          }
+        }
+      }),
+      prisma.walletWithdrawal.count({ where })
+    ]);
+
+    res.json({
+      data: withdrawals,
+      pagination: {
+        total,
+        totalPages: Math.ceil(total / pageSizeNum),
+        currentPage: pageNum,
+        pageSize: pageSizeNum
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const getWalletWithdrawalById = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { id } = req.params;
+
+  try {
+    const withdrawal = await prisma.walletWithdrawal.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            mobile: true,
+            wallet_balance: true,
+            security_deposit: true,
+            upi_id: true,
+            bank_name: true,
+            beneficiary_name: true,
+            account_number: true,
+            ifsc_code: true
+          }
+        }
+      }
+    });
+
+    if (!withdrawal) {
+      return res.status(404).json({ message: 'Withdrawal not found' });
+    }
+
+    res.json(withdrawal);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const processWalletWithdrawal = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { id } = req.params;
+  const { status, reference_id, payment_method, admin_note } = req.body;
+
+  if (!['APPROVED', 'REJECTED', 'COMPLETED'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const withdrawal = await tx.walletWithdrawal.findUnique({
+        where: { id }
+      });
+
+      if (!withdrawal) throw new Error('Withdrawal not found');
+      if (withdrawal.status !== 'PENDING') throw new Error('Withdrawal already processed');
+
+      let updatedWithdrawal;
+
+      if (status === 'REJECTED') {
+        updatedWithdrawal = await tx.walletWithdrawal.update({
+          where: { id },
+          data: {
+            status: 'REJECTED',
+            admin_note: admin_note || null
+          }
+        });
+
+        await tx.user.update({
+          where: { id: withdrawal.user_id },
+          data: {
+            wallet_balance: { increment: withdrawal.amount }
+          }
+        });
+
+        const user = await tx.user.findUnique({
+          where: { id: withdrawal.user_id },
+          select: { wallet_balance: true }
+        });
+
+        await tx.transaction.create({
+          data: {
+            user_id: withdrawal.user_id,
+            amount: withdrawal.amount,
+            closing_balance: user.wallet_balance,
+            type: 'CREDIT',
+            category: 'REFUND',
+            status: 'SUCCESS',
+            description: `Withdrawal rejected - refund to wallet`
+          }
+        });
+      } else {
+        const updateData = { status };
+        if (reference_id) updateData.reference_id = reference_id;
+        if (payment_method) updateData.payment_method = payment_method;
+        if (admin_note) updateData.admin_note = admin_note;
+
+        if (status === 'COMPLETED') {
+          updateData.status = 'COMPLETED';
+        }
+
+        updatedWithdrawal = await tx.walletWithdrawal.update({
+          where: { id },
+          data: updateData
+        });
+
+        if (status === 'COMPLETED' || status === 'APPROVED') {
+          const pendingTx = await tx.transaction.findFirst({
+            where: {
+              user_id: withdrawal.user_id,
+              category: 'WITHDRAWAL_REQUEST',
+              status: 'PENDING'
+            },
+            orderBy: { created_at: 'desc' }
+          });
+
+          if (pendingTx) {
+            await tx.transaction.update({
+              where: { id: pendingTx.id },
+              data: { status: 'SUCCESS' }
+            });
+          }
+        }
+      }
+
+      return updatedWithdrawal;
+    });
+
+    res.json({
+      message: `Withdrawal ${status.toLowerCase()} successfully`,
+      withdrawal: result
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ message: error.message || 'Internal Server Error' });
+  }
+};
+
 const getGlobalSettings = async (req, res) => {
   const prisma = req.app.locals.prisma;
   try {
@@ -2465,5 +2655,8 @@ module.exports = {
   changeUserEmail,
   getWithdrawals,
   processWithdrawal,
-  processUserWithdrawals
+  processUserWithdrawals,
+  getWalletWithdrawals,
+  getWalletWithdrawalById,
+  processWalletWithdrawal
 };

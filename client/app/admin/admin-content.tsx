@@ -25,6 +25,7 @@ import {
   ChartUpIcon,
   ChartDownIcon,
   CustomerService02Icon,
+  MoneySend01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -419,6 +420,12 @@ function QuickActionsCard({ data, isLoading }: { data: DashboardStats | undefine
             {!isLoading && data?.pendingWithdrawals && data.pendingWithdrawals > 0 && (
               <Badge className="ml-auto bg-primary text-primary-foreground">{data.pendingWithdrawals}</Badge>
             )}
+          </Button>
+        </Link>
+        <Link href="/admin/wallet-withdrawals">
+          <Button variant="outline" className="w-full justify-start h-12 rounded-xl">
+            <HugeiconsIcon icon={MoneySend01Icon} className="mr-2 size-5" />
+            Wallet Withdrawals
           </Button>
         </Link>
         <Link href="/admin/users">

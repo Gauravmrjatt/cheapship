@@ -275,7 +275,7 @@ const calculateRates = async (req, res) => {
       availableCouriers,
       serviceabilityData.data.recommended_courier_company_id
     );
-   console.log(serviceableCouriers)
+
     // Format the response and sanitize sensitive fields (exclude internal base rates and commission breakdowns)
     const formattedResponse = {
       pickup_location: {
