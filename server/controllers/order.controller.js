@@ -982,7 +982,7 @@ const createOrder = async (req, res) => {
         }
       });
 
-      const updatedUser = await tx.user.findUnique({
+      const userForResponse = await tx.user.findUnique({
         where: { id: userId },
         select: { wallet_balance: true, security_deposit: true }
       });
