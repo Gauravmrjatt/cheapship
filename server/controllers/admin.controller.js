@@ -964,6 +964,63 @@ const updateSecurityRefundDays = async (req, res) => {
   }
 };
 
+// Get security fee configuration
+const getSecurityFee = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  try {
+    const [typeSetting, valueSetting] = await prisma.$transaction([
+      prisma.systemSetting.findUnique({ where: { key: 'security_fee_type' } }),
+      prisma.systemSetting.findUnique({ where: { key: 'security_fee_value' } })
+    ]);
+
+    res.json({
+      type: typeSetting?.value || 'TIMES',
+      value: valueSetting ? parseFloat(valueSetting.value) : 1
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Update security fee configuration
+const updateSecurityFee = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { type, value } = req.body;
+
+  if (!type || !['TIMES', 'PERCENTAGE'].includes(type)) {
+    return res.status(400).json({ message: 'Type must be TIMES or PERCENTAGE' });
+  }
+
+  if (!value || value < 0) {
+    return res.status(400).json({ message: 'Value must be a positive number' });
+  }
+
+  if (type === 'PERCENTAGE' && value > 100) {
+    return res.status(400).json({ message: 'Percentage value cannot exceed 100' });
+  }
+
+  try {
+    await prisma.$transaction([
+      prisma.systemSetting.upsert({
+        where: { key: 'security_fee_type' },
+        update: { value: type },
+        create: { key: 'security_fee_type', value: type, description: 'Security fee deduction type: TIMES or PERCENTAGE' }
+      }),
+      prisma.systemSetting.upsert({
+        where: { key: 'security_fee_value' },
+        update: { value: value.toString() },
+        create: { key: 'security_fee_value', value: value.toString(), description: 'Security fee deduction value' }
+      })
+    ]);
+
+    res.json({ type, value });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 const getSecurityRefundSchedule = async (req, res) => {
   const prisma = req.app.locals.prisma;
   try {
@@ -2401,6 +2458,8 @@ module.exports = {
   setSecurityRefundSchedule,
   getSecurityRefundDays,
   updateSecurityRefundDays,
+  getSecurityFee,
+  updateSecurityFee,
   getAllSecurityDeposits,
   getSecurityDepositByOrder,
   changeUserEmail,

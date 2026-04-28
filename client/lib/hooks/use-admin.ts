@@ -805,6 +805,28 @@ export const useUpdateSecurityRefundDays = () => {
   });
 };
 
+// Security Fee Configuration
+export const useSecurityFee = () => {
+  const http = useHttp();
+  return useQuery(http.get<{ type: string; value: number }>(["security-fee"], "/admin/settings/security-fee"));
+};
+
+export const useUpdateSecurityFee = () => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    ...http.post<{ type: string; value: number }, { type: string; value: number }>("/admin/settings/security-fee", {
+      onSuccess: () => {
+        sileo.success({ title: "Security fee configuration updated" });
+        queryClient.invalidateQueries({ queryKey: ["security-fee"] });
+      },
+      onError: (err: any) => {
+        sileo.error({ title: "Failed to update security fee", description: err.message });
+      }
+    })
+  });
+};
+
 // Admin Security Deposits
 export interface AdminSecurityDeposit {
   id: string;

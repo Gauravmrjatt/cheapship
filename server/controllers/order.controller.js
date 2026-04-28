@@ -275,7 +275,7 @@ const calculateRates = async (req, res) => {
       availableCouriers,
       serviceabilityData.data.recommended_courier_company_id
     );
-
+   console.log(serviceableCouriers)
     // Format the response and sanitize sensitive fields (exclude internal base rates and commission breakdowns)
     const formattedResponse = {
       pickup_location: {
@@ -596,9 +596,23 @@ const createOrder = async (req, res) => {
         select: { wallet_balance: true, security_deposit: true }
       });
 
+      // Fetch security fee configuration from settings
+      const [feeTypeSetting, feeValueSetting] = await Promise.all([
+        tx.systemSetting.findUnique({ where: { key: 'security_fee_type' } }),
+        tx.systemSetting.findUnique({ where: { key: 'security_fee_value' } })
+      ]);
+
+      const feeType = feeTypeSetting?.value || 'TIMES';
+      const feeValue = Number(feeValueSetting?.value) || 1;
+
       const orderAmount = Number(serverShippingCharge || 0);
-      const securityDepositAmount = orderAmount; // Same as order amount
-      const totalDeduction = orderAmount * 2; // 2x order amount for wallet deduction
+      let securityDepositAmount;
+      if (feeType === 'PERCENTAGE') {
+        securityDepositAmount = orderAmount * (feeValue / 100);
+      } else {
+        securityDepositAmount = orderAmount * feeValue;
+      }
+      const totalDeduction = orderAmount + securityDepositAmount;
 
       // New validation: Get undelivered orders (not including cancelled, delivered, RTO)
       // const undeliveredOrders = await tx.order.findMany({
@@ -745,7 +759,10 @@ const createOrder = async (req, res) => {
           franchise_commission_amount: Math.round(parseFloat(chosenCourier.franchise_commission_amount) * 100) / 100,
           cod_amount: payment_mode === 'COD' ? Math.round(parseFloat(cod_amount) * 100) / 100 : null,
           remittance_status: payment_mode === 'COD' ? 'PENDING' : 'NOT_APPLICABLE',
-          pickup_location: pickup_location || null
+          pickup_location: pickup_location || null,
+          security_fee: Math.round(parseFloat(securityDepositAmount) * 100) / 100,
+          security_fee_type: feeType,
+          security_fee_value: feeValue
         }
       });
 

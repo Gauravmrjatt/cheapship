@@ -84,6 +84,10 @@ router.post('/settings/security-refund', adminController.setSecurityRefundSchedu
 router.get('/settings/security-refund-days', adminController.getSecurityRefundDays);
 router.post('/settings/security-refund-days', adminController.updateSecurityRefundDays);
 
+// Security Fee Configuration (deduction type and value)
+router.get('/settings/security-fee', adminController.getSecurityFee);
+router.post('/settings/security-fee', adminController.updateSecurityFee);
+
 // Security Deposits
 router.get('/settings/security-deposits', adminController.getAllSecurityDeposits);
 router.get('/settings/security-deposits/:orderId', adminController.getSecurityDepositByOrder);

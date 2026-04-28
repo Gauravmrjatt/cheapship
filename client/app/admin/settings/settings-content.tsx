@@ -9,7 +9,9 @@ import {
   useCommissionLimits,
   useUpdateCommissionLimits,
   useSecurityRefundDays,
-  useUpdateSecurityRefundDays
+  useUpdateSecurityRefundDays,
+  useSecurityFee,
+  useUpdateSecurityFee
 } from "@/lib/hooks/use-admin";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,26 +24,32 @@ import {
   Loading03Icon,
   Layers01Icon,
   SlidersHorizontalIcon,
-  Calendar02Icon
+  Calendar02Icon,
+  ShieldIcon
 } from "@hugeicons/core-free-icons";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function AdminSettingsPage() {
   const { data: settings, isLoading } = useGlobalSettings();
   const { data: levelSetting, isLoading: levelsLoading } = useReferralLevelSetting();
   const { data: commissionLimits, isLoading: limitsLoading } = useCommissionLimits();
   const { data: refundDaysData, isLoading: refundDaysLoading } = useSecurityRefundDays();
+  const { data: securityFeeData, isLoading: securityFeeLoading } = useSecurityFee();
   const updateSettingsMutation = useUpdateGlobalSettings();
   const updateLevelSettingMutation = useUpdateReferralLevelSetting();
   const updateLimitsMutation = useUpdateCommissionLimits();
   const updateRefundDaysMutation = useUpdateSecurityRefundDays();
+  const updateSecurityFeeMutation = useUpdateSecurityFee();
 
   const [rate, setRate] = useState<number>(0);
   const [maxLevels, setMaxLevels] = useState<number>(3);
   const [minRate, setMinRate] = useState<number>(0);
   const [maxRate, setMaxRate] = useState<number>(100);
   const [refundDays, setRefundDays] = useState<number>(30);
+  const [securityFeeType, setSecurityFeeType] = useState<"TIMES" | "PERCENTAGE">("TIMES");
+  const [securityFeeValue, setSecurityFeeValue] = useState<number>(1);
 
-  const initialized = useRef({ rate: false, levels: false, limits: false, refundDays: false });
+  const initialized = useRef({ rate: false, levels: false, limits: false, refundDays: false, securityFee: false });
 
   useEffect(() => {
     if (settings?.rate !== undefined && !initialized.current.rate) {
@@ -72,6 +80,14 @@ export default function AdminSettingsPage() {
     }
   }, [refundDaysData]);
 
+  useEffect(() => {
+    if (securityFeeData && !initialized.current.securityFee) {
+      setSecurityFeeType(securityFeeData.type as "TIMES" | "PERCENTAGE");
+      setSecurityFeeValue(securityFeeData.value);
+      initialized.current.securityFee = true;
+    }
+  }, [securityFeeData]);
+
   const handleUpdateGlobal = () => {
     updateSettingsMutation.mutate({ rate });
   };
@@ -86,6 +102,10 @@ export default function AdminSettingsPage() {
 
   const handleUpdateRefundDays = () => {
     updateRefundDaysMutation.mutate({ days: refundDays });
+  };
+
+  const handleUpdateSecurityFee = () => {
+    updateSecurityFeeMutation.mutate({ type: securityFeeType, value: securityFeeValue });
   };
 
   return (
@@ -282,6 +302,74 @@ export default function AdminSettingsPage() {
                 </>
               ) : (
                 "Update Days"
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Security Fee Configuration Card */}
+        <Card className="rounded-2xl border-none shadow-sm bg-card/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HugeiconsIcon icon={ShieldIcon} className="size-5" />
+              Security Fee Deduction
+            </CardTitle>
+            <CardDescription>
+              Configure how security deposit is calculated when orders are created.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Deduction Type</Label>
+              <RadioGroup
+                value={securityFeeType}
+                onValueChange={(value) => setSecurityFeeType(value as "TIMES" | "PERCENTAGE")}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="TIMES" id="times" />
+                  <Label htmlFor="times" className="cursor-pointer">Times (×)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="PERCENTAGE" id="percentage" />
+                  <Label htmlFor="percentage" className="cursor-pointer">Percentage (%)</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="security-value">
+                {securityFeeType === "TIMES" ? "Multiplier Value" : "Percentage Value"}
+              </Label>
+              <Input 
+                id="security-value"
+                type="number" 
+                value={securityFeeValue} 
+                onChange={(e) => setSecurityFeeValue(parseFloat(e.target.value) || 0)}
+                className="font-bold text-lg h-12"
+                placeholder={securityFeeType === "TIMES" ? "1" : "50"}
+                min={securityFeeType === "PERCENTAGE" ? 0 : 0}
+                max={securityFeeType === "PERCENTAGE" ? 100 : undefined}
+                step={securityFeeType === "PERCENTAGE" ? 1 : 0.1}
+              />
+              <p className="text-xs text-muted-foreground">
+                {securityFeeType === "TIMES" 
+                  ? `Example: Value 2 means 2× order amount as security (₹100 order = ₹200 security)`
+                  : `Example: Value 50 means 50% of order amount as security (₹100 order = ₹50 security)`
+                }
+              </p>
+            </div>
+            <Button 
+              className="w-full h-11 font-bold" 
+              onClick={handleUpdateSecurityFee}
+              disabled={securityFeeLoading || updateSecurityFeeMutation.isPending}
+            >
+              {updateSecurityFeeMutation.isPending ? (
+                <>
+                  <HugeiconsIcon icon={Loading03Icon} className="mr-2 size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Update Security Fee"
               )}
             </Button>
           </CardContent>
