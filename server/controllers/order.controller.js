@@ -759,10 +759,7 @@ const createOrder = async (req, res) => {
           franchise_commission_amount: Math.round(parseFloat(chosenCourier.franchise_commission_amount) * 100) / 100,
           cod_amount: payment_mode === 'COD' ? Math.round(parseFloat(cod_amount) * 100) / 100 : null,
           remittance_status: payment_mode === 'COD' ? 'PENDING' : 'NOT_APPLICABLE',
-          pickup_location: pickup_location || null,
-          security_fee: Math.round(parseFloat(securityDepositAmount) * 100) / 100,
-          security_fee_type: feeType,
-          security_fee_value: feeValue
+          pickup_location: pickup_location || null
         }
       });
 

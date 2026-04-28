@@ -213,9 +213,6 @@ model Order {
   pickup_scheduled_date       DateTime?                 @db.Timestamp(6)
   pickup_location             String?                   @db.VarChar(255)
   etd                         String?                   @db.VarChar(50)
-  security_fee               Decimal?                  @db.Decimal(12, 2)
-  security_fee_type           String?                   @db.VarChar(20)
-  security_fee_value          Decimal?                  @db.Decimal(10, 2)
   order_pickup_address        OrderPickupAddress?
   order_receiver_address      OrderReceiverAddress?
   referral_commissions        OrderReferralCommission[]
