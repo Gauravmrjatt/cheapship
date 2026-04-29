@@ -2,14 +2,14 @@
 
 import React from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { AccountSetting03Icon, MoonCloudIcon, SunIcon } from '@hugeicons/core-free-icons';
+import { ComputerUserIcon, Moon02Icon, SunIcon } from '@hugeicons/core-free-icons';
 import { motion } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 
 const THEME_OPTIONS = [
 	{
-		icon: AccountSetting03Icon,
+		icon: ComputerUserIcon,
 		value: 'system',
 	},
 	{
@@ -17,7 +17,7 @@ const THEME_OPTIONS = [
 		value: 'light',
 	},
 	{
-		icon: MoonCloudIcon,
+		icon: Moon02Icon,
 		value: 'dark',
 	},
 ];

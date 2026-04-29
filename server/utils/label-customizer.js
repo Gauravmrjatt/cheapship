@@ -79,7 +79,7 @@ class LabelCustomizer {
             // ===============================
             // 6. Left Content
             // ===============================
-            firstPage.drawText('CHEAPSHIP', {
+            firstPage.drawText('CASHBACKWALLAH', {
                 x: margin + 12,
                 y: margin + 32,
                 size: 16,
@@ -100,7 +100,7 @@ class LabelCustomizer {
             // ===============================
             const rightPadding = 160;
 
-            firstPage.drawText('Insta: @cheapship.in', {
+            firstPage.drawText('Insta: @cashbackwallahuniverse', {
                 x: newWidth - rightPadding,
                 y: margin + 32,
                 size: 9,

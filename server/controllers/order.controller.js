@@ -49,8 +49,15 @@ const generateLabelAsync = async (orderId, shipmentId) => {
     const courierName = (order.courier_name || '').toLowerCase();
     let labelUrl;
 
-    if (courierName.includes('amazon') && order.label_url) {
-      labelUrl = await labelCustomizer.customize(order.label_url, orderId.toString());
+    if (courierName.includes('amazon')) {
+      const shipmentId = order.shiprocket_shipment_id;
+      if (shipmentId) {
+        const labelResult = await generateLabel([shipmentId]);
+        const freshLabelUrl = labelResult?.label_url;
+        if (freshLabelUrl) {
+          labelUrl = await labelCustomizer.customize(freshLabelUrl, orderId.toString());
+        }
+      }
     } else {
       labelUrl = await latexLabelGenerator.generate(order, order.user);
     }
@@ -1938,7 +1945,7 @@ const generateOrderLabel = async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
-
+    console.log(order);
     if (order.user_id !== userId) {
       return res.status(403).json({ message: 'You are not authorized to generate label for this order' });
     }
@@ -1950,8 +1957,15 @@ const generateOrderLabel = async (req, res) => {
     const courierName = (order.courier_name || '').toLowerCase();
     let labelUrl;
 
-    if (courierName.includes('amazon') && order.label_url) {
-      labelUrl = await labelCustomizer.customize(order.label_url, order.id.toString());
+    if (courierName.includes('amazon')) {
+      const shipmentId = order.shiprocket_shipment_id;
+      if (shipmentId) {
+        const labelResult = await generateLabel([shipmentId]);
+        const freshLabelUrl = labelResult?.label_url;
+        if (freshLabelUrl) {
+          labelUrl = await labelCustomizer.customize(freshLabelUrl, order.id.toString());
+        }
+      }
     } else {
       labelUrl = await latexLabelGenerator.generate(order, order.user);
     }
