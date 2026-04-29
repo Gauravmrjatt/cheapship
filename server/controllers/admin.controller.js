@@ -101,7 +101,7 @@ const getDashboardStats = async (req, res) => {
         _sum: { shipping_charge: true }
       }),
       prisma.commissionWithdrawal.count({ where: { status: 'PENDING' } }),
-      prisma.walletWithdrawal.count({ where: { status: 'PENDING' } }),
+      prisma.walletWithdrawal.count({ where: { status: { equals: 'PENDING' } } }),
       prisma.order.findMany({
         take: 5,
         orderBy: { created_at: 'desc' },

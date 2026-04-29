@@ -35,13 +35,19 @@ const requestWithdrawal = async (req, res) => {
       return res.status(400).json({ message: 'Insufficient wallet balance' });
     }
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Fetch security refund days from admin settings
+    const refundDaysSetting = await prisma.systemSetting.findUnique({
+      where: { key: 'security_refund_days' }
+    });
+    const refundDays = refundDaysSetting ? parseInt(refundDaysSetting.value) : 30;
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - refundDays);
 
     const recentOrder = await prisma.order.findFirst({
       where: {
         user_id: userId,
-        created_at: { gte: thirtyDaysAgo },
+        created_at: { gte: cutoffDate },
         shipment_status: { notIn: ['CANCELLED', 'RTO', 'RTO_DELIVERED'] }
       },
       orderBy: { created_at: 'desc' }
@@ -49,8 +55,9 @@ const requestWithdrawal = async (req, res) => {
 
     if (recentOrder) {
       return res.status(400).json({ 
-        message: 'You must wait 30 days after your last order to withdraw funds',
-        last_order_date: recentOrder.created_at
+        message: `You must wait ${refundDays} days after your last order to withdraw funds`,
+        last_order_date: recentOrder.created_at,
+        required_days: refundDays
       });
     }
 
@@ -201,13 +208,19 @@ const getWalletBalance = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Fetch security refund days from admin settings
+    const refundDaysSetting = await prisma.systemSetting.findUnique({
+      where: { key: 'security_refund_days' }
+    });
+    const refundDays = refundDaysSetting ? parseInt(refundDaysSetting.value) : 30;
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - refundDays);
 
     const recentOrder = await prisma.order.findFirst({
       where: {
         user_id: userId,
-        created_at: { gte: thirtyDaysAgo },
+        created_at: { gte: cutoffDate },
         shipment_status: { notIn: ['CANCELLED', 'RTO', 'RTO_DELIVERED'] }
       },
       orderBy: { created_at: 'desc' }
@@ -217,6 +230,7 @@ const getWalletBalance = async (req, res) => {
       wallet_balance: user.wallet_balance,
       is_withdrawable: !recentOrder,
       last_order_date: recentOrder?.created_at || null,
+      required_days: refundDays,
       has_bank_details: !!(user.bank_name || user.upi_id),
       upi_id: user.upi_id,
       bank_name: user.bank_name,

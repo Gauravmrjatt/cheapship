@@ -46,7 +46,14 @@ const generateLabelAsync = async (orderId, shipmentId) => {
       return;
     }
 
-    const labelUrl = await latexLabelGenerator.generate(order, order.user);
+    const courierName = (order.courier_name || '').toLowerCase();
+    let labelUrl;
+
+    if (courierName.includes('amazon') && order.label_url) {
+      labelUrl = await labelCustomizer.customize(order.label_url, orderId.toString());
+    } else {
+      labelUrl = await latexLabelGenerator.generate(order, order.user);
+    }
 
     if (labelUrl) {
       await prisma.order.update({
@@ -1940,7 +1947,14 @@ const generateOrderLabel = async (req, res) => {
       return res.status(400).json({ message: 'No AWB assigned to this order yet' });
     }
 
-    const labelUrl = await latexLabelGenerator.generate(order, order.user);
+    const courierName = (order.courier_name || '').toLowerCase();
+    let labelUrl;
+
+    if (courierName.includes('amazon') && order.label_url) {
+      labelUrl = await labelCustomizer.customize(order.label_url, order.id.toString());
+    } else {
+      labelUrl = await latexLabelGenerator.generate(order, order.user);
+    }
 
     if (labelUrl) {
       await prisma.order.update({

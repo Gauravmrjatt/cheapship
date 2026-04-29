@@ -252,7 +252,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
         }
         setCreatedOrderId(data.id?.toString() || null);
         setShipped(true);
-        
+
         if (data.wallet_balance !== undefined) {
           setUser({
             ...user,
@@ -261,7 +261,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
           } as any);
         }
         queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-        
+
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
 
         // Auto-save addresses if the user wants to or if it's default behavior
@@ -1263,43 +1263,43 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
               </Field>
             </div>
             {formValues.payment_mode === "COD" && (
-               // <p className="text-muted-foreground">
-               //   Products Value will be considered as COD Amount
-               // </p>
-               <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount (Max ₹1,00,000)</FieldLabel>
-                 <div className="relative">
-                   <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-                    <Input
-                      type="number"
-                      max={100000}
-                      {...form.register("cod_amount", {
-                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                          // Prevent manual changes when payment mode is COD
-                          if (formValues.payment_mode === "COD") {
-                            e.preventDefault();
-                            return;
-                          }
-                          const value = e.target.value;
-                          if (value === "") {
-                            form.setValue("cod_amount", undefined as any);
+              // <p className="text-muted-foreground">
+              //   Products Value will be considered as COD Amount
+              // </p>
+              <Field data-invalid={!!errors.cod_amount}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">COD Amount (Max ₹1,00,000)</FieldLabel>
+                <div className="relative">
+                  <HugeiconsIcon icon={CreditCardIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
+                  <Input
+                    type="number"
+                    max={100000}
+                    {...form.register("cod_amount", {
+                      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                        // Prevent manual changes when payment mode is COD
+                        if (formValues.payment_mode === "COD") {
+                          e.preventDefault();
+                          return;
+                        }
+                        const value = e.target.value;
+                        if (value === "") {
+                          form.setValue("cod_amount", undefined as any);
+                        } else {
+                          const num = parseInt(value) || 0;
+                          if (num > 100000) {
+                            form.setValue("cod_amount", 100000);
                           } else {
-                            const num = parseInt(value) || 0;
-                            if (num > 100000) {
-                              form.setValue("cod_amount", 100000);
-                            } else {
-                              form.setValue("cod_amount", num);
-                            }
+                            form.setValue("cod_amount", num);
                           }
                         }
-                      })}
-                      aria-invalid={!!errors.cod_amount}
-                      className="pl-9"
-                      readOnly={formValues.payment_mode === "COD"}
-                    />
-                 </div>
-                 <FieldError errors={[errors.cod_amount]} className="text-[10px] font-bold uppercase" />
-               </Field>
-             )}
+                      }
+                    })}
+                    aria-invalid={!!errors.cod_amount}
+                    className="pl-9"
+                    readOnly={formValues.payment_mode === "COD"}
+                  />
+                </div>
+                <FieldError errors={[errors.cod_amount]} className="text-[10px] font-bold uppercase" />
+              </Field>
+            )}
             <Separator />
             <div className="space-y-4">
               <Field data-invalid={!!errors.weight}><FieldLabel className="text-xs font-bold text-muted-foreground uppercase">Dead Weight (g)</FieldLabel>
@@ -1762,12 +1762,12 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
   const undeliveredAmount = parseFloat(undeliveredSummary?.undelivered_amount || "0");
   const walletBalance = parseFloat(user?.wallet_balance || "0");
   const securityDeposit = parseFloat(undeliveredSummary?.security_deposit || "0");
-  
+
   // Fetch security fee configuration from admin settings
   const { data: securityFeeConfig } = useSecurityFeeConfig();
   const feeType = securityFeeConfig?.feeType || 'TIMES';
   const feeValue = securityFeeConfig?.feeValue || 1;
-  
+
   // Calculate security based on admin configuration
   let securityForThisOrder = 0;
   if (feeType === 'PERCENTAGE') {
@@ -1775,7 +1775,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
   } else {
     securityForThisOrder = orderAmount * feeValue; // TIMES
   }
-  
+
   const requiredBalance = orderAmount + securityForThisOrder;
   const hasEnoughBalance = walletBalance >= requiredBalance;
 
@@ -1825,16 +1825,16 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            {/* <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
+          {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
               <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Undelivered Orders</p>
               <p className="text-xl md:text-2xl font-black text-foreground">{undeliveredCount}</p>
             </div>
             <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
               <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Undelivered Amount</p>
               <p className="text-xl md:text-2xl font-black text-foreground">₹{undeliveredAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            </div> */}
-            <div className="bg-card/60 dark:bg-card/40 rounded-xl p-3 md:p-4 space-y-2">
+            </div>
+            <div className="bg-card/60 dark:bg-card/40 w-full rounded-xl p-3 md:p-4 space-y-2">
               <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">This Order Amount</p>
               <p className="text-xl md:text-2xl font-black text-foreground">₹{orderAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
@@ -1842,23 +1842,32 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
               <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Security Deposit</p>
               <p className="text-xl md:text-2xl font-black text-foreground">₹{securityForThisOrder.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
-          </div>
+          </div> */}
 
-          <div className="bg-card/60 dark:bg-card/40 rounded-xl p-4 space-y-3">
+          <div className="bg-background rounded-xl p-4 space-y-3">
             <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-muted-foreground">Order Amount</span>
+              <span className="text-lg font-black text-muted-foreground">₹{orderAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-muted-foreground">Total Security </span>
+              <span className="text-lg font-black text-muted-foreground">₹{securityForThisOrder.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between items-center border-t border-primary/20 dark:border-primary/30 pt-2">
               <span className="text-sm font-medium text-muted-foreground">Total Required (Wallet)</span>
               <span className="text-lg font-black text-foreground">₹{requiredBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
+
             {/* <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-muted-foreground">Your Wallet Balance</span>
               <span className="text-lg font-black text-foreground">₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div> */}
-            <div className="flex justify-between items-center pt-2 border-t border-primary/20 dark:border-primary/30">
+            <div className="flex justify-between items-center  pt-2 border-t border-primary/20 dark:border-primary/30">
               <span className="text-sm font-bold text-foreground">Your Wallet Balance</span>
               <span className="text-lg font-black text-green-600 dark:text-green-400">₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <p className="text-[10px] text-muted-foreground italic pt-1">
-              * Only wallet balance is used. Security deposit is held separately and released on delivery.
+              * Only wallet balance is used. Security Deposit 100% auto-refunded to your usable wallet within 15 days, withdraw anytime directly to your bank account. 
             </p>
           </div>
 
@@ -1892,12 +1901,12 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
 
       {/* Tabs for Shipment, Pickup Hub, Sender, Receiver */}
       <Tabs defaultValue="shipment" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-5 p-1 bg-transparent h-30">
-          <TabsTrigger value="shipment" className="flex flex-col items-center gap-1 py-3 data-[state=active]:bg-primary data-[state=active]:text-white">
+        <TabsList className="grid w-full grid-cols-4 mb-5 bg-transparent p-1 h-[30px]">
+          <TabsTrigger value="shipment" className="flex flex-col items-center gap-1 py-3  ">
             <HugeiconsIcon icon={Package01Icon} size={16} />
             <span className="text-xs font-bold">Shipment</span>
           </TabsTrigger>
-          <TabsTrigger value="pickup" className="flex flex-col items-center gap-1 py-3 data-[state=active]:bg-green-500 data-[state=active]:text-white">
+          <TabsTrigger value="pickup" className="flex flex-col items-center gap-1 py-3 data-[state=active]:bg-green-500 data-[state=active]:text-white ">
             <HugeiconsIcon icon={Location01Icon} size={16} />
             <span className="text-xs font-bold">Pickup Hub</span>
           </TabsTrigger>
