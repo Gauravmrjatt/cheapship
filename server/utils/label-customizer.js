@@ -94,7 +94,7 @@ class LabelCustomizer {
                 font: fontRegular,
                 color: rgb(0.2, 0.2, 0.2),
             });
-
+ 
             // ===============================
             // 7. RIGHT SIDE (FIXED POSITION)
             // ===============================

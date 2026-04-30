@@ -39,19 +39,11 @@ const updateKyc = async (req, res) => {
       select: { kyc_status: true }
     });
 
-    const hasAnyKyc = pan_number || aadhaar_number || gst_number;
-    if (hasAnyKyc) {
-      if (user?.kyc_status === 'REJECTED') {
-        updateData.kyc_status = 'SUBMITTED';
-        updateData.pan_verified = false;
-        updateData.aadhaar_verified = false;
-        updateData.gst_verified = false;
-      } else {
-        updateData.kyc_status = 'VERIFIED';
-        updateData.pan_verified = true;
-        updateData.aadhaar_verified = true;
-        updateData.gst_verified = true;
-      }
+    if (pan_number || aadhaar_number || gst_number) {
+      updateData.kyc_status = 'SUBMITTED';
+      updateData.pan_verified = false;
+      updateData.aadhaar_verified = false;
+      updateData.gst_verified = false;
     }
 
     await prisma.user.update({

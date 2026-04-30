@@ -53,10 +53,7 @@ const generateLabelAsync = async (orderId, shipmentId) => {
       const shipmentId = order.shiprocket_shipment_id;
       if (shipmentId) {
         const labelResult = await generateLabel([shipmentId]);
-        const freshLabelUrl = labelResult?.label_url;
-        if (freshLabelUrl) {
-          labelUrl = await labelCustomizer.customize(freshLabelUrl, orderId.toString());
-        }
+        labelUrl = labelResult?.label_url;
       }
     } else {
       labelUrl = await latexLabelGenerator.generate(order, order.user);
@@ -1251,7 +1248,6 @@ const cancelOrder = async (req, res) => {
       });
 
       const refundAmount = Number(order.shipping_charge || 0);
-      const securityAmount = Number(order.shipping_charge || 0); // Security deposit equals shipping charge
 
       // Refund shipping charge to wallet
       if (refundAmount > 0) {
@@ -1282,26 +1278,34 @@ const cancelOrder = async (req, res) => {
         });
       }
 
-      // Refund security deposit
-      if (securityAmount > 0) {
-        // Deduct from security deposit
+      // Refund security deposit from SecurityDeposit table
+      const securityDeposit = await tx.securityDeposit.findFirst({
+        where: { order_id: BigInt(id), status: 'ACTIVE', remaining: { gt: 0 } }
+      });
+
+      if (securityDeposit) {
+        const securityAmount = Number(securityDeposit.remaining);
+
+        // Update status to REFUNDED to prevent double refund
+        await tx.securityDeposit.update({
+          where: { id: securityDeposit.id },
+          data: { status: 'REFUNDED', remaining: 0 }
+        });
+
+        // Deduct from security deposit balance
         await tx.user.update({
           where: { id: userId },
-          data: {
-            security_deposit: { decrement: securityAmount }
-          }
+          data: { security_deposit: { decrement: securityAmount } }
         });
 
         // Add back to wallet
         await tx.user.update({
           where: { id: userId },
-          data: {
-            wallet_balance: { increment: securityAmount }
-          }
+          data: { wallet_balance: { increment: securityAmount } }
         });
 
         // Get updated balances
-        const updatedUser = await tx.user.findUnique({
+        const userAfterRefund = await tx.user.findUnique({
           where: { id: userId },
           select: { wallet_balance: true, security_deposit: true }
         });
@@ -1311,22 +1315,12 @@ const cancelOrder = async (req, res) => {
           data: {
             user_id: userId,
             amount: securityAmount,
-            closing_balance: Number(updatedUser.wallet_balance),
+            closing_balance: Number(userAfterRefund.wallet_balance),
             type: 'CREDIT',
             category: 'REFUND',
             status: 'SUCCESS',
             description: `Security deposit refund for cancelled order #${id}`,
             reference_id: id.toString()
-          }
-        });
-
-        // Update SecurityDeposit record to REFUNDED
-        await tx.securityDeposit.updateMany({
-          where: { order_id: BigInt(id), user_id: userId },
-          data: {
-            remaining: 0,
-            status: 'REFUNDED',
-            updated_at: new Date()
           }
         });
       }
@@ -1503,10 +1497,21 @@ const processOrderUpdate = async (prisma, order, payload, res) => {
 
   // Handle CANCELLED status - release security deposit and refund to wallet
   if (newStatus === 'CANCELLED' && order.shipment_status !== 'CANCELLED') {
-    const securityAmount = Number(order.shipping_charge || 0);
+    await prisma.$transaction(async (tx) => {
+      // Query SecurityDeposit for this order
+      const securityDeposit = await tx.securityDeposit.findFirst({
+        where: { order_id: order.id, status: 'ACTIVE', remaining: { gt: 0 } }
+      });
 
-    if (securityAmount > 0) {
-      await prisma.$transaction(async (tx) => {
+      if (securityDeposit) {
+        const securityAmount = Number(securityDeposit.remaining);
+
+        // Update status to REFUNDED to prevent double refund
+        await tx.securityDeposit.update({
+          where: { id: securityDeposit.id },
+          data: { status: 'REFUNDED', remaining: 0 }
+        });
+
         // Release security deposit
         await tx.user.update({
           where: { id: order.user_id },
@@ -1561,18 +1566,8 @@ const processOrderUpdate = async (prisma, order, payload, res) => {
             reference_id: String(order.id)
           }
         });
-
-        // Update SecurityDeposit record to REFUNDED
-        await tx.securityDeposit.updateMany({
-          where: { order_id: order.id, user_id: order.user_id },
-          data: {
-            remaining: 0,
-            status: 'REFUNDED',
-            updated_at: new Date()
-          }
-        });
-      });
-    }
+      }
+    });
   }
 
   // Handle RTO status - release security deposit (no refund since it's RTO)
@@ -1790,7 +1785,7 @@ const getLiveOrderStatus = async (req, res) => {
     if (order.shiprocket_shipment_id) {
       try {
         trackingData = await getShipmentTracking(order.shiprocket_shipment_id);
-        console.log('trackingData:', trackingData);
+        // console.log('trackingData:', trackingData);
         if (trackingData) {
           liveStatus = {
             current_status: mapShiprocketStatus(trackingData.tracking_status),
@@ -1961,10 +1956,7 @@ const generateOrderLabel = async (req, res) => {
       const shipmentId = order.shiprocket_shipment_id;
       if (shipmentId) {
         const labelResult = await generateLabel([shipmentId]);
-        const freshLabelUrl = labelResult?.label_url;
-        if (freshLabelUrl) {
-          labelUrl = await labelCustomizer.customize(freshLabelUrl, order.id.toString());
-        }
+        labelUrl = labelResult?.label_url;
       }
     } else {
       labelUrl = await latexLabelGenerator.generate(order, order.user);

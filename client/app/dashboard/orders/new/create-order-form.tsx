@@ -1853,6 +1853,9 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
               <span className="text-sm font-medium text-muted-foreground">Total Security </span>
               <span className="text-lg font-black text-muted-foreground">₹{securityForThisOrder.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
+            <p className="text-[10px] text-muted-foreground italic pt-1">
+              * Total Security ( 100% refundable in 15 days to your bank account, withdraw any time from wallet )
+            </p>
             <div className="flex justify-between items-center border-t border-primary/20 dark:border-primary/30 pt-2">
               <span className="text-sm font-medium text-muted-foreground">Total Required (Wallet)</span>
               <span className="text-lg font-black text-foreground">₹{requiredBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1867,7 +1870,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
               <span className="text-lg font-black text-green-600 dark:text-green-400">₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <p className="text-[10px] text-muted-foreground italic pt-1">
-              * Only wallet balance is used. Security Deposit 100% auto-refunded to your usable wallet within 15 days, withdraw anytime directly to your bank account. 
+              * Only wallet balance is used.
             </p>
           </div>
 

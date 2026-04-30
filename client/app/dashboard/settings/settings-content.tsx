@@ -418,8 +418,8 @@ function KycTab({ http }: { http: any }) {
   const { mutate: updateKyc, isPending: isUpdating } = useMutation(
     http.put("/auth/kyc", {
       onSuccess: () => {
-        sileo.success({ title: "KYC details updated successfully" });
-        setUser({ ...user!, kyc_status: "VERIFIED" });
+        sileo.success({ title: "KYC details submitted for verification" });
+        setUser({ ...user!, kyc_status: "SUBMITTED" });
         queryClient.invalidateQueries({ queryKey: ["kyc-status"] });
         queryClient.invalidateQueries({ queryKey: ["me"] });
         queryClient.invalidateQueries({ queryKey: ["user-profile"] });

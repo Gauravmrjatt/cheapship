@@ -18,6 +18,7 @@ export default function Dashboard() {
 
   const kycStatus = user?.kyc_status;
   const needsKycAction = kycStatus === "PENDING" || kycStatus === "REJECTED";
+  const isSubmitted = kycStatus === "SUBMITTED";
   
   const hasCodEnabled = kycStatus === "VERIFIED";
   const needsUpi =  !user?.upi_id || user?.upi_id === "";
@@ -57,6 +58,34 @@ export default function Dashboard() {
                   onClick={() => router.push("/dashboard/settings?tab=kyc")}
                 >
                   {kycStatus === "REJECTED" ? "Resubmit KYC" : "Verify Now"}
+                  <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        {isSubmitted && (
+          <div className="px-4 lg:px-6 pt-4">
+            <Card className="border-blue-600 bg-blue-600/10 shadow-none rounded-2xl">
+              <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl shrink-0 bg-blue-100 text-blue-600">
+                    <HugeiconsIcon icon={Shield01Icon} size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-foreground">
+                      KYC Submitted - Pending Verification
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Your KYC documents have been submitted and are under review by our team.
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-xl flex items-center gap-2"
+                  onClick={() => router.push("/dashboard/settings?tab=kyc")}
+                >
+                  View Status
                   <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
                 </Button>
               </CardContent>

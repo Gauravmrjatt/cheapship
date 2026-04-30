@@ -115,12 +115,12 @@ export function CalculatorContent() {
     defaultValues: {
       pickupPincode: "",
       deliveryPincode: "",
-      actualWeight: 500,
+      actualWeight: "" as any,
       length: 0,
       width: 0,
       height: 0,
       paymentType: "PREPAID",
-      shipmentValue: 500,
+      shipmentValue: "" as any,
       dangerousGoods: false,
     },
   });
@@ -623,7 +623,7 @@ export function CalculatorContent() {
                     <span className="text-primary"> Save Bigger</span>
                   </h1>
                   <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-                    Compare shipping rates from 25+ carriers in seconds. Save up to 40% on every shipment with India&apos;s smartest logistics platform.
+                    Just ₹21 shipping for both prepaid & COD orders with Zero COD charges.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Link href="/dashboard">
