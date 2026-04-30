@@ -1,11 +1,17 @@
 require('dotenv').config();
 
 const Sentry = require('@sentry/node');
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  tracesSampleRate: 1.0,
-});
-Sentry.addIntegration(Sentry.expressIntegration());
+const sentryDsn = process.env.SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    tracesSampleRate: 1.0,
+  });
+  Sentry.addIntegration(Sentry.expressIntegration());
+  console.log('✅ Sentry initialized with DSN:', sentryDsn.substring(0, 30) + '...');
+} else {
+  console.warn('⚠️ SENTRY_DSN not set - Sentry disabled');
+}
 
 const createError = require('http-errors');
 const express = require('express');
