@@ -54,7 +54,9 @@ const swaggerSpec = require('./swagger');
 
 app.use('/api/v1', require("./routes/v1.route"));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+app.get('/error', (req, res) => {
+  throw new Error('Test Error');
+});
 /* ==============================
    Health Check Route
 ============================== */

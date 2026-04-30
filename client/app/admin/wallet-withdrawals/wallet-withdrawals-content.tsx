@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useAdminWalletWithdrawals, useProcessWalletWithdrawal, AdminWalletWithdrawal } from "@/lib/hooks/use-wallet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ import {
   Time04Icon,
   RefreshIcon
 } from "@hugeicons/core-free-icons";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function WalletWithdrawalsContent() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -239,6 +240,58 @@ export default function WalletWithdrawalsContent() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {processStatus === "APPROVED" && paymentMethod === "UPI" && selectedWithdrawal?.user?.upi_id && (
+                  <Tabs defaultValue="UPI" className="w-full">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="UPI" className="flex-1">UPI</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="UPI" className="space-y-2">
+                      <div className="p-3 bg-muted rounded-lg flex flex-col items-center justify-center gap-2">
+                        <Image 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`upi://pay?pa=${selectedWithdrawal?.user?.upi_id}&am=${Number(selectedWithdrawal?.amount || 0)}`)}`}
+                          alt="UPI QR Code" 
+                          width={120} 
+                          height={120} 
+                          className="rounded-md shadow-sm bg-white p-2"
+                        />
+                        <p className="text-xs font-medium text-center">{selectedWithdrawal?.user?.upi_id}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Amount: ₹{Number(selectedWithdrawal?.amount || 0).toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
+
+                {processStatus === "APPROVED" && paymentMethod === "BANK" && selectedWithdrawal?.user?.bank_name && (
+                  <Tabs defaultValue="BANK" className="w-full">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="BANK" className="flex-1">Bank Transfer</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="BANK" className="space-y-2">
+                      <div className="p-3 bg-muted rounded-lg space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Bank:</span>
+                          <span className="font-medium">{selectedWithdrawal?.user?.bank_name || "N/A"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Beneficiary:</span>
+                          <span className="font-medium">{selectedWithdrawal?.user?.beneficiary_name || "N/A"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Account:</span>
+                          <span className="font-medium">{selectedWithdrawal?.user?.account_number || "N/A"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">IFSC:</span>
+                          <span className="font-medium">{selectedWithdrawal?.user?.ifsc_code || "N/A"}</span>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
+
                 <div className="space-y-2">
                   <Label>Reference / Transaction ID</Label>
                   <Input 
