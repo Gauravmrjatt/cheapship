@@ -365,6 +365,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section> */}
+    
         <div className="mt-8 z-8 flex justify-center w-full">
           <CalculatorContent />
         </div>

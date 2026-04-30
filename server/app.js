@@ -6,6 +6,7 @@ if (sentryDsn) {
   Sentry.init({
     dsn: sentryDsn,
     tracesSampleRate: 1.0,
+    environment: process.env.NODE_ENV || 'development',
   });
   Sentry.addIntegration(Sentry.expressIntegration());
   console.log('✅ Sentry initialized with DSN:', sentryDsn.substring(0, 30) + '...');
@@ -57,7 +58,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
-app.all('/', (req,res) => {
+app.all('/', (req, res) => {
   res.send("hi")
 });
 app.use('/api/v1', require("./routes/v1.route"));
