@@ -57,7 +57,9 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
-
+app.all('/', () => {
+  res.send("hi")
+});
 app.use('/api/v1', require("./routes/v1.route"));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/error', (req, res) => {
