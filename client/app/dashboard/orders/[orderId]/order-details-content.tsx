@@ -207,7 +207,7 @@ export default function OrderDetailsPage({
             </Button>
           )}
 
-          {hasAWB && !order.label_url && (
+          {hasAWB && !order.label_url && order.shipment_status != "RTO" && (
             <Button
               onClick={handleGenerateLabel}
               disabled={generateLabelMutation.isPending}
@@ -219,7 +219,7 @@ export default function OrderDetailsPage({
             </Button>
           )}
 
-          {hasAWB && !order.pickup_scheduled_date && (
+          {hasAWB && !order.pickup_scheduled_date && order.shipment_status != "RTO" && (
             <Button
               onClick={() => setShowSchedulePickupDialog(true)}
               disabled={schedulePickupMutation.isPending}

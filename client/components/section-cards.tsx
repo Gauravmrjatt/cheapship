@@ -75,7 +75,7 @@ export function SectionCards({
       icon: Cancel01Icon,
       footer: "Returned to origin shipments",
       trend: "down",
-      status: "RTO_IN_TRANSIT",
+      status: "RTO",
       clickable: true,
     },
     {

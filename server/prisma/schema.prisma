@@ -452,6 +452,7 @@ enum TransactionCategory {
   SECURITY_DEPOSIT
   WEIGHT_DISPUTE
   RTO_CHARGE
+  WITHDRAWAL_REQUEST
 }
 
 enum TransactionStatus {
