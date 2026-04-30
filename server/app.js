@@ -1,4 +1,12 @@
 require('dotenv').config();
+
+const Sentry = require('@sentry/node');
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  tracesSampleRate: 1.0,
+});
+Sentry.addIntegration(Sentry.expressIntegration());
+
 const createError = require('http-errors');
 const express = require('express');
 const path = require('path');
@@ -36,7 +44,6 @@ app.use(cors());
 
 // Logging
 app.use(logger('dev'));
-console.log("CHEAPSHIP SERVER INITIALIZING WITH FRANCHISE ROUTES");
 
 // Body parsing
 app.use(express.json());
@@ -70,15 +77,21 @@ app.get('/health', async (req, res) => {
 
 /* ==============================
    404 Handler
-============================== */
+ ============================== */
 
 app.use((req, res, next) => {
   next(createError(404, "Route Not Found"));
 });
 
 /* ==============================
+   Sentry Error Handler
+ ============================== */
+
+app.use(Sentry.expressErrorHandler());
+
+/* ==============================
    Global Error Handler
-============================== */
+ ============================== */
 
 app.use((err, req, res, next) => {
   const isDev = req.app.get('env') === 'development';
