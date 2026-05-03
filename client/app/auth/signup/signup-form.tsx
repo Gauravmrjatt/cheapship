@@ -68,12 +68,16 @@ export default function SignUpForm() {
   const { setToken, setUser } = useAuth();
   const firebaseOtp = useFirebaseOtp();
 
-  // Pre-load reCAPTCHA on mount for faster OTP sending
+  // Ensure reCAPTCHA container exists on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const container = document.getElementById("recaptcha-container");
-      if (container) {
-        container.style.display = "block";
+      if (!container) {
+        const newContainer = document.createElement("div");
+        newContainer.id = "recaptcha-container";
+        newContainer.setAttribute("data-recaptcha", "true");
+        newContainer.style.cssText = "position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;";
+        document.body.appendChild(newContainer);
       }
     }
   }, []);
@@ -139,7 +143,7 @@ export default function SignUpForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile }),
       });
-      const data = await response.json();
+      const data = await response.json() as { exists?: boolean };
       return data.exists === true;
     } catch (error) {
       console.error('Error checking mobile:', error);
@@ -451,8 +455,6 @@ export default function SignUpForm() {
           </CardFooter>
         </form>
       )}
-
-      <div id="recaptcha-container" style={{ position: "absolute", left: "-9999px" }} />
 
       {/* Digital Agreement Dialog */}
       <Dialog open={state.showAgreementDialog} onOpenChange={(open) => !open && handleAgreementDeclined()}>

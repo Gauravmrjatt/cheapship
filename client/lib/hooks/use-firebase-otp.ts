@@ -31,6 +31,7 @@ const getFirebaseApp = () => {
 declare global {
   interface Window {
     recaptchaVerifier?: RecaptchaVerifier;
+    recaptchaContainerExists?: boolean;
   }
 }
 
@@ -61,6 +62,58 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
     firebaseConfig.apiKey !== "your_api_key"
   );
 
+  const initializeRecaptcha = (auth: ReturnType<typeof getAuth>) => {
+    const container = document.getElementById("recaptcha-container");
+    if (!container) {
+      console.warn("Recaptcha container not found, retrying...");
+      setTimeout(() => {
+        if (document.getElementById("recaptcha-container")) {
+          initializeRecaptcha(auth);
+        }
+      }, 500);
+      return;
+    }
+
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = undefined;
+    }
+
+    try {
+      const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "invisible",
+        callback: () => {
+          console.log("Recaptcha verified");
+        },
+        "expired-callback": () => {
+          setError("Recaptcha expired. Please try again.");
+          setIsVerifierReady(false);
+        },
+        "error-callback": (error: string) => {
+          console.error("Recaptcha error:", error);
+          setError("reCAPTCHA error. Please try again.");
+          setIsVerifierReady(false);
+        },
+      });
+
+      window.recaptchaVerifier = verifier;
+      window.recaptchaContainerExists = true;
+      
+      verifier.render().then(() => {
+        console.log("reCAPTCHA ready");
+        setIsVerifierReady(true);
+        setError(null);
+      }).catch((err) => {
+        console.error("Recaptcha render error:", err);
+        setError("reCAPTCHA failed to load. Please refresh the page.");
+        setIsVerifierReady(false);
+      });
+    } catch (err) {
+      console.error("Failed to create RecaptchaVerifier:", err);
+      setError("reCAPTCHA initialization failed. Please refresh and try again.");
+    }
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -72,30 +125,8 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
     const auth = getAuth(app);
     authRef.current = auth;
 
-    if (!window.recaptchaVerifier) {
-      try {
-        const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-          size: "invisible",
-          callback: () => {
-            console.log("Recaptcha verified");
-          },
-          "expired-callback": () => {
-            setError("Recaptcha expired. Please try again.");
-            setIsVerifierReady(false);
-          },
-        });
-
-        window.recaptchaVerifier = verifier;
-        
-        verifier.render().then(() => {
-          console.log("reCAPTCHA ready");
-          setIsVerifierReady(true);
-        }).catch((err) => {
-          console.error("Recaptcha render error:", err);
-        });
-      } catch (err) {
-        console.error("Failed to create RecaptchaVerifier:", err);
-      }
+    if (!window.recaptchaVerifier || !window.recaptchaContainerExists) {
+      initializeRecaptcha(auth);
     } else {
       setIsVerifierReady(true);
     }
@@ -112,8 +143,17 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
       return { success: false, error: "Firebase not configured. Please add Firebase credentials to .env" };
     }
 
-    if (!authRef.current || !window.recaptchaVerifier) {
+    if (!authRef.current) {
       return { success: false, error: "Firebase not initialized. Please refresh and try again." };
+    }
+
+    if (!window.recaptchaVerifier || !window.recaptchaContainerExists) {
+      console.log("Reinitializing reCAPTCHA...");
+      initializeRecaptcha(authRef.current);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!window.recaptchaVerifier) {
+        return { success: false, error: "reCAPTCHA failed to initialize. Please try again." };
+      }
     }
 
     isMountedRef.current = true;
@@ -137,7 +177,17 @@ export function useFirebaseOtp(): UseFirebaseOtpReturn {
     } catch (err: any) {
       if (!isMountedRef.current) return { success: false, error: "Component unmounted" };
       setLoading(false);
-      const errorMessage = err.message || "Failed to send OTP";
+      
+      let errorMessage = err.message || "Failed to send OTP";
+      
+      if (errorMessage.includes("reCAPTCHA") || errorMessage.includes("recaptcha")) {
+        console.log("Recaptcha error detected, reinitializing...");
+        window.recaptchaVerifier = undefined;
+        window.recaptchaContainerExists = false;
+        initializeRecaptcha(authRef.current);
+        errorMessage = "reCAPTCHA expired. Please try again.";
+      }
+      
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }

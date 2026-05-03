@@ -18,17 +18,31 @@ const geistMono = Geist_Mono({
 import Providers from "./providers";
 import { Toaster } from "sileo";
 import { ThemeProvider } from "./theme-provider";
+import { PwaBanners } from "@/components/ui/pwa-banners";
 
 export const metadata: Metadata = {
   icons: {
     icon: "/logo.jpg",
     apple: "/logo.jpg",
   },
+  manifest: "/manifest.json",
   title: {
     template: "%s | Cashbackwallah",
     default: "Cashbackwallah - Shipping and Logistics Solutions",
   },
   description: "Efficient and affordable shipping and logistics management for businesses.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Cashbackwallah",
+  },
+};
+
+export const viewport = {
+  themeColor: '#6469F0',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -48,14 +62,13 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Providers>
-          
+              <PwaBanners />
               <Toaster options={{
                 fill: "#171717",
                 styles: { description: "text-white/75!" },
               }} position="top-center" />
               {children}
               <CommandPalette />
-         
           </Providers>
         </ThemeProvider>
       </body>
