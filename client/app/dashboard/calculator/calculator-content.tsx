@@ -289,6 +289,11 @@ export default function RateCalculatorPage() {
                       <Input
                         {...form.register("pickupPincode")}
                         placeholder="000000"
+                        maxLength={6}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          form.setValue("pickupPincode", value);
+                        }}
                         className={cn("font-medium", !isPickupValid && formValues.pickupPincode?.length === 6 && "border-destructive")}
                       />
                       {isLoadingPickup ? (
@@ -306,7 +311,12 @@ export default function RateCalculatorPage() {
                       <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Delivery Pincode</FieldLabel>
                       <Input
                         {...form.register("deliveryPincode")}
-                        placeholder="0000000"
+                        placeholder="000000"
+                        maxLength={6}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          form.setValue("deliveryPincode", value);
+                        }}
                         className={cn("font-medium", !isDeliveryValid && formValues.deliveryPincode?.length === 6 && "border-destructive")}
                       />
                       {isLoadingDelivery ? (

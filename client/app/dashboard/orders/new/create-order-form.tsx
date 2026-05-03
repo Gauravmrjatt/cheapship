@@ -899,6 +899,11 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
                         {...pickupForm.register("phone")}
                         aria-invalid={!!pickupForm.formState.errors.phone}
                         placeholder="Mobile Number"
+                        maxLength={10}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          pickupForm.setValue("phone", value);
+                        }}
                         className="pl-9"
                       />
                     </div>
@@ -963,6 +968,11 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
                         {...pickupForm.register("pin_code")}
                         aria-invalid={!!pickupForm.formState.errors.pin_code}
                         placeholder="000000"
+                        maxLength={6}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          pickupForm.setValue("pin_code", value);
+                        }}
                         className={cn(
                           "font-bold tracking-widest pl-9",
                           sheetPincodeData?.postcode_details &&
@@ -1233,6 +1243,11 @@ function StepOne({ form, fields, append, remove, allSuggestions, formValues, isL
                   {...form.register("receiver_address.pincode")}
                   aria-invalid={!!errors.receiver_address?.pincode}
                   placeholder="000000"
+                  maxLength={6}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    form.setValue("receiver_address.pincode", value);
+                  }}
                   className={cn("h-10", !isDeliveryValid && formValues.receiver_address.pincode?.length === 6 && "border-destructive")}
                 />
                 {isLoadingDelivery ? <p className="text-[10px] text-muted-foreground mt-1 animate-pulse">Verifying...</p> : isDeliveryValid ? <p className="text-[10px] text-green-600 font-bold mt-1 uppercase tracking-tight">{deliveryLocality?.data?.postcode_details?.city || deliveryLocality?.postcode_details?.city}</p> : formValues.receiver_address.pincode?.length === 6 && <p className="text-[10px] text-destructive font-bold mt-1 uppercase tracking-tight">Invalid</p>}
@@ -2206,6 +2221,7 @@ function AddressFormCard({ prefix, title, icon: Icon, savedAddresses, onSelect, 
                   onChange={handlePhoneChange}
                   aria-invalid={!!fieldErrors?.phone}
                   className="pl-9"
+                  maxLength={10}
                 />
               </div>
               <FieldError errors={[fieldErrors?.phone]} className="text-[10px] font-bold uppercase ml-1" />
@@ -2227,6 +2243,11 @@ function AddressFormCard({ prefix, title, icon: Icon, savedAddresses, onSelect, 
                 <Input
                   readOnly={readOnlyPincode}
                   placeholder="000000"
+                  maxLength={6}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    form.setValue(`${prefix}.pincode`, value, { shouldValidate: true });
+                  }}
                   {...form.register(`${prefix}.pincode`)}
                   aria-invalid={!!fieldErrors?.pincode}
                   className={cn("pl-9 font-bold", readOnlyPincode && "bg-muted/50 cursor-not-allowed")}

@@ -165,18 +165,20 @@ export function CalculatorContent() {
   }, []);
 
   const handlePickupPincodeChange = (value: string) => {
-    form.setValue("pickupPincode", value);
-    if (value.length === 6) {
-      fetchPincodeDetails(value, "pickup");
+    const numericValue = value.replace(/\D/g, "").slice(0, 6);
+    form.setValue("pickupPincode", numericValue);
+    if (numericValue.length === 6) {
+      fetchPincodeDetails(numericValue, "pickup");
     } else {
       setPickupLocality(null);
     }
   };
 
   const handleDeliveryPincodeChange = (value: string) => {
-    form.setValue("deliveryPincode", value);
-    if (value.length === 6) {
-      fetchPincodeDetails(value, "delivery");
+    const numericValue = value.replace(/\D/g, "").slice(0, 6);
+    form.setValue("deliveryPincode", numericValue);
+    if (numericValue.length === 6) {
+      fetchPincodeDetails(numericValue, "delivery");
     } else {
       setDeliveryLocality(null);
     }
@@ -322,6 +324,7 @@ export function CalculatorContent() {
                       <Input
                         {...form.register("pickupPincode")}
                         placeholder="000000"
+                        maxLength={6}
                         className={cn("font-medium", !isPickupValid && formValues.pickupPincode?.length === 6 && "border-destructive")}
                         onChange={(e) => handlePickupPincodeChange(e.target.value)}
                       />
@@ -341,6 +344,7 @@ export function CalculatorContent() {
                       <Input
                         {...form.register("deliveryPincode")}
                         placeholder="000000"
+                        maxLength={6}
                         className={cn("font-medium", !isDeliveryValid && formValues.deliveryPincode?.length === 6 && "border-destructive")}
                         onChange={(e) => handleDeliveryPincodeChange(e.target.value)}
                       />

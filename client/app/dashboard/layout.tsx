@@ -6,6 +6,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { KBarPrompt } from "@/components/ui/kbar-prompt";
 
 function getPageTitle(pathname: string): string {
   const segments = pathname.split('/').filter(segment => segment !== '');
@@ -42,6 +43,7 @@ function DashboardLayout({
       <SidebarInset>
         <SiteHeader pageTitle={pageTitle} />
         {children}
+        <KBarPrompt />
       </SidebarInset>
     </SidebarProvider>
 
