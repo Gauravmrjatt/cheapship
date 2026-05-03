@@ -69,7 +69,7 @@ export function InstallPwaBanner() {
     localStorage.setItem("pwa-install-dismissed", "true");
   };
 
-  // if (!show || isInstalled) return null;
+  if (!show || isInstalled) return null;
 
   return (
     <div
