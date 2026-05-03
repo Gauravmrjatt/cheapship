@@ -7,7 +7,7 @@ import {
   Cancel01Icon
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-
+import Image from 'next/image'
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -69,7 +69,7 @@ export function InstallPwaBanner() {
     localStorage.setItem("pwa-install-dismissed", "true");
   };
 
-  if (!show || isInstalled) return null;
+  // if (!show || isInstalled) return null;
 
   return (
     <div
@@ -77,8 +77,13 @@ export function InstallPwaBanner() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="flex items-center gap-3 m-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#5223A5]">
           <Download className="h-5 w-5 text-white" />
+          <Image src="/logo.jpg"
+          className="rounded-3xl"
+            width={500}
+            height={500}
+            alt="Picture of the author" />
         </div>
         <div>
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -91,7 +96,7 @@ export function InstallPwaBanner() {
       </div>
       <div className="flex items-center gap-2">
 
-        <Button  size="lg" onClick={handleInstall}>
+        <Button size="lg" onClick={handleInstall}>
           Install
         </Button>
         <Button size="icon" variant="ghost" onClick={handleDismiss}>
