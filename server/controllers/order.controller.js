@@ -1398,7 +1398,7 @@ const mapShiprocketStatus = (shiprocketStatus, srStatusId = null) => {
     'out for pickup': 'OUT_FOR_PICKUP',
     'picked up': 'PICKED_UP'
   };
-  return statusMap[status] || 'PENDING';
+  return statusMap[status] || 'IN_TRANSIT';
 };
 
 const handleWebhook = async (req, res) => {
