@@ -240,8 +240,8 @@ export default function LandingPage() {
                 <span className="hidden sm:inline">9509698208</span>
               </a>
               <span className="text-muted-foreground/30 hidden sm:inline">|</span>
-              <a href="tel:+919251220521" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
-                <span className="hidden sm:inline">9251220521</span>
+              <a href="tel:+916377860521" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                <span className="hidden sm:inline">6377860521</span>
               </a>
             </div>
             <Link href="/auth/signin">
@@ -358,8 +358,8 @@ export default function LandingPage() {
                   <span className="">9509698208</span>
                 </a>
                 <span className="text-muted-foreground/30">|</span>
-                <a href="tel:+919251220521" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
-                  <span className="">9251220521</span>
+                <a href="tel:+916377860521" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+                  <span className="">6377860521</span>
                 </a>
               </div>
             </div>

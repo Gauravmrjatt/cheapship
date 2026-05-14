@@ -66,8 +66,8 @@ export function SiteHeader({ pageTitle }: SiteHeaderProps) {
                 <DropdownMenuItem render={<Link href={`tel:+919509698208`} />}>
                   +91-9509698208
                 </DropdownMenuItem>
-                <DropdownMenuItem render={<Link href={`tel:+919251220521`} />}>
-                  +91-9251220521
+                <DropdownMenuItem render={<Link href={`tel:+916377860521`} />}>
+                  +91-6377860521
                 </DropdownMenuItem>
               </DropdownMenuGroup>
 

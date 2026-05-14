@@ -101,7 +101,7 @@ class LatexLabelGenerator {
             awbCode ? this.generateBarcode(awbCode, barcodePath) : Promise.resolve(null),
             this.generateBarcode(orderCode, barcodeOrderPath),
             this.generateQR('https://instagram.com/cashbackwallahuniverse', qrcodePath),
-            this.generateQR('https://wa.me/9251220521', qrcodePath2)
+            this.generateQR('https://wa.me/6377860521', qrcodePath2)
         ]);
 
         return { barcodePath, barcodeOrderPath, qrcodePath, qrcodePath2 };
