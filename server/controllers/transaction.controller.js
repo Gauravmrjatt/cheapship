@@ -92,7 +92,7 @@ const getTransactions = async (req, res) => {
 const createRazorpayOrder = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
-  const { amount } = req.body;
+  const { amount, category = 'WALLET_TOPUP' } = req.body;
 
   if (!amount || amount <= 0) {
     return res.status(400).json({ message: 'Invalid amount' });
@@ -122,6 +122,23 @@ const createRazorpayOrder = async (req, res) => {
     };
 
     const order = await razorpay.orders.create(options);
+
+    try {
+      await prisma.transaction.create({
+        data: {
+          user_id: userId,
+          amount: amountNumber,
+          type: 'CREDIT',
+          category: category || 'WALLET_TOPUP',
+          status: 'PENDING',
+          reference_id: order.id,
+          description: 'Wallet Top-up - awaiting payment'
+        }
+      });
+    } catch (dbError) {
+      console.error('Failed to save pending transaction:', dbError.message);
+    }
+
     res.json(order);
   } catch (error) {
     console.error('Razorpay Order Error Details:', {
@@ -223,6 +240,12 @@ const verifyRazorpayPayment = async (req, res) => {
     }
 
     const transaction = await prisma.$transaction(async (tx) => {
+      if (razorpay_order_id) {
+        await tx.transaction.deleteMany({
+          where: { reference_id: razorpay_order_id, status: 'PENDING' }
+        });
+      }
+
       const currentUser = await tx.user.findUnique({
         where: { id: userId },
         select: { wallet_balance: true, security_deposit: true }
@@ -319,8 +342,117 @@ const verifyRazorpayPayment = async (req, res) => {
   }
 };
 
+const handleRazorpayWebhook = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+
+  try {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+    if (webhookSecret) {
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(req.rawBody)
+        .digest('hex');
+
+      const receivedSignature = req.headers['x-razorpay-signature'];
+
+      if (expectedSignature !== receivedSignature) {
+        return res.status(400).json({ status: 'error', message: 'Invalid signature' });
+      }
+    }
+
+    const payload = req.body;
+
+    if (payload.event !== 'payment.captured') {
+      return res.json({ status: 'ok' });
+    }
+
+    const paymentEntity = payload.payload.payment.entity;
+    const razorpay_order_id = paymentEntity.order_id;
+    const razorpay_payment_id = paymentEntity.id;
+
+    if (!razorpay_order_id || !razorpay_payment_id) {
+      return res.status(400).json({ status: 'error', message: 'Missing payment details' });
+    }
+
+    const pendingTx = await prisma.transaction.findFirst({
+      where: { reference_id: razorpay_order_id, status: 'PENDING' }
+    });
+
+    if (!pendingTx) {
+      return res.json({ status: 'ok' });
+    }
+
+    const razorpayPayment = await razorpay.payments.fetch(razorpay_payment_id);
+    if (!razorpayPayment || razorpayPayment.status !== 'captured') {
+      return res.json({ status: 'ok' });
+    }
+
+    const existingTx = await prisma.transaction.findFirst({
+      where: { reference_id: razorpay_payment_id, status: 'SUCCESS' }
+    });
+
+    if (existingTx) {
+      await prisma.transaction.delete({ where: { id: pendingTx.id } });
+      return res.json({ status: 'ok' });
+    }
+
+    const amountNumber = Number(pendingTx.amount);
+
+    await prisma.$transaction(async (tx) => {
+      const currentUser = await tx.user.findUnique({
+        where: { id: pendingTx.user_id },
+        select: { wallet_balance: true }
+      });
+
+      if (!currentUser) {
+        throw new Error('User not found');
+      }
+
+      const currentBalance = Number(currentUser.wallet_balance || 0);
+
+      const applicablePlans = await tx.walletPlan.findMany({
+        where: {
+          is_active: true,
+          recharge_amount: { equals: amountNumber }
+        }
+      });
+
+      const newDiscount = applicablePlans.length > 0 ? applicablePlans[0].discount_percentage : null;
+      const bonusAmount = newDiscount ? (amountNumber * Number(newDiscount)) / 100 : 0;
+      const totalCredit = amountNumber + bonusAmount;
+
+      await tx.user.update({
+        where: { id: pendingTx.user_id },
+        data: { wallet_balance: { increment: totalCredit } }
+      });
+
+      const closingBalance = currentBalance + totalCredit;
+
+      await tx.transaction.update({
+        where: { id: pendingTx.id },
+        data: {
+          status: 'SUCCESS',
+          reference_id: razorpay_payment_id,
+          closing_balance: closingBalance,
+          description: bonusAmount > 0
+            ? `Wallet Top-up via Razorpay (₹${amountNumber} + ₹${bonusAmount.toFixed(2)} bonus)`
+            : 'Wallet Top-up via Razorpay',
+          updated_at: new Date()
+        }
+      });
+    });
+
+    res.json({ status: 'ok' });
+  } catch (error) {
+    console.error('Razorpay webhook error:', error.message, error.stack);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getTransactions,
   createRazorpayOrder,
-  verifyRazorpayPayment
+  verifyRazorpayPayment,
+  handleRazorpayWebhook
 };

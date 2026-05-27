@@ -4,6 +4,9 @@ const { check } = require('express-validator');
 const authMiddleware = require('../middleware/auth.middleware');
 const transactionController = require('../controllers/transaction.controller');
 
+// Public webhook endpoint - must be before auth middleware
+router.post('/razorpay/webhook', transactionController.handleRazorpayWebhook);
+
 // All routes are protected
 router.use(authMiddleware);
 
