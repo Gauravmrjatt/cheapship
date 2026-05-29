@@ -103,6 +103,7 @@ export interface AdminUser {
   assigned_rates?: any;
   upi_id?: string;
   security_deposit?: number;
+  security_deposit_enabled?: boolean;
   _count?: {
     orders: number;
   };
@@ -237,6 +238,32 @@ export const useToggleUserStatus = (isMounted?: React.MutableRefObject<boolean>)
     onSuccess: () => {
       if (isMounted?.current === false) return;
       sileo.success({ title: "User status updated" });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
+  });
+};
+
+export const useToggleSecurityDeposit = (isMounted?: React.MutableRefObject<boolean>) => {
+  const queryClient = useQueryClient();
+  const http = useHttp();
+  return useMutation({
+    ...http.post<unknown, { userId: string, security_deposit_enabled: boolean }>("/admin/users/security-deposit-toggle", {
+    }),
+    mutationFn: async ({ userId, security_deposit_enabled }: { userId: string, security_deposit_enabled: boolean }) => {
+      const response = await fetch(`${BASE_URL}/api/v1/admin/users/${userId}/security-deposit-toggle`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-storage') ? JSON.parse(localStorage.getItem('auth-storage')!).state.token : ''}`
+        },
+        body: JSON.stringify({ security_deposit_enabled })
+      });
+      if (!response.ok) throw new Error('Failed to update security deposit setting');
+      return response.json() as Promise<unknown>;
+    },
+    onSuccess: () => {
+      if (isMounted?.current === false) return;
+      sileo.success({ title: "Security deposit setting updated" });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     }
   });

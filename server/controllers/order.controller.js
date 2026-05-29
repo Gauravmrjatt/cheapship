@@ -604,7 +604,7 @@ const createOrder = async (req, res) => {
       // 1. Check wallet balance with new formula
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { wallet_balance: true, security_deposit: true }
+        select: { wallet_balance: true, security_deposit: true, security_deposit_enabled: true }
       });
 
       // Fetch security fee configuration from settings
@@ -618,7 +618,9 @@ const createOrder = async (req, res) => {
 
       const orderAmount = Number(serverShippingCharge || 0);
       let securityDepositAmount;
-      if (feeType === 'PERCENTAGE') {
+      if (!user.security_deposit_enabled) {
+        securityDepositAmount = 0;
+      } else if (feeType === 'PERCENTAGE') {
         securityDepositAmount = orderAmount * (feeValue / 100);
       } else {
         securityDepositAmount = orderAmount * feeValue;
@@ -646,12 +648,12 @@ const createOrder = async (req, res) => {
         throw new Error(`Insufficient wallet balance. Required: ₹${totalDeduction.toFixed(2)}, Available Wallet Balance: ₹${Number(user.wallet_balance).toFixed(2)}`);
       }
 
-      // 2. Debit wallet (2x order amount - 1x for shipping, 1x as security hold) & transfer to security deposit (atomic)
+      // 2. Debit wallet & transfer to security deposit (atomic)
       await tx.user.update({
         where: { id: userId },
         data: {
           wallet_balance: { decrement: totalDeduction },
-          security_deposit: { increment: securityDepositAmount }
+          ...(securityDepositAmount > 0 && { security_deposit: { increment: securityDepositAmount } })
         }
       });
 
@@ -664,8 +666,8 @@ const createOrder = async (req, res) => {
       const closingWalletBalance = Number(updatedUser.wallet_balance);
 
       // 4. Create transaction record for order payment (DEBIT)
-      // 5. Create transaction record for security deposit (DEBIT from wallet)
-      const [orderPaymentTransaction, securityDepositTransaction] = await Promise.all([
+      // 5. Create transaction record for security deposit (DEBIT from wallet) - only if enabled
+      const transactionPromises = [
         tx.transaction.create({
           data: {
             user_id: userId,
@@ -676,19 +678,27 @@ const createOrder = async (req, res) => {
             status: 'SUCCESS',
             description: `Shipping charge for Order ${order_type}`,
           }
-        }),
-        tx.transaction.create({
-          data: {
-            user_id: userId,
-            amount: securityDepositAmount,
-            closing_balance: closingWalletBalance,
-            type: 'DEBIT',
-            category: 'SECURITY_DEPOSIT',
-            status: 'SUCCESS',
-            description: `Security deposit held for Order ${order_type}`,
-          }
         })
-      ]);
+      ];
+
+      if (securityDepositAmount > 0) {
+        transactionPromises.push(
+          tx.transaction.create({
+            data: {
+              user_id: userId,
+              amount: securityDepositAmount,
+              closing_balance: closingWalletBalance,
+              type: 'DEBIT',
+              category: 'SECURITY_DEPOSIT',
+              status: 'SUCCESS',
+              description: `Security deposit held for Order ${order_type}`,
+            }
+          })
+        );
+      }
+
+      const transactionResults = await Promise.all(transactionPromises);
+      const orderPaymentTransaction = transactionResults[0];
 
       // Save addresses if requested - check if address already exists first
       if (save_pickup_address) {
@@ -779,17 +789,19 @@ const createOrder = async (req, res) => {
         }
       });
 
-      // 3.1 Create SecurityDeposit record for tracking (after Order exists)
-      await tx.securityDeposit.create({
-        data: {
-          user_id: userId,
-          order_id: orderId,
-          amount: securityDepositAmount,
-          used_amount: 0,
-          remaining: securityDepositAmount,
-          status: 'ACTIVE'
-        }
-      });
+      // 3.1 Create SecurityDeposit record for tracking (after Order exists) - only if enabled
+      if (securityDepositAmount > 0) {
+        await tx.securityDeposit.create({
+          data: {
+            user_id: userId,
+            order_id: orderId,
+            amount: securityDepositAmount,
+            used_amount: 0,
+            remaining: securityDepositAmount,
+            status: 'ACTIVE'
+          }
+        });
+      }
 
       // console.log(`[Order Create] Commission fields - global_rate: ${chosenCourier.global_commission_rate}, global_amt: ${chosenCourier.global_commission_amount}, franchise_rate: ${chosenCourier.franchise_commission_rate}, franchise_amt: ${chosenCourier.franchise_commission_amount}`);
 

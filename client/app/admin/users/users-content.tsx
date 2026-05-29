@@ -200,6 +200,12 @@ export default function AdminUsersPage() {
                   Commission Bounds
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem 
+                  checked={columnVisibility["security_deposit_toggle"] !== false}
+                  onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, security_deposit_toggle: checked }))}
+                >
+                  Sec. Deposit
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem 
                   checked={columnVisibility["actions"] !== false}
                   onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, actions: checked }))}
                 >

@@ -34,6 +34,7 @@ router.get('/dashboard', adminController.getDashboardStats);
 // Users
 router.get('/users', adminController.getUsers);
 router.patch('/users/:userId/status', adminController.toggleUserStatus);
+router.patch('/users/:userId/security-deposit-toggle', adminController.toggleSecurityDeposit);
 router.patch('/users/:userId/password', adminController.changeUserPassword);
 router.patch('/users/:userId/email', adminController.changeUserEmail);
 

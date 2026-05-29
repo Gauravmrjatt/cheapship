@@ -13,7 +13,8 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import {
-  useToggleUserStatus
+  useToggleUserStatus,
+  useToggleSecurityDeposit
 } from "@/lib/hooks/use-admin";
 import {
   Table,
@@ -45,6 +46,7 @@ import {
   Money03Icon,
   MoneyReceiveCircleIcon,
   LockPasswordIcon,
+  ShieldIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -78,10 +80,18 @@ export function UsersTable({
   const [rowSelection, setRowSelection] = React.useState({});
 
   const toggleStatusMutation = useToggleUserStatus(isMounted);
+  const toggleSecurityDepositMutation = useToggleSecurityDeposit(isMounted);
 
   const handleToggleStatus = (userId: string, currentStatus?: boolean) => {
     if (currentStatus === undefined || confirm(`Are you sure you want to ${currentStatus ? 'block' : 'unblock'} this user?`)) {
       toggleStatusMutation.mutate({ userId, is_active: !currentStatus });
+    }
+  };
+
+  const handleToggleSecurityDeposit = (userId: string, userName: string, currentValue?: boolean) => {
+    const newValue = !currentValue;
+    if (confirm(`Are you sure you want to ${newValue ? 'enable' : 'disable'} security deposit deduction for ${userName}?`)) {
+      toggleSecurityDepositMutation.mutate({ userId, security_deposit_enabled: newValue });
     }
   };
 
@@ -145,6 +155,26 @@ export function UsersTable({
            Security : ₹{Number(row.original.security_deposit).toLocaleString("en-IN")}
           </div>
         </>
+      ),
+    },
+    {
+      id: "security_deposit_toggle",
+      header: () => <div className="text-center">Sec. Deposit</div>,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <Badge
+            variant="outline"
+            className={cn(
+              "px-1.5 py-0.5 text-[10px] font-bold cursor-pointer select-none",
+              row.original.security_deposit_enabled !== false
+                ? "text-green-600 border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-800"
+                : "text-red-600 border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800"
+            )}
+            onClick={() => handleToggleSecurityDeposit(row.original.id, row.original.name, row.original.security_deposit_enabled)}
+          >
+            {row.original.security_deposit_enabled !== false ? "ON" : "OFF"}
+          </Badge>
+        </div>
       ),
     },
     {
@@ -215,6 +245,13 @@ export function UsersTable({
               </DropdownMenuItem>
 
               <DropdownMenuItem
+                onClick={() => handleToggleSecurityDeposit(row.original.id, row.original.name, row.original.security_deposit_enabled)}
+              >
+                <HugeiconsIcon icon={ShieldIcon} size={14} className="mr-2" />
+                {row.original.security_deposit_enabled !== false ? "Disable Security Deposit" : "Enable Security Deposit"}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
                 onClick={() => onOpenBoundsSheet(
                   row.original.id,
                   row.original.name,
@@ -246,7 +283,7 @@ export function UsersTable({
         </div>
       ),
     },
-  ], [toggleStatusMutation, onOpenBoundsSheet, onOpenCustomRatesSheet, onOpenPasswordSheet, onOpenEmailSheet, router]);
+  ], [toggleStatusMutation, toggleSecurityDepositMutation, onOpenBoundsSheet, onOpenCustomRatesSheet, onOpenPasswordSheet, onOpenEmailSheet, router]);
 
   const table = useReactTable({
     data,

@@ -332,6 +332,7 @@ const getUsers = async (req, res) => {
           created_at: true,
           upi_id: true,
           security_deposit: true,
+          security_deposit_enabled: true,
           min_commission_rate: true,
           max_commission_rate: true,
           _count: {
@@ -373,6 +374,29 @@ const toggleUserStatus = async (req, res) => {
       where: { id: userId },
       data: { is_active },
       select: { id: true, is_active: true }
+    });
+
+    res.json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const toggleSecurityDeposit = async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const { userId } = req.params;
+  const { security_deposit_enabled } = req.body;
+
+  if (typeof security_deposit_enabled !== 'boolean') {
+    return res.status(400).json({ message: 'security_deposit_enabled must be a boolean' });
+  }
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { security_deposit_enabled },
+      select: { id: true, security_deposit_enabled: true }
     });
 
     res.json(user);
@@ -2621,6 +2645,7 @@ module.exports = {
   getDashboardStats,
   getUsers,
   toggleUserStatus,
+  toggleSecurityDeposit,
   changeUserPassword,
   getAllOrders,
   getWithdrawals,

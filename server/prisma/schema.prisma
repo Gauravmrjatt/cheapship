@@ -36,6 +36,7 @@ model User {
   pan_verified               Boolean                   @default(false)
   active_discount            Decimal                   @default(0) @db.Decimal(5, 2)
   security_deposit           Decimal                   @default(0) @db.Decimal(12, 2)
+  security_deposit_enabled   Boolean                   @default(true)
   upi_id                     String?                   @db.VarChar(100)
   bank_name                  String?                   @db.VarChar(100)
   beneficiary_name           String?                   @db.VarChar(150)
