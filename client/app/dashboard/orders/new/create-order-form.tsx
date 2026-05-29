@@ -1672,9 +1672,11 @@ function StepThree({ form, rateData, isLoadingRates, formValues, refetchRates, p
 
 function VerificationCard({
   isKycVerified,
+  isSecurityDepositEnabled,
   router,
 }: {
   isKycVerified: boolean;
+  isSecurityDepositEnabled: boolean;
   router: any;
 }) {
   const steps = [
@@ -1697,7 +1699,7 @@ function VerificationCard({
 
         <CardDescription className="text-xs leading-relaxed">
           Complete KYC verification before creating an order.
-          Security deposit will be automatically held from your wallet.
+          {isSecurityDepositEnabled && " Security deposit will be automatically held from your wallet."}
         </CardDescription>
       </CardHeader>
 
@@ -1768,6 +1770,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
 
   // Check for KYC (security deposit check removed - now automatic)
   const isKycVerified = user?.kyc_status === 'VERIFIED';
+  const isSecurityDepositEnabled = user?.security_deposit_enabled !== false;
 
   const showVerificationBlock = !isKycVerified;
 
@@ -1785,10 +1788,12 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
 
   // Calculate security based on admin configuration
   let securityForThisOrder = 0;
-  if (feeType === 'PERCENTAGE') {
-    securityForThisOrder = orderAmount * (feeValue / 100);
-  } else {
-    securityForThisOrder = orderAmount * feeValue; // TIMES
+  if (isSecurityDepositEnabled) {
+    if (feeType === 'PERCENTAGE') {
+      securityForThisOrder = orderAmount * (feeValue / 100);
+    } else {
+      securityForThisOrder = orderAmount * feeValue; // TIMES
+    }
   }
 
   const requiredBalance = orderAmount + securityForThisOrder;
@@ -1823,6 +1828,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
       {showVerificationBlock && (
         <VerificationCard
           isKycVerified={isKycVerified}
+          isSecurityDepositEnabled={isSecurityDepositEnabled}
           router={router}
         />
       )}
@@ -1835,7 +1841,7 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
               <HugeiconsIcon icon={Wallet01Icon} size={20} className="text-primary" />
             </div>
             <div>
-              <h3 className="font-bold text-foreground">Order Security Summary</h3>
+              <h3 className="font-bold text-foreground">{isSecurityDepositEnabled ? "Order Security Summary" : "Order Summary"}</h3>
               <p className="text-xs text-muted-foreground">Balance check before creating order</p>
             </div>
           </div>
@@ -1864,13 +1870,17 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
               <span className="text-sm font-medium text-muted-foreground">Order Amount</span>
               <span className="text-lg font-black text-muted-foreground">₹{orderAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-muted-foreground">Total Security </span>
-              <span className="text-lg font-black text-muted-foreground">₹{securityForThisOrder.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            </div>
-            <p className="text-[10px] text-muted-foreground italic pt-1">
-              * Total Security ( 100% refundable in 15 days to your bank account, withdraw any time from wallet )
-            </p>
+            {isSecurityDepositEnabled && (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Total Security </span>
+                  <span className="text-lg font-black text-muted-foreground">₹{securityForThisOrder.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground italic pt-1">
+                  * Total Security ( 100% refundable in 15 days to your bank account, withdraw any time from wallet )
+                </p>
+              </>
+            )}
             <div className="flex justify-between items-center border-t border-primary/20 dark:border-primary/30 pt-2">
               <span className="text-sm font-medium text-muted-foreground">Total Required (Wallet)</span>
               <span className="text-lg font-black text-foreground">₹{requiredBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -1908,8 +1918,8 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
               <div>
                 <p className="font-bold text-green-700 dark:text-green-300 text-sm">Sufficient Balance</p>
                 <p className="text-xs text-muted-foreground">
-                  ₹{orderAmount.toLocaleString('en-IN')} will be deducted for shipping +
-                  ₹{securityForThisOrder.toLocaleString('en-IN')} will be held as security deposit.
+                  ₹{orderAmount.toLocaleString('en-IN')} will be deducted for shipping
+                  {isSecurityDepositEnabled && ` + ₹${securityForThisOrder.toLocaleString('en-IN')} will be held as security deposit`}.
                 </p>
               </div>
             </div>
