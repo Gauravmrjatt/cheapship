@@ -1,3 +1,10 @@
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Shipping Label PDF",
+  robots: { index: false },
+};
+
 type PageProps = {
   params: Promise<{
     pdf: string;

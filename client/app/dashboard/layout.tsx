@@ -1,4 +1,5 @@
 "use client"
+import { useEffect } from "react";
 import withAuth from "@/lib/hocs/with-auth";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header"
@@ -29,6 +30,14 @@ function DashboardLayout({
   const pageTitle = getPageTitle(pathname);
   const { user } = useAuth();
   const isAdmin = user?.user_type === "ADMIN";
+
+  useEffect(() => {
+    const meta = document.createElement("meta");
+    meta.name = "robots";
+    meta.content = "noindex, nofollow";
+    document.head.appendChild(meta);
+    return () => meta.remove();
+  }, []);
 
   return (
     <SidebarProvider

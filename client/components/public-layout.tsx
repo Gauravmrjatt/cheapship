@@ -14,7 +14,7 @@ export function PublicHeader() {
           <div className="bg-white p-0.5 rounded-xl">
             <Image
               src="/logoo.png"
-              alt="logoo"
+              alt="Cashbackwallah"
               width={40}
               height={40}
               className="rounded-lg"
@@ -87,9 +87,10 @@ export function PublicFooter() {
           <div>
             <h4 className="font-semibold mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-foreground">About Us</Link></li>
-              <li><Link href="#" className="hover:text-foreground">Contact</Link></li>
-              <li><Link href="#" className="hover:text-foreground">Terms</Link></li>
+              <li><Link href="/about" className="hover:text-foreground">About Us</Link></li>
+              <li><Link href="/contact" className="hover:text-foreground">Contact</Link></li>
+              <li><Link href="/terms" className="hover:text-foreground">Terms</Link></li>
+              <li><Link href="/privacy" className="hover:text-foreground">Privacy</Link></li>
             </ul>
           </div>
           <div>
@@ -97,6 +98,16 @@ export function PublicFooter() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><a href="tel:+919509698208" className="hover:text-foreground">+91 9509698208</a></li>
               <li><a href="tel:+916377860521" className="hover:text-foreground">+91 6377860521</a></li>
+              <li>
+                <a
+                  href="https://instagram.com/cheapship.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground"
+                >
+                  Instagram
+                </a>
+              </li>
             </ul>
           </div>
         </div>

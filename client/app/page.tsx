@@ -1,15 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Metadata } from "next";
 import { Button } from "@/components/ui/button";
-import { WorldMap } from "@/components/ui/map";
 import { CalculatorContent } from "@/app/rate-calculator/calculator-content";
-import { motion } from "framer-motion";
-
-export const metadata: Metadata = {
-  title: "Home",
-  description: "Ship smarter and save bigger with Cashbackwallah. Compare shipping rates from 25+ carriers in seconds.",
-};
 
 import {
   Card,
@@ -213,7 +205,7 @@ export default function LandingPage() {
             <div className="bg-white p-0.5 rounded-xl">
               <Image
                 src="/logoo.png"
-                alt="logoo"
+                alt="Cashbackwallah"
                 width={40}
                 height={40}
                 className="rounded-lg"

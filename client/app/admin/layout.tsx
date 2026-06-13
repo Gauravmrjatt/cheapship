@@ -48,6 +48,14 @@ function AdminLayout({
   const router = useRouter();
 
   useEffect(() => {
+    const meta = document.createElement("meta");
+    meta.name = "robots";
+    meta.content = "noindex, nofollow";
+    document.head.appendChild(meta);
+    return () => meta.remove();
+  }, []);
+
+  useEffect(() => {
     if (!isLoading && user && user.user_type !== 'ADMIN') {
       router.push('/dashboard');
     }
