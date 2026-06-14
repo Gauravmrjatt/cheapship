@@ -85,6 +85,18 @@ export default function RootLayout({
                 styles: { description: "text-white/75!" },
               }} position="top-center" />
               <Script
+                src="https://www.googletagmanager.com/gtag/js?id=G-S8M7Z7WE6Z"
+                strategy="afterInteractive"
+              />
+              <Script id="google-analytics" strategy="afterInteractive">
+                {`
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', 'G-S8M7Z7WE6Z');
+                `}
+              </Script>
+              <Script
                 id="schema-org"
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
