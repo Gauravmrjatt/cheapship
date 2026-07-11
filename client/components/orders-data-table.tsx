@@ -80,7 +80,8 @@ import {
   DateTimeIcon,
   ArrowDownDoubleIcon,
   PackageSentIcon,
-  PackageReceiveIcon
+  PackageReceiveIcon,
+  FileAddIcon
 } from "@hugeicons/core-free-icons"
 import { OrderFilters, useCancelOrder } from "@/lib/hooks/use-orders"
 import { useAuth } from "@/lib/hooks/use-auth"
@@ -663,23 +664,93 @@ export function OrdersDataTable({
     document.body.removeChild(link);
   }, [table]);
 
-  const handleBulkLabels = React.useCallback(() => {
+  const handleBulkLabels = React.useCallback(async () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows.map(r => r.original);
-    const labelUrls = selectedRows.map(r => r.label_url).filter(Boolean);
+    const isAbsoluteUrl = (url: string): boolean => /^https?:\/\//i.test(url);
+
+    const labelUrls = selectedRows
+      .map(r => {
+        if (!r.label_url) return null;
+        return isAbsoluteUrl(r.label_url) ? r.label_url : BASE_URL + r.label_url;
+      })
+      .filter(Boolean) as string[];
 
     if (labelUrls.length === 0) {
       sileo.error({ title: "No labels found for selected orders." });
       return;
     }
 
-    sileo.info({ title: `Opening ${labelUrls.length} labels in new tabs... Ensure popups are allowed.` });
+    sileo.info({ title: `Downloading ${labelUrls.length} labels...` });
 
-    labelUrls.forEach((url, i) => {
-      setTimeout(() => {
+    for (const url of labelUrls) {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const filename = url.split('/').pop() || `label-${Date.now()}.pdf`;
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch {
         window.open(url, "_blank");
-      }, i * 300);
-    });
+      }
+    }
   }, [table]);
+
+  const handleBulkGenerate = React.useCallback(async () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows.map(r => r.original);
+    const ordersWithoutLabels = selectedRows.filter(r => !r.label_url && r.tracking_number);
+
+    if (ordersWithoutLabels.length === 0) {
+      if (selectedRows.every(r => !r.tracking_number)) {
+        sileo.error({ title: "Selected orders don't have tracking numbers yet." });
+      } else {
+        sileo.info({ title: "All selected orders already have labels. Use 'Download Labels' instead." });
+      }
+      return;
+    }
+
+    sileo.info({ title: `Generating labels for ${ordersWithoutLabels.length} order(s)...` });
+
+    const API_URL = BASE_URL ? `${BASE_URL}/api/v1` : "http://localhost:3000/api/v1";
+    let success = 0;
+    let failed = 0;
+
+    for (const order of ordersWithoutLabels) {
+      try {
+        const response = await fetch(`${API_URL}/orders/${order.id}/label`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        });
+        if (response.ok) {
+          success++;
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["orders"] });
+
+    if (failed === 0) {
+      sileo.success({ title: `Generated ${success} label(s) successfully` });
+    } else if (success > 0) {
+      sileo.warning({ title: `Generated ${success} label(s), ${failed} failed` });
+    } else {
+      sileo.error({ title: "Failed to generate labels" });
+    }
+  }, [table, token, queryClient]);
 
   return (
     <Tabs
@@ -862,7 +933,9 @@ export function OrdersDataTable({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={handleExportCSV}>Export CSV</DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleBulkLabels}>Download Labels</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleBulkGenerate}>Generate Labels</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
