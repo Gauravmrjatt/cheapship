@@ -383,20 +383,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
 
   const shiprocketPickupLocations = shiprocketPickups?.data?.shipping_address || [];
 
-  const { data: recentProductsData } = useQuery<string[]>({
-    queryKey: ['recent-products'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/orders?pageSize=20', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await res.json();
-      const products = new Set<string>();
-      data.data?.forEach((order: any) => {
-        order.products?.forEach((p: any) => { if (p.name) products.add(p.name); });
-      });
-      return Array.from(products);
-    },
-  });
+ 
 
   const { data: draftData, isLoading: isLoadingDraft } = useQuery<any>(
     http.get(["order-draft", draftId], `/orders/${draftId}`, !!draftId)
@@ -460,7 +447,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
     setShowLoadDraftDialog(false);
   };
 
-  const allProductSuggestions = [...new Set([...PRODUCT_SUGGESTIONS, ...(recentProductsData || [])])];
+  const allProductSuggestions = [...new Set([...PRODUCT_SUGGESTIONS ])];
 
   const { data: pickupLocality, isLoading: isLoadingPickup } = useQuery<any>(
     http.get(["pincode-details", formValues.pickup_address.pincode], `/orders/pincode-details?postcode=${formValues.pickup_address.pincode}`, formValues.pickup_address.pincode?.length === 6, {

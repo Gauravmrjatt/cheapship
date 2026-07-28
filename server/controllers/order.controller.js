@@ -5,7 +5,81 @@ const { createReferralCommissions } = require('../utils/referral.commissions');
 const labelCustomizer = require('../utils/label-customizer');
 const latexLabelGenerator = require('../utils/latex-label-generator');
 const vyom = require('../utils/vyom');
+const { uploadPdfToCloudinary } = require('../utils/cloudinary');
 const { getReferralChain } = require('../utils/referral.commissions');
+
+const getMergedCouriers = async (params) => {
+  const [srResult, vyomFares] = await Promise.all([
+    getServiceability(params).catch((e) => {
+      console.error('Shiprocket serviceability error:', e.message);
+      return null;
+    }),
+    vyom.getFare({
+      receiverPincode: params.delivery_postcode,
+      originPincode: params.pickup_postcode,
+      weight: params.weight,
+      height: params.height || params.breadth,
+      width: params.breadth,
+      length: params.length,
+      cod_amount: params.declared_value,
+      payment_mode: parseInt(params.cod) === 1 ? 'COD' : 'PREPAID',
+    }).catch((e) => {
+      console.error('Vyom fare error:', e.message);
+      return null;
+    }),
+  ]);
+
+  let shiprocketCouriers = [];
+  if (srResult && srResult.status === 200) {
+    shiprocketCouriers = srResult.data.available_courier_companies || [];
+  }
+
+  const vyomCouriers = vyom.normalizeVyomFares(vyomFares?.data);
+
+  return {
+    couriers: [...shiprocketCouriers, ...vyomCouriers],
+    recommendedId: srResult?.data?.recommended_courier_company_id || null,
+  };
+};
+
+const ensureVyomWarehouse = async (pickupAddress) => {
+  if (!vyom.isConfigured()) return null;
+  try {
+    const warehouses = await vyom.listWarehouses();
+    const warehouseData = warehouses?.data || warehouses?.data_values || warehouses;
+    const existing = warehouseData?.pickup_addresses?.find(
+      (w) => w.phone_number === pickupAddress.phone || w.pin_code === pickupAddress.pincode
+    );
+    if (existing) return existing.vendor_address_id;
+
+    const created = await vyom.createWarehouse({
+      company_name: pickupAddress.name || pickupAddress.company_name || 'Default Company',
+      complete_address: pickupAddress.address || pickupAddress.complete_address,
+      pin_code: pickupAddress.pincode,
+      city: pickupAddress.city,
+      state: pickupAddress.state,
+      phone_number: pickupAddress.phone,
+      country: pickupAddress.country || 'India',
+      email: pickupAddress.email || '',
+    });
+    if (created && !created.error) {
+      const warehouseId = created?.data?.data_values?.vendor_address_id
+        || created?.data?.vendor_address_id
+        || created?.vendor_address_id
+        || created?.id
+        || created?.data?.id
+        || null;
+      if (!warehouseId) console.error('[Vyom] createWarehouse response missing vendor_address_id:', JSON.stringify(created));
+      return warehouseId;
+    }
+    console.error('[Vyom] createWarehouse failed:', created?.message || 'unknown error');
+    return null;
+  } catch (e) {
+    console.error('[Vyom] ensureVyomWarehouse error:', e.message);
+    return null;
+  }
+};
+
 // Helper to sanitize error messages from shipping providers
 const sanitizeErrorMessage = (message) => {
   if (!message) return 'An unexpected error occurred';
@@ -26,7 +100,7 @@ const generateLabelAsync = async (orderId, shipmentId) => {
 
   try {
     const order = await prisma.order.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: BigInt(orderId) },
       include: {
         order_pickup_address: true,
         order_receiver_address: true,
@@ -49,7 +123,20 @@ const generateLabelAsync = async (orderId, shipmentId) => {
     const courierName = (order.courier_name || '').toLowerCase();
     let labelUrl;
 
-    if (courierName.includes('amazon')) {
+    if (order.is_vyom) {
+      if (courierName.includes('amazon')) {
+        const slipBuffer = await vyom.getPackingSlip(order.vyom_order_id || order.id.toString());
+        if (Buffer.isBuffer(slipBuffer)) {
+          const { uploadPdfToCloudinary } = require('../utils/cloudinary');
+          const uploadResult = await uploadPdfToCloudinary(slipBuffer, 'cheapship/vyom-labels');
+          labelUrl = uploadResult?.secure_url || null;
+        } else if (slipBuffer && !slipBuffer.error) {
+          labelUrl = slipBuffer.data || slipBuffer.label_url || slipBuffer;
+        }
+      } else {
+        labelUrl = await latexLabelGenerator.generate(order, order.user);
+      }
+    } else if (courierName.includes('amazon')) {
       const shipmentId = order.shiprocket_shipment_id;
       if (shipmentId) {
         const labelResult = await generateLabel([shipmentId]);
@@ -61,7 +148,7 @@ const generateLabelAsync = async (orderId, shipmentId) => {
 
     if (labelUrl) {
       await prisma.order.update({
-        where: { id: BigInt(id) },
+        where: { id: BigInt(orderId) },
         data: { label_url: labelUrl }
       });
 
@@ -166,7 +253,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
       217: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/217.png',
     };
 
-    const courierLogoUrl = others.courier_logo_url || defaultLogos[courier.courier_company_id] || '';
+    const courierLogoUrl = courier.courier_logo_url || others.courier_logo_url || defaultLogos[courier.courier_company_id] || '';
 
     return {
       courier_name: courier.courier_name,
@@ -187,7 +274,7 @@ const calculateFinalRates = async (prisma, userId, availableCouriers, recommende
       mode: courier.mode === 1 ? 'Air' : 'Surface',
       is_recommended: courier.courier_company_id === recommendedId,
       custom_tag: dbConfig.custom_tag || null,
-      is_vyom: dbConfig.is_vyom || false
+      is_vyom: courier.is_vyom || dbConfig.is_vyom || false
     };
   });
 };
@@ -251,40 +338,37 @@ const calculateRates = async (req, res) => {
       });
     }
 
-    // If both are valid, then get prices from both Shiprocket and Vyom
-    const [serviceabilityData] = await Promise.all([
-      getServiceability({
-        pickup_postcode,
-        delivery_postcode,
-        weight: weight,
-        cod,
-        declared_value,
-        is_return,
-        length,
-        breadth,
-        height,
-        mode: mode !== 'undefined' ? mode : undefined
-      }),
-    ]);
+    // Get rates from both Shiprocket and Vyom
+    const { couriers: availableCouriers, recommendedId } = await getMergedCouriers({
+      pickup_postcode,
+      delivery_postcode,
+      weight,
+      cod,
+      declared_value,
+      is_return,
+      length,
+      breadth,
+      height,
+      mode: mode !== 'undefined' ? mode : undefined,
+    });
 
-    if (!serviceabilityData || serviceabilityData.status !== 200) {
-      return res.status(serviceabilityData?.status || 400).json({
+    if (!availableCouriers || availableCouriers.length === 0) {
+      return res.status(400).json({
         success: false,
-        message: serviceabilityData?.message || 'Could not fetch rates',
-        data: serviceabilityData
+        message: 'No couriers available for this route',
       });
     }
 
-    let availableCouriers = serviceabilityData.data.available_courier_companies || [];
-
     const filteredCourierIds = [217];
-    availableCouriers = availableCouriers.filter(courier => !filteredCourierIds.includes(courier.courier_company_id));
+    const filteredCouriers = availableCouriers.filter(
+      (c) => !(c.courier_company_id > 0 && filteredCourierIds.includes(c.courier_company_id))
+    );
 
     let serviceableCouriers = await calculateFinalRates(
       prisma,
       req.user.id,
-      availableCouriers,
-      serviceabilityData.data.recommended_courier_company_id
+      filteredCouriers,
+      recommendedId
     );
 
     // Format the response and sanitize sensitive fields (exclude internal base rates and commission breakdowns)
@@ -303,7 +387,7 @@ const calculateRates = async (req, res) => {
         value: declared_value,
         payment_mode: parseInt(cod) === 1 ? 'COD' : 'PREPAID',
         applicable_weight: weight,
-        dangerous_goods: serviceabilityData.dg_courier === 1 ? 'Yes' : 'No'
+        dangerous_goods: 'No'
       },
       serviceable_couriers: serviceableCouriers.map(({
         base_rate,
@@ -469,7 +553,7 @@ const createOrder = async (req, res) => {
             length: length || 0,
             width: width || 0,
             height: height || 0,
-            courier_id: courier_id ? parseInt(courier_id) : null,
+            courier_id: courier_id ? (isNaN(parseInt(courier_id)) ? null : parseInt(courier_id)) : null,
             pickup_location: pickup_location || null,
             order_pickup_address: {
               update: {
@@ -517,7 +601,7 @@ const createOrder = async (req, res) => {
             length: length || 0,
             width: width || 0,
             height: height || 0,
-            courier_id: courier_id ? parseInt(courier_id) : null,
+            courier_id: courier_id ? (isNaN(parseInt(courier_id)) ? null : parseInt(courier_id)) : null,
             pickup_location: pickup_location || null,
             order_pickup_address: {
               create: {
@@ -568,30 +652,30 @@ const createOrder = async (req, res) => {
     }
 
     // SECURITY: Recalculate price on server. Do not trust client's shipping_charge.
-    const serviceabilityData = await getServiceability({
+    const { couriers: availableCouriers } = await getMergedCouriers({
       pickup_postcode: pickup_address.pincode,
       delivery_postcode: receiver_address.pincode,
-      weight: weight,
+      weight,
       cod: payment_mode === 'COD' ? 1 : 0,
       declared_value: total_amount,
       length,
       breadth: width,
       height,
-      mode: order_type === 'CARGO' ? 'Cargo' : order_type === 'SURFACE' ? 'Surface' : 'Air'
+      mode: order_type === 'CARGO' ? 'Cargo' : order_type === 'SURFACE' ? 'Surface' : 'Air',
     });
 
-    if (!serviceabilityData || serviceabilityData.status !== 200) {
+    if (!availableCouriers || availableCouriers.length === 0) {
       return res.status(400).json({
         message: 'Could not verify shipping rates on server',
-        details: serviceabilityData?.message
       });
     }
 
-    const availableCouriers = serviceabilityData.data.available_courier_companies || [];
     const serviceableCouriers = await calculateFinalRates(prisma, userId, availableCouriers);
 
-    // Find the chosen courier and its calculated rate
-    const chosenCourier = serviceableCouriers.find(c => c.courier_company_id === parseInt(courier_id));
+    // Find the chosen courier — support both numeric (Shiprocket) and string (Vyom) IDs
+    const chosenCourier = serviceableCouriers.find(
+      (c) => c.courier_company_id === parseInt(courier_id) || c.courier_company_id === courier_id
+    );
 
     if (!chosenCourier) {
       return res.status(400).json({ message: 'Selected courier is not available for this route/weight' });
@@ -600,14 +684,18 @@ const createOrder = async (req, res) => {
     const serverShippingCharge = chosenCourier.rate;
     const serverBaseCharge = chosenCourier.base_rate;
     const orderId = generateOrderId();
+
+    let vyomWarehouseId = null;
+    if (chosenCourier.is_vyom) {
+      vyomWarehouseId = await ensureVyomWarehouse(pickup_address);
+    }
+
     const newOrder = await prisma.$transaction(async (tx) => {
-      // 1. Check wallet balance with new formula
       const user = await tx.user.findUnique({
         where: { id: userId },
         select: { wallet_balance: true, security_deposit: true, security_deposit_enabled: true }
       });
 
-      // Fetch security fee configuration from settings
       const [feeTypeSetting, feeValueSetting] = await Promise.all([
         tx.systemSetting.findUnique({ where: { key: 'security_fee_type' } }),
         tx.systemSetting.findUnique({ where: { key: 'security_fee_value' } })
@@ -627,28 +715,10 @@ const createOrder = async (req, res) => {
       }
       const totalDeduction = orderAmount + securityDepositAmount;
 
-      // New validation: Get undelivered orders (not including cancelled, delivered, RTO)
-      // const undeliveredOrders = await tx.order.findMany({
-      //   where: {
-      //     user_id: userId,
-      //     shipment_status: {
-      //       in: ['PENDING', 'MANIFESTED', 'IN_TRANSIT', 'DISPATCHED', 'NOT_PICKED']
-      //     },
-      //     is_draft: false
-      //   },
-      //   select: { shipping_charge: true }
-      // });
-
-      // const undeliveredTotal = undeliveredOrders.reduce((sum, order) => sum + Number(order.shipping_charge || 0), 0);
-
-      // New formula: wallet_balance > (undeliveredTotal) + (2 × newOrderAmount)
-      // const requiredBalance = (orderAmount * 2);
-
       if (Number(user.wallet_balance) < totalDeduction) {
         throw new Error(`Insufficient wallet balance. Required: ₹${totalDeduction.toFixed(2)}, Available Wallet Balance: ₹${Number(user.wallet_balance).toFixed(2)}`);
       }
 
-      // 2. Debit wallet & transfer to security deposit (atomic)
       await tx.user.update({
         where: { id: userId },
         data: {
@@ -657,7 +727,6 @@ const createOrder = async (req, res) => {
         }
       });
 
-      // Get updated wallet balance after deduction
       const updatedUser = await tx.user.findUnique({
         where: { id: userId },
         select: { wallet_balance: true }
@@ -665,8 +734,6 @@ const createOrder = async (req, res) => {
 
       const closingWalletBalance = Number(updatedUser.wallet_balance);
 
-      // 4. Create transaction record for order payment (DEBIT)
-      // 5. Create transaction record for security deposit (DEBIT from wallet) - only if enabled
       const transactionPromises = [
         tx.transaction.create({
           data: {
@@ -700,9 +767,7 @@ const createOrder = async (req, res) => {
       const transactionResults = await Promise.all(transactionPromises);
       const orderPaymentTransaction = transactionResults[0];
 
-      // Save addresses if requested - check if address already exists first
       if (save_pickup_address) {
-        // Check if similar address already exists (match on phone, pincode, and address)
         const existingPickupAddress = await tx.address.findFirst({
           where: {
             user_id: userId,
@@ -711,8 +776,6 @@ const createOrder = async (req, res) => {
             complete_address: pickup_address.address,
           }
         });
-
-        // Only create if no matching address exists
         if (!existingPickupAddress) {
           await tx.address.create({
             data: {
@@ -731,7 +794,6 @@ const createOrder = async (req, res) => {
       }
 
       if (save_receiver_address) {
-        // Check if similar address already exists (match on phone, pincode, and address)
         const existingReceiverAddress = await tx.address.findFirst({
           where: {
             user_id: userId,
@@ -740,8 +802,6 @@ const createOrder = async (req, res) => {
             complete_address: receiver_address.address,
           }
         });
-
-        // Only create if no matching address exists
         if (!existingReceiverAddress) {
           await tx.address.create({
             data: {
@@ -774,7 +834,7 @@ const createOrder = async (req, res) => {
           length,
           width,
           height,
-          courier_id: chosenCourier.courier_company_id,
+          courier_id: isNaN(parseInt(chosenCourier.courier_company_id)) ? null : parseInt(chosenCourier.courier_company_id),
           courier_name: chosenCourier.courier_name,
           is_vyom: !!chosenCourier.is_vyom,
           shipping_charge: Math.round(parseFloat(serverShippingCharge) * 100) / 100,
@@ -789,7 +849,6 @@ const createOrder = async (req, res) => {
         }
       });
 
-      // 3.1 Create SecurityDeposit record for tracking (after Order exists) - only if enabled
       if (securityDepositAmount > 0) {
         await tx.securityDeposit.create({
           data: {
@@ -803,17 +862,9 @@ const createOrder = async (req, res) => {
         });
       }
 
-      // console.log(`[Order Create] Commission fields - global_rate: ${chosenCourier.global_commission_rate}, global_amt: ${chosenCourier.global_commission_amount}, franchise_rate: ${chosenCourier.franchise_commission_rate}, franchise_amt: ${chosenCourier.franchise_commission_amount}`);
-
-      // Create multi-level referral commissions (flat from base shipping)
       const baseCommissionAmount = parseFloat(order.base_shipping_charge || 0);
-      // console.log(`[Order Commission] Order ${order.id}: baseAmount=${baseCommissionAmount}, maxLevels=${maxLevels}`);
       if (baseCommissionAmount > 0) {
-        const commissions = await createReferralCommissions(tx, order.id, userId, baseCommissionAmount, maxLevels);
-        // console.log(`[Order Commission] Created ${commissions.length} referral commissions for order ${order.id}`);
-        // commissions.forEach(c => {
-        //   console.log(`[Order Commission] Level ${c.level}: ${c.amount} to user ${c.referrer_id}`);
-        // });
+        await createReferralCommissions(tx, order.id, userId, baseCommissionAmount, maxLevels);
       }
 
       let shiprocketOrderId = null;
@@ -868,7 +919,6 @@ const createOrder = async (req, res) => {
             ],
           payment_method: payment_mode,
           shipping_charges: 0,
-          // shipping_charges: parseFloat(serverShippingCharge),
           sub_total: payment_mode !== 'COD' ? parseFloat(total_amount) : parseFloat(cod_amount),
           length: parseFloat(length) || 10,
           breadth: parseFloat(width) || 10,
@@ -878,27 +928,97 @@ const createOrder = async (req, res) => {
         };
 
         if (chosenCourier.is_vyom) {
-          const vyomResult = await vyom.createVyomShipment(shipmentData);
-          if (!vyomResult || !vyomResult.success) {
-            throw new Error('Failed to create shipment with Vyom Express.');
+          const serviceId = Math.floor(Math.abs(chosenCourier.courier_company_id) / 1000);
+          const vyomPayload = {
+            ship_to: {
+              name: receiver_address.name,
+              address: receiver_address.address,
+              pincode: receiver_address.pincode,
+              state: receiver_address.state,
+              city: receiver_address.city,
+              phone: receiver_address.phone,
+              country: receiver_address.country || 'India',
+              address_type: 'Home',
+              email: receiver_address.email || '',
+            },
+            ship_from: {
+              name: pickup_address.name,
+              address: pickup_address.address,
+              pincode: pickup_address.pincode,
+              state: pickup_address.state,
+              city: pickup_address.city,
+              phone: pickup_address.phone,
+              country: pickup_address.country || 'India',
+              address_type: 'Office',
+              email: pickup_address.email || '',
+            },
+            ...(vyomWarehouseId ? { warehouse_id: vyomWarehouseId } : {}),
+            package_products: products && products.length > 0
+              ? {
+                  product_name: products[0].name || 'Product',
+                  quantity: String(products[0].quantity || 1),
+                  unit_value: String(products[0].price || total_amount || 0),
+                  hsn_code: products[0].hsn || '',
+                  sku_weight: String(weight || 0.5),
+                  desc: products[0].description || '',
+                }
+              : {
+                  product_name: `Order #${order.id}`,
+                  quantity: '1',
+                  unit_value: String(total_amount || 0),
+                },
+            weight: parseFloat(weight) || 0.5,
+            height: parseFloat(height) || 10,
+            width: parseFloat(width) || 10,
+            length: parseFloat(length) || 10,
+            product_category: order_type || 'General',
+            payment_mode: payment_mode === 'COD' ? 'COD' : 'PREPAID',
+            cod_amount: payment_mode === 'COD' ? String(cod_amount || total_amount || 0) : undefined,
+            delivery_mode: order_type === 'CARGO' ? 'express' : 'surface',
+            ref_id: String(order.id),
+            service_id: parseInt(serviceId) || 0,
+          };
+
+          const vyomResult = await vyom.createShipment(vyomPayload);
+          if (!vyomResult || vyomResult.error) {
+            throw new Error(vyomResult?.message || 'Failed to create shipment with Vyom Express.');
           }
-          const vyomOrderId = vyomResult.order_id || vyomResult.shipment_id;
-          const vyomShipmentId = vyomResult.shipment_id;
-          const vyomAwb = vyomResult.awb_code;
+
+          const vyomData = vyomResult?.data?.data || vyomResult?.data || vyomResult;
+          const td = vyomData?.tracking_details || vyomData;
+          const awb = td.awb || td.awb_number || td.tracking_id || vyomData.awb || vyomData.shipment_id || null;
+          let vyomOrderId = vyomData?.order_id || null;
+
+          if (awb && !vyomOrderId) {
+            try {
+              const trackingResult = await vyom.getOrderByTracking(awb);
+              const trackingData = trackingResult?.data;
+              vyomOrderId = trackingData?.vendor_order_id || trackingData?.vendor_order?.order_id || null;
+            } catch (e) {
+              console.warn(`[Vyom] Could not fetch Vyom order ID for AWB ${awb}:`, e.message);
+            }
+          }
+
+          const nowIST = new Date(new Date().getTime() + 5.5 * 60 * 60 * 1000);
+          const pickupDate = new Date();
+          if (nowIST.getUTCHours() >= 20) {
+            pickupDate.setDate(pickupDate.getDate() + 1);
+          }
+          pickupDate.setHours(10, 0, 0, 0);
 
           await tx.order.update({
             where: { id: order.id },
             data: {
-              vyom_order_id: vyomOrderId?.toString(),
-              vyom_shipment_id: vyomShipmentId?.toString(),
-              tracking_number: vyomAwb?.toString(),
-              shipment_status: 'PROCESSING'
-            }
+              vyom_order_id: vyomOrderId ? String(vyomOrderId) : String(order.id),
+              vyom_shipment_id: awb,
+              tracking_number: awb,
+              shipment_status: awb ? 'PROCESSING' : 'PENDING',
+              pickup_scheduled_date: pickupDate,
+            },
           });
         } else {
           const shipmentResult = await createShipment(shipmentData);
 
-          // Validate the Shiprocket response contains required fields
           if (!shipmentResult || !shipmentResult.order_id || !shipmentResult.shipment_id) {
             throw new Error('Failed to create shipment with Shiprocket. Invalid response received from shipping provider.');
           }
@@ -968,7 +1088,6 @@ const createOrder = async (req, res) => {
       } catch (shipmentError) {
         console.error('Error creating shipment:', shipmentError);
 
-        // Auto-cancel the order if shipment creation failed
         try {
           await tx.order.update({
             where: { id: order.id },
@@ -979,7 +1098,6 @@ const createOrder = async (req, res) => {
           console.error('Failed to auto-cancel order:', cancelError);
         }
 
-        // Re-throw the error to rollback the transaction
         throw new Error(shipmentError.message || 'Failed to create shipment');
       }
 
@@ -1024,7 +1142,7 @@ const createOrder = async (req, res) => {
         wallet_balance: updatedUser?.wallet_balance,
         security_deposit: updatedUser?.security_deposit
       });
-    });
+    }, { timeout: 30000 });
   } catch (error) {
     console.error(error);
     if (error.message.includes('Insufficient wallet balance')) {
@@ -1243,6 +1361,15 @@ const cancelOrder = async (req, res) => {
           shiprocketCancelResult = await cancelShipment(order.shiprocket_order_id);
         } catch (cancelError) {
           console.error('Error cancelling Shiprocket shipment:', cancelError);
+        }
+      }
+
+      if (order.is_vyom && order.vyom_shipment_id) {
+        try {
+          cancellationAttempted = true;
+          await vyom.cancelShipment(order.vyom_shipment_id, 'Cancelled by user');
+        } catch (cancelError) {
+          console.error('Error cancelling Vyom shipment:', cancelError);
         }
       }
 
@@ -1746,11 +1873,17 @@ const getOrderTracking = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    if (!order.shiprocket_shipment_id) {
-      return res.status(400).json({ message: 'No shipment found for this order' });
+    let trackingData = null;
+
+    if (order.is_vyom && order.tracking_number) {
+      trackingData = await vyom.getOrderByTracking(order.tracking_number);
+    } else if (order.shiprocket_shipment_id) {
+      trackingData = await getShipmentTracking(order.shiprocket_shipment_id);
     }
 
-    const trackingData = await getShipmentTracking(order.shiprocket_shipment_id);
+    if (!trackingData) {
+      return res.status(400).json({ message: 'No tracking information available for this order' });
+    }
 
     const shipmentHistory = await prisma.shipmentHistory.findMany({
       where: { order_id: order.id },
@@ -1794,7 +1927,25 @@ const getLiveOrderStatus = async (req, res) => {
     let liveStatus = null;
     let trackingData = null;
 
-    if (order.shiprocket_shipment_id) {
+    if (order.is_vyom && order.tracking_number) {
+      try {
+        const vyomTracking = await vyom.getOrderByTracking(order.tracking_number);
+        if (vyomTracking && !vyomTracking.error) {
+          const vData = vyomTracking?.data || vyomTracking;
+          liveStatus = {
+            current_status: vData.remarks || vData.delivery_status || 'PENDING',
+            status: vData.tracking_status || vData.unified_status || 'pending',
+            track_url: null,
+            estimated_delivery: vData.delivered_on || null,
+            courier: 'VyomXpress',
+            tracking_number: order.tracking_number,
+            activities: vData.tracking_details || []
+          };
+        }
+      } catch (trackingError) {
+        console.error('Error fetching Vyom tracking:', trackingError);
+      }
+    } else if (order.shiprocket_shipment_id) {
       try {
         trackingData = await getShipmentTracking(order.shiprocket_shipment_id);
         // console.log('trackingData:', trackingData);
@@ -1859,6 +2010,10 @@ const generateOrderManifest = async (req, res) => {
       return res.status(403).json({ message: 'You are not authorized to generate manifest for this order' });
     }
 
+    if (order.is_vyom) {
+      return res.status(400).json({ message: 'Manifest generation is not supported for Vyom orders' });
+    }
+
     if (!order.shiprocket_shipment_id) {
       return res.status(400).json({ message: 'No shipment found for this order' });
     }
@@ -1911,6 +2066,10 @@ const printOrderManifest = async (req, res) => {
       return res.status(403).json({ message: 'You are not authorized to print manifest for this order' });
     }
 
+    if (order.is_vyom) {
+      return res.status(400).json({ message: 'Manifest printing is not supported for Vyom orders' });
+    }
+
     if (!order.shiprocket_order_id) {
       return res.status(400).json({ message: 'No shipment found for this order' });
     }
@@ -1961,10 +2120,23 @@ const generateOrderLabel = async (req, res) => {
       return res.status(400).json({ message: 'No AWB assigned to this order yet' });
     }
 
-    const courierName = (order.courier_name || '').toLowerCase();
     let labelUrl;
 
-    if (courierName.includes('amazon')) {
+    const courierName = (order.courier_name || '').toLowerCase();
+
+    if (order.is_vyom) {
+      if (courierName.includes('amazon')) {
+        const slipBuffer = await vyom.getPackingSlip(order.vyom_order_id || order.id.toString());
+        if (Buffer.isBuffer(slipBuffer)) {
+          const uploadResult = await uploadPdfToCloudinary(slipBuffer, 'cheapship/vyom-labels');
+          labelUrl = uploadResult?.secure_url || null;
+        } else if (slipBuffer && !slipBuffer.error) {
+          labelUrl = slipBuffer.data || slipBuffer.label_url || slipBuffer;
+        }
+      } else {
+        labelUrl = await latexLabelGenerator.generate(order, order.user);
+      }
+    } else if (courierName.includes('amazon')) {
       const shipmentId = order.shiprocket_shipment_id;
       if (shipmentId) {
         const labelResult = await generateLabel([shipmentId]);
@@ -2007,6 +2179,10 @@ const generateOrderInvoice = async (req, res) => {
 
     if (order.user_id !== userId) {
       return res.status(403).json({ message: 'You are not authorized to generate invoice for this order' });
+    }
+
+    if (order.is_vyom) {
+      return res.status(400).json({ message: 'Invoice generation is not supported for Vyom orders. Use packing slip instead.' });
     }
 
     if (!order.shiprocket_order_id) {
@@ -2246,6 +2422,10 @@ const assignOrderAWB = async (req, res) => {
       return res.status(400).json({ message: `Cannot assign AWB for order in ${order.shipment_status} status` });
     }
 
+    if (order.is_vyom) {
+      return res.status(400).json({ message: 'AWB is assigned automatically during Vyom order creation' });
+    }
+
     if (!order.shiprocket_shipment_id) {
       return res.status(400).json({ message: 'No shipment ID found for this order' });
     }
@@ -2313,6 +2493,10 @@ const scheduleOrderPickup = async (req, res) => {
 
     if (order.user_id !== userId) {
       return res.status(403).json({ message: 'You are not authorized to schedule pickup for this order' });
+    }
+
+    if (order.is_vyom) {
+      return res.status(400).json({ message: 'Pickup scheduling is managed by VyomXpress. Contact support for rescheduling.' });
     }
 
     // Validate that AWB is assigned before scheduling pickup
@@ -2447,7 +2631,25 @@ const trackOrderByAWB = async (req, res) => {
     let liveStatus = null;
     let trackingData = null;
 
-    if (order.shiprocket_shipment_id) {
+    if (order.is_vyom && order.tracking_number) {
+      try {
+        const vyomTracking = await vyom.getOrderByTracking(order.tracking_number);
+        if (vyomTracking && !vyomTracking.error) {
+          const vData = vyomTracking?.data || vyomTracking;
+          liveStatus = {
+            current_status: vData.remarks || vData.delivery_status || 'PENDING',
+            status: vData.tracking_status || vData.unified_status || 'pending',
+            track_url: null,
+            estimated_delivery: vData.delivered_on || null,
+            courier: 'VyomXpress',
+            tracking_number: order.tracking_number,
+            activities: vData.tracking_details || []
+          };
+        }
+      } catch (trackingError) {
+        console.error('Error fetching Vyom tracking:', trackingError);
+      }
+    } else if (order.shiprocket_shipment_id) {
       try {
         trackingData = await getShipmentTracking(order.shiprocket_shipment_id);
 

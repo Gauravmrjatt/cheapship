@@ -43,6 +43,10 @@ checkDbConnection();
 const { initializeCronJobs } = require('./cron/security-refund.cron');
 initializeCronJobs(prisma);
 
+// Initialize Vyom tracking polling cron
+const { initializeVyomTrackingCron } = require('./cron/vyom-tracking.cron');
+initializeVyomTrackingCron(prisma);
+
 // Secure HTTP headers
 app.use(helmet());
 

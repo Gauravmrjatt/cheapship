@@ -3,6 +3,7 @@ const router = express.Router();
 const { check, query } = require('express-validator');
 const { validationResult } = require('express-validator');
 const { getLocalityDetails, getServiceability } = require('../utils/shiprocket');
+const vyom = require('../utils/vyom');
 
 const getPublicRates = async (req, res) => {
   const errors = validationResult(req);
@@ -44,7 +45,7 @@ const getPublicRates = async (req, res) => {
       });
     }
 
-    const [serviceabilityData] = await Promise.all([
+    const [srResult, vyomFares] = await Promise.all([
       getServiceability({
         pickup_postcode,
         delivery_postcode,
@@ -55,22 +56,45 @@ const getPublicRates = async (req, res) => {
         length,
         breadth,
         height,
-        mode: mode !== 'undefined' ? mode : undefined
+        mode: mode !== 'undefined' ? mode : undefined,
       }),
+      vyom.isConfigured()
+        ? vyom.getFare({
+            receiverPincode: delivery_postcode,
+            originPincode: pickup_postcode,
+            weight,
+            height,
+            width: breadth,
+            length,
+            cod_amount: declared_value,
+            payment_mode: parseInt(cod) === 1 ? 'COD' : 'PREPAID',
+          }).catch((e) => {
+            console.error('Vyom fare error:', e.message);
+            return null;
+          })
+        : null,
     ]);
 
-    if (!serviceabilityData || serviceabilityData.status !== 200) {
-      return res.status(serviceabilityData?.status || 400).json({
+    let shiprocketCouriers = [];
+    let recommendedId = null;
+    if (srResult && srResult.status === 200) {
+      shiprocketCouriers = srResult.data.available_courier_companies || [];
+      recommendedId = srResult.data.recommended_courier_company_id;
+    } else if (!srResult || srResult.status !== 200) {
+      return res.status(srResult?.status || 400).json({
         success: false,
-        message: serviceabilityData?.message || 'Could not fetch rates',
-        data: serviceabilityData
+        message: srResult?.message || 'Could not fetch rates',
+        data: srResult,
       });
     }
 
-    let availableCouriers = serviceabilityData.data.available_courier_companies || [];
+    const vyomCouriers = vyom.normalizeVyomFares(vyomFares?.data);
+    const allCouriers = [...shiprocketCouriers, ...vyomCouriers];
 
     const filteredCourierIds = [217];
-    availableCouriers = availableCouriers.filter(courier => !filteredCourierIds.includes(courier.courier_company_id));
+    const availableCouriers = allCouriers.filter(
+      (c) => !(c.courier_company_id > 0 && filteredCourierIds.includes(c.courier_company_id))
+    );
 
     const defaultLogos = {
       10: 'https://s3-ap-south-1.amazonaws.com/kr-shipmultichannel-mum/courier_logo/10.png',
@@ -102,9 +126,9 @@ const getPublicRates = async (req, res) => {
         courier_logo_url: courierLogoUrl,
         is_surface: courier.is_surface,
         mode: courier.mode === 1 ? 'Air' : 'Surface',
-        is_recommended: courier.courier_company_id === serviceabilityData.data.recommended_courier_company_id,
+        is_recommended: courier.courier_company_id === recommendedId,
         custom_tag: null,
-        is_vyom: false
+        is_vyom: courier.is_vyom || false,
       };
     }).sort((a, b) => a.rate - b.rate);
 
@@ -123,7 +147,7 @@ const getPublicRates = async (req, res) => {
         value: declared_value,
         payment_mode: parseInt(cod) === 1 ? 'COD' : 'PREPAID',
         applicable_weight: weight,
-        dangerous_goods: serviceabilityData.dg_courier === 1 ? 'Yes' : 'No'
+        dangerous_goods: 'No'
       },
       serviceable_couriers: serviceableCouriers
     };
