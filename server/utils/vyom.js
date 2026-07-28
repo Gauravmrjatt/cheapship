@@ -212,7 +212,7 @@ const normalizeVyomFares = (vyomFares) => {
     const rawTotalFare = parseFloat(getValue(fare, 'total_fare', 'totalFare', 'total_fare_with_cod'));
     const rawBaseFare = parseFloat(getValue(fare, 'base_fare', 'baseFare'));
     const gstFare = parseFloat(getValue(fare, 'gst_fare', 'gstFare', 'gst')) || 0;
-    const codSurcharge = parseFloat(getValue(fare, 'cod_surcharge', 'cod_charges', 'cod_charge', 'codCharges')) || 0;
+    const codSurcharge = parseFloat(getValue(fare, 'cod_surcharge', 'cod_charges', 'cod_charge', 'codCharges', 'codCharge')) || 0;
     const fuelSurcharge = parseFloat(getValue(fare, 'fuel_surcharge', 'fuelSurcharge')) || 0;
     const handlingFee = parseFloat(getValue(fare, 'handling_fee', 'handlingFee')) || 0;
     const chargedWeight = getValue(fare, 'charged_weight', 'chargedWeight', 'chargedweight');
