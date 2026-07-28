@@ -204,7 +204,9 @@ function getValue(obj, ...keys) {
 
 const normalizeVyomFares = (vyomFares) => {
   if (!vyomFares || !Array.isArray(vyomFares)) return [];
-  return vyomFares.map((fare) => {
+  return vyomFares
+    .filter((f) => !f.code && !f.error && !f.error_code)
+    .map((fare) => {
     const companyName = getValue(fare, 'company_name', 'companyName') || '';
     const serviceName = getValue(fare, 'name', 'service_name', 'serviceName') || '';
     const rawTotalFare = parseFloat(getValue(fare, 'total_fare', 'totalFare', 'total_fare_with_cod'));

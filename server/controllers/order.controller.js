@@ -33,8 +33,13 @@ const getMergedCouriers = async (params) => {
 
   const vyomCouriers = vyom.normalizeVyomFares(vyomFares?.data);
 
+  const allCouriers = [...shiprocketCouriers, ...vyomCouriers].filter((c) => {
+    const rate = parseFloat(c.rate);
+    return rate > 0;
+  });
+
   return {
-    couriers: [...shiprocketCouriers, ...vyomCouriers],
+    couriers: allCouriers,
     recommendedId: srResult?.data?.recommended_courier_company_id || null,
   };
 };
