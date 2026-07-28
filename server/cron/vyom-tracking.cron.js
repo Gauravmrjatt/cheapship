@@ -8,17 +8,18 @@ function logWarn(message) { console.warn(message); }
 function logError(message) { console.error(message); }
 
 function parseTrackingDetails(trackingDetails) {
-  if (!trackingDetails || !Array.isArray(trackingDetails)) return [];
-  return trackingDetails.map((scan) => {
-    const scanDate = scan.date || scan.timestamp || scan.created_at || scan.scanned_at || null;
-    const scanActivity = scan.activity || scan.remarks || scan.status || scan.scan || '';
-    const scanLocation = scan.location || scan.scanned_location || scan.city || '';
+  if (!trackingDetails) return [];
+  const items = Array.isArray(trackingDetails) ? trackingDetails : [trackingDetails];
+  return items.map((scan) => {
+    const scanDate = scan.date || scan.timestamp || scan.created_at || scan.scanned_at || new Date().toISOString();
+    const scanActivity = scan.instructions || scan.activity || scan.remarks || scan.status || scan.scan || '';
+    const scanLocation = scan.status_location || scan.location || scan.scanned_location || scan.city || '';
     return {
-      date: scanDate ? new Date(scanDate) : null,
+      date: new Date(scanDate),
       activity: scanActivity,
       location: scanLocation,
     };
-  }).filter((s) => s.date || s.activity);
+  }).filter((s) => s.activity);
 }
 
 async function processVyomOrder(tx, order, trackingData) {
@@ -164,11 +165,44 @@ async function pollVyomOrders(prisma) {
           await prisma.$transaction(async (tx) => {
             await processVyomOrder(tx, order, trackingResult);
           });
+        } else if (vData.tracking_details) {
+          const scans = parseTrackingDetails(vData.tracking_details);
+          if (scans.length > 0) {
+            const existingHistory = await prisma.shipmentHistory.findMany({
+              where: { order_id: order.id },
+              orderBy: { status_date: 'asc' },
+              take: scans.length,
+            });
+            const newEntries = [];
+            for (const scan of scans) {
+              if (!scan.date) continue;
+              const exists = existingHistory.some((h) =>
+                h.activity === scan.activity &&
+                Math.abs(new Date(h.status_date).getTime() - scan.date.getTime()) < 60000
+              );
+              if (!exists) {
+                newEntries.push({
+                  order_id: order.id,
+                  status: scan.activity || 'UPDATED',
+                  status_date: scan.date,
+                  location: scan.location || '',
+                  shipment_status: vyom.mapVyomStatus(scan.activity),
+                  activity: scan.activity || '',
+                });
+              }
+            }
+            if (newEntries.length > 0) {
+              await prisma.shipmentHistory.createMany({ data: newEntries, skipDuplicates: true });
+              log(`[VyomCron] Order #${order.id}: added ${newEntries.length} new scan(s)`);
+            }
+          }
         }
 
         const rawDetails = vData.tracking_details;
-        if (rawDetails && Array.isArray(rawDetails) && rawDetails.length > 0) {
-          log(`[VyomCron] Order #${order.id} status=${rawStatus} scans=${rawDetails.length} first=${JSON.stringify(rawDetails[0])}`);
+        if (rawDetails) {
+          const detailCount = Array.isArray(rawDetails) ? rawDetails.length : 1;
+          const sample = Array.isArray(rawDetails) ? rawDetails[0] : rawDetails;
+          log(`[VyomCron] Order #${order.id} status=${rawStatus} scans=${detailCount} first=${JSON.stringify(sample)}`);
         } else {
           log(`[VyomCron] Order #${order.id} status=${rawStatus} scans=0`);
         }

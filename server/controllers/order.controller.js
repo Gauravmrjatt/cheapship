@@ -1939,7 +1939,7 @@ const getLiveOrderStatus = async (req, res) => {
             estimated_delivery: vData.delivered_on || null,
             courier: 'VyomXpress',
             tracking_number: order.tracking_number,
-            activities: vData.tracking_details || []
+            activities: Array.isArray(vData.tracking_details) ? vData.tracking_details : (vData.tracking_details ? [vData.tracking_details] : [])
           };
         }
       } catch (trackingError) {
@@ -2643,7 +2643,7 @@ const trackOrderByAWB = async (req, res) => {
             estimated_delivery: vData.delivered_on || null,
             courier: 'VyomXpress',
             tracking_number: order.tracking_number,
-            activities: vData.tracking_details || []
+            activities: Array.isArray(vData.tracking_details) ? vData.tracking_details : (vData.tracking_details ? [vData.tracking_details] : [])
           };
         }
       } catch (trackingError) {
