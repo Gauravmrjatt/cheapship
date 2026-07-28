@@ -680,6 +680,10 @@ const createOrder = async (req, res) => {
 
     const serverShippingCharge = chosenCourier.rate;
     const serverBaseCharge = chosenCourier.base_rate;
+
+    if (!serverShippingCharge || Number(serverShippingCharge) <= 0) {
+      return res.status(400).json({ message: 'Invalid shipping rate. Please try again.' });
+    }
     const orderId = generateOrderId();
 
     let vyomWarehouseId = null;
