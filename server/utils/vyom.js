@@ -194,11 +194,32 @@ const hashString = (str) => {
   return Math.abs(hash);
 };
 
+function getValue(obj, ...keys) {
+  for (const key of keys) {
+    const val = obj[key];
+    if (val !== undefined && val !== null) return val;
+  }
+  return undefined;
+}
+
 const normalizeVyomFares = (vyomFares) => {
   if (!vyomFares || !Array.isArray(vyomFares)) return [];
   return vyomFares.map((fare) => {
-    const companyName = fare.company_name || '';
-    const serviceName = fare.name || '';
+    const companyName = getValue(fare, 'company_name', 'companyName') || '';
+    const serviceName = getValue(fare, 'name', 'service_name', 'serviceName') || '';
+    const rawTotalFare = parseFloat(getValue(fare, 'total_fare', 'totalFare', 'total_fare_with_cod'));
+    const rawBaseFare = parseFloat(getValue(fare, 'base_fare', 'baseFare'));
+    const gstFare = parseFloat(getValue(fare, 'gst_fare', 'gstFare', 'gst')) || 0;
+    const codSurcharge = parseFloat(getValue(fare, 'cod_surcharge', 'cod_charges', 'cod_charge', 'codCharges')) || 0;
+    const fuelSurcharge = parseFloat(getValue(fare, 'fuel_surcharge', 'fuelSurcharge')) || 0;
+    const handlingFee = parseFloat(getValue(fare, 'handling_fee', 'handlingFee')) || 0;
+    const chargedWeight = getValue(fare, 'charged_weight', 'chargedWeight', 'chargedweight');
+    const tat = getValue(fare, 'tat', 'estimated_delivery_days', 'estimatedDeliveryDays');
+    const serviceId = getValue(fare, 'service_id', 'serviceId');
+    const icon = getValue(fare, 'icon', 'logo_url', 'logoUrl');
+    const baseFare = rawBaseFare || 0;
+    const totalFare = rawTotalFare || (baseFare + gstFare + codSurcharge + fuelSurcharge + handlingFee) || baseFare;
+
     const isExpress = (serviceName || '').toLowerCase().includes('express');
     const name = companyName && !serviceName.includes(companyName)
       ? `${companyName} ${serviceName}`.trim()
@@ -206,12 +227,17 @@ const normalizeVyomFares = (vyomFares) => {
     const nameHash = (hashString(serviceName || name || 'vyom') % 999) + 1;
     return {
       courier_name: name,
-      courier_company_id: -(fare.service_id * 1000 + nameHash),
-      courier_logo_url: fare.icon || '',
-      rate: fare.total_fare || fare.base_fare || 0,
-      etd: fare.tat ? new Date(Date.now() + fare.tat * 86400000).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
-      estimated_delivery_days: String(fare.tat || ''),
-      charge_weight: fare.charged_weight ? fare.charged_weight / 1000 : null,
+      courier_company_id: -(serviceId * 1000 + nameHash),
+      courier_logo_url: icon || '',
+      rate: totalFare,
+      base_rate: baseFare,
+      gst: gstFare,
+      cod_surcharge: codSurcharge,
+      fuel_surcharge: fuelSurcharge,
+      handling_fee: handlingFee,
+      etd: tat ? new Date(Date.now() + tat * 86400000).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+      estimated_delivery_days: String(tat || ''),
+      charge_weight: chargedWeight ? chargedWeight / 1000 : null,
       rating: 4.0,
       is_surface: !isExpress,
       mode: isExpress ? 1 : 0,

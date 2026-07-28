@@ -15,14 +15,11 @@ const getMergedCouriers = async (params) => {
       return null;
     }),
     vyom.getFare({
-      receiverPincode: params.delivery_postcode,
-      originPincode: params.pickup_postcode,
+      pickup_pincode: params.pickup_postcode,
+      delivery_pincode: params.delivery_postcode,
       weight: params.weight,
-      height: params.height || params.breadth,
-      width: params.breadth,
-      length: params.length,
-      cod_amount: params.declared_value,
       payment_mode: parseInt(params.cod) === 1 ? 'COD' : 'PREPAID',
+      cod_amount: params.declared_value,
     }).catch((e) => {
       console.error('Vyom fare error:', e.message);
       return null;
