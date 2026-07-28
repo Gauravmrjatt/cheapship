@@ -22,7 +22,7 @@ const getMergedCouriers = async (params) => {
       length: params.length || 10,
       weight: params.weight,
       payment_mode: parseInt(params.cod) === 1 ? 'cod' : 'pre-paid',
-      codAmount: params.declared_value,
+      ...(parseInt(params.cod) === 1 ? { codAmount: params.declared_value } : {}),
     }).catch((e) => {
       console.error('Vyom fare error:', e.message);
       return null;

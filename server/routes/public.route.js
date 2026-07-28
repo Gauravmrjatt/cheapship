@@ -66,7 +66,7 @@ const getPublicRates = async (req, res) => {
             height,
             width: breadth,
             length,
-            codAmount: declared_value,
+            ...(parseInt(cod) === 1 ? { codAmount: declared_value } : {}),
             payment_mode: parseInt(cod) === 1 ? 'COD' : 'PREPAID',
           }).catch((e) => {
             console.error('Vyom fare error:', e.message);
