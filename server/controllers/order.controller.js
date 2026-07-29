@@ -977,7 +977,7 @@ const createOrder = async (req, res) => {
                   quantity: '1',
                   unit_value: String(total_amount || 0),
                 },
-            weight: parseFloat(weight) || 0.5,
+            weight: parseFloat(weight) * 1000 || 500,
             height: parseFloat(height) || 10,
             width: parseFloat(width) || 10,
             length: parseFloat(length) || 10,
@@ -990,10 +990,11 @@ const createOrder = async (req, res) => {
           };
 
           const vyomResult = await vyom.createShipment(vyomPayload);
+       
           if (!vyomResult || vyomResult.error) {
             throw new Error(vyomResult?.message || 'Failed to create shipment with Vyom Express.');
           }
-
+      
           const vyomData = vyomResult?.data?.data || vyomResult?.data || vyomResult;
           const td = vyomData?.tracking_details || vyomData;
           const awb = td.awb || td.awb_number || td.tracking_id || vyomData.awb || vyomData.shipment_id || null;
