@@ -35,7 +35,7 @@ const getMergedCouriers = async (params) => {
     shiprocketCouriers = srResult.data.available_courier_companies || [];
   }
 
-  const vyomCouriers = vyom.normalizeVyomFares(vyomFares?.data);
+  const vyomCouriers = vyom.normalizeVyomFares(vyomFares?.data, params.weight);
 
   const allCouriers = [...shiprocketCouriers, ...vyomCouriers].filter((c) => {
     const rate = parseFloat(c.rate);
