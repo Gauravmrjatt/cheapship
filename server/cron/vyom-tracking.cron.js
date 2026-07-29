@@ -11,6 +11,12 @@ function getLatestStatus(vData) {
   const details = vData?.tracking_details;
   if (details) {
     const items = Array.isArray(details) ? details : [details];
+
+    for (const item of items) {
+      const instr = (item.instructions || item.activity || '').toLowerCase();
+      if (instr.includes('cancel')) return 'CANCELLED';
+    }
+
     const last = items[items.length - 1];
     if (last?.status) return last.status;
   }
