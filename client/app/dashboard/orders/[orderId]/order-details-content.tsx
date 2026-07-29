@@ -468,7 +468,7 @@ export default function OrderDetailsPage({
           </Card>
         )}
 
-        {(order.label_url || order.track_url || liveStatus?.live_status) && (
+        {(order.label_url || order.track_url || liveStatus?.live_status || liveStatus?.history?.length > 0) && (
           <Card className="rounded-xl shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">

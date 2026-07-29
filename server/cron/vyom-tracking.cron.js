@@ -166,8 +166,9 @@ async function pollVyomOrders(prisma) {
     for (const order of orders) {
       try {
         const trackingResult = await vyom.getOrderByTracking(order.tracking_number);
-        if (!trackingResult || trackingResult.error) {
-          logWarn(`[VyomCron] Tracking failed for order #${order.id}: ${trackingResult?.message || 'Unknown error'}`);
+        if (!trackingResult || trackingResult.error || !trackingResult.data) {
+          if (!trackingResult?.data) logWarn(`[VyomCron] No Vyom tracking data for order #${order.id} — skipping`);
+          else logWarn(`[VyomCron] Tracking failed for order #${order.id}: ${trackingResult?.message || 'Unknown error'}`);
           continue;
         }
 

@@ -1943,10 +1943,19 @@ const getLiveOrderStatus = async (req, res) => {
     if (order.is_vyom && order.tracking_number) {
       try {
         const vyomTracking = await vyom.getOrderByTracking(order.tracking_number);
-        if (vyomTracking && !vyomTracking.error) {
-          const vData = vyomTracking?.data || vyomTracking;
+        if (vyomTracking && !vyomTracking.error && vyomTracking.data) {
+          const vData = vyomTracking.data;
+          const details = vData?.tracking_details;
+          let currentStatus = vData.remarks || vData.delivery_status || 'PENDING';
+          if (details) {
+            const items = Array.isArray(details) ? details : [details];
+            for (const item of items) {
+              const instr = (item.instructions || item.activity || '').toLowerCase();
+              if (instr.includes('cancel')) { currentStatus = 'CANCELLED'; break; }
+            }
+          }
           liveStatus = {
-            current_status: vData.remarks || vData.delivery_status || 'PENDING',
+            current_status: currentStatus,
             status: vData.tracking_status || vData.unified_status || 'pending',
             track_url: null,
             estimated_delivery: vData.delivered_on || null,
@@ -1982,6 +1991,23 @@ const getLiveOrderStatus = async (req, res) => {
       where: { order_id: order.id },
       orderBy: { status_date: 'desc' }
     });
+
+    if (!liveStatus && shipmentHistory.length > 0) {
+      liveStatus = {
+        current_status: order.shipment_status,
+        status: order.shipment_status,
+        track_url: null,
+        estimated_delivery: null,
+        courier: order.courier_name || 'VyomXpress',
+        tracking_number: order.tracking_number,
+        activities: shipmentHistory.map(h => ({
+          status: h.shipment_status,
+          status_date: h.status_date,
+          instructions: h.activity,
+          status_location: h.location,
+        })),
+      };
+    }
 
     res.json({
       order: {
@@ -2648,10 +2674,19 @@ const trackOrderByAWB = async (req, res) => {
     if (order.is_vyom && order.tracking_number) {
       try {
         const vyomTracking = await vyom.getOrderByTracking(order.tracking_number);
-        if (vyomTracking && !vyomTracking.error) {
-          const vData = vyomTracking?.data || vyomTracking;
+        if (vyomTracking && !vyomTracking.error && vyomTracking.data) {
+          const vData = vyomTracking.data;
+          const details = vData?.tracking_details;
+          let currentStatus = vData.remarks || vData.delivery_status || 'PENDING';
+          if (details) {
+            const items = Array.isArray(details) ? details : [details];
+            for (const item of items) {
+              const instr = (item.instructions || item.activity || '').toLowerCase();
+              if (instr.includes('cancel')) { currentStatus = 'CANCELLED'; break; }
+            }
+          }
           liveStatus = {
-            current_status: vData.remarks || vData.delivery_status || 'PENDING',
+            current_status: currentStatus,
             status: vData.tracking_status || vData.unified_status || 'pending',
             track_url: null,
             estimated_delivery: vData.delivered_on || null,
@@ -2687,6 +2722,23 @@ const trackOrderByAWB = async (req, res) => {
       where: { order_id: order.id },
       orderBy: { status_date: 'desc' }
     });
+
+    if (!liveStatus && shipmentHistory.length > 0) {
+      liveStatus = {
+        current_status: order.shipment_status,
+        status: order.shipment_status,
+        track_url: null,
+        estimated_delivery: null,
+        courier: order.courier_name || 'VyomXpress',
+        tracking_number: order.tracking_number,
+        activities: shipmentHistory.map(h => ({
+          status: h.shipment_status,
+          status_date: h.status_date,
+          instructions: h.activity,
+          status_location: h.location,
+        })),
+      };
+    }
 
     res.json({
       order: {
