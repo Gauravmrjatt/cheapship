@@ -7,11 +7,21 @@ function log(message) { console.log(message); }
 function logWarn(message) { console.warn(message); }
 function logError(message) { console.error(message); }
 
+function getLatestStatus(vData) {
+  const details = vData?.tracking_details;
+  if (details) {
+    const items = Array.isArray(details) ? details : [details];
+    const last = items[items.length - 1];
+    if (last?.status) return last.status;
+  }
+  return vData?.remarks || vData?.tracking_status || vData?.unified_status || '';
+}
+
 function parseTrackingDetails(trackingDetails) {
   if (!trackingDetails) return [];
   const items = Array.isArray(trackingDetails) ? trackingDetails : [trackingDetails];
   return items.map((scan) => {
-    const scanDate = scan.date || scan.timestamp || scan.created_at || scan.scanned_at || new Date().toISOString();
+    const scanDate = scan.date || scan.timestamp || scan.created_at || scan.scanned_at || scan.status_date_time || scan.status_date || new Date().toISOString();
     const scanActivity = scan.instructions || scan.activity || scan.remarks || scan.status || scan.scan || '';
     const scanLocation = scan.status_location || scan.location || scan.scanned_location || scan.city || '';
     return {
@@ -22,11 +32,10 @@ function parseTrackingDetails(trackingDetails) {
   }).filter((s) => s.activity);
 }
 
-async function processVyomOrder(tx, order, trackingData) {
-  const vData = trackingData?.data || trackingData;
+async function processVyomOrder(tx, order, vData) {
   if (!vData) return;
 
-  const rawStatus = vData.remarks || vData.tracking_status || vData.unified_status || '';
+  const rawStatus = getLatestStatus(vData);
   const newStatus = vyom.mapVyomStatus(rawStatus);
 
   if (newStatus === order.shipment_status) return;
@@ -86,8 +95,7 @@ async function processVyomOrder(tx, order, trackingData) {
   if (scans.length > 0) {
     const existingHistory = await tx.shipmentHistory.findMany({
       where: { order_id: order.id },
-      orderBy: { status_date: 'asc' },
-      take: scans.length,
+      select: { activity: true, status_date: true },
     });
 
     const newEntries = [];
@@ -158,20 +166,19 @@ async function pollVyomOrders(prisma) {
         }
 
         const vData = trackingResult?.data || trackingResult;
-        const rawStatus = vData.remarks || vData.tracking_status || vData.unified_status || '';
+        const rawStatus = getLatestStatus(vData);
         const newStatus = vyom.mapVyomStatus(rawStatus);
 
         if (newStatus !== order.shipment_status) {
           await prisma.$transaction(async (tx) => {
-            await processVyomOrder(tx, order, trackingResult);
+            await processVyomOrder(tx, { ...order, shipment_status: order.shipment_status }, vData);
           });
         } else if (vData.tracking_details) {
           const scans = parseTrackingDetails(vData.tracking_details);
           if (scans.length > 0) {
             const existingHistory = await prisma.shipmentHistory.findMany({
               where: { order_id: order.id },
-              orderBy: { status_date: 'asc' },
-              take: scans.length,
+              select: { activity: true, status_date: true },
             });
             const newEntries = [];
             for (const scan of scans) {

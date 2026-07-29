@@ -160,6 +160,7 @@ const mapVyomStatus = (statusText) => {
     'processing': 'PROCESSING',
     'manifested': 'MANIFESTED',
     'pickup scheduled': 'MANIFESTED',
+    'manifest uploaded': 'MANIFESTED',
     'out for pickup': 'OUT_FOR_PICKUP',
     'pickup done': 'PICKED_UP',
     'picked up': 'PICKED_UP',
@@ -169,8 +170,12 @@ const mapVyomStatus = (statusText) => {
     'out for delivery': 'OUT_FOR_DELIVERY',
     'dispatched': 'DISPATCHED',
     'delivered': 'DELIVERED',
+    'delivered to consignee': 'DELIVERED',
+    'delivered to consignee - code verified delivery': 'DELIVERED',
     'cancelled': 'CANCELLED',
     'canceled': 'CANCELLED',
+    'shipment cancelled by vendor': 'CANCELLED',
+    'seller cancelled the order': 'CANCELLED',
     'rto': 'RTO',
     'rto delivered': 'RTO_DELIVERED',
     'rto_delivered': 'RTO_DELIVERED',
@@ -181,7 +186,18 @@ const mapVyomStatus = (statusText) => {
     'not picked': 'NOT_PICKED',
   };
 
-  return statusMap[s] || 'IN_TRANSIT';
+  if (statusMap[s]) return statusMap[s];
+
+  if (s.includes('cancel')) return 'CANCELLED';
+  if (s.includes('deliver')) return 'DELIVERED';
+  if (s.includes('transit')) return 'IN_TRANSIT';
+  if (s.includes('manifest')) return 'MANIFESTED';
+  if (s.includes('picked')) return 'PICKED_UP';
+  if (s.includes('pickup')) return 'PICKED_UP';
+  if (s.includes('dispatched')) return 'DISPATCHED';
+  if (s.includes('rto')) return 'RTO';
+
+  return 'IN_TRANSIT';
 };
 
 const hashString = (str) => {

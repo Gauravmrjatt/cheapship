@@ -7,6 +7,7 @@ const latexLabelGenerator = require('../utils/latex-label-generator');
 const vyom = require('../utils/vyom');
 const { uploadPdfToCloudinary } = require('../utils/cloudinary');
 const { getReferralChain } = require('../utils/referral.commissions');
+const { toDisplay } = require('../utils/status');
 
 const getMergedCouriers = async (params) => {
   const [srResult, vyomFares] = await Promise.all([
@@ -640,7 +641,7 @@ const createOrder = async (req, res) => {
 
       return res.status(201).json({
         message: draft_id ? 'Draft updated successfully' : 'Order saved as draft successfully',
-        data: draftedOrder
+        data: { ...draftedOrder, status_display: toDisplay(draftedOrder.shipment_status) }
       });
     }
 
@@ -1148,6 +1149,7 @@ const createOrder = async (req, res) => {
 
       res.status(201).json({
         ...sanitizedOrder,
+        status_display: toDisplay(sanitizedOrder.shipment_status),
         wallet_balance: updatedUser?.wallet_balance,
         security_deposit: updatedUser?.security_deposit
       });
@@ -1262,7 +1264,7 @@ const getOrders = async (req, res) => {
       franchise_commission_rate,
       franchise_commission_amount,
       ...sanitizedOrder
-    }) => sanitizedOrder);
+    }) => ({ ...sanitizedOrder, status_display: toDisplay(sanitizedOrder.shipment_status) }));
 
     res.json({
       data: sanitizedOrders,
@@ -1309,7 +1311,7 @@ const getOrderById = async (req, res) => {
       ...sanitizedOrder
     } = order;
 
-    res.json({ ...sanitizedOrder, productValue, products });
+    res.json({ ...sanitizedOrder, status_display: toDisplay(sanitizedOrder.shipment_status), productValue, products });
   } catch (error) {
     console.error(error);
     if (error.code === 'P2023') {
@@ -1347,7 +1349,8 @@ const cancelOrder = async (req, res) => {
     if (!isCancellable) {
       return res.status(400).json({
         message: 'Order can only be cancelled if status is PENDING, PROCESSING, or MANIFESTED',
-        current_status: order.shipment_status
+        current_status: order.shipment_status,
+        status_display: toDisplay(order.shipment_status)
       });
     }
 
@@ -1487,7 +1490,7 @@ const cancelOrder = async (req, res) => {
 
     res.json({
       message: 'Order cancelled successfully and amount refunded to wallet',
-      order: sanitizedOrder
+      order: { ...sanitizedOrder, status_display: toDisplay(sanitizedOrder.shipment_status) }
     });
   } catch (error) {
     console.error(error);
@@ -1903,6 +1906,7 @@ const getOrderTracking = async (req, res) => {
       order: {
         id: order.id,
         shipment_status: order.shipment_status,
+        status_display: toDisplay(order.shipment_status),
         tracking_number: order.tracking_number,
         courier_name: order.courier_name
       },
@@ -1983,6 +1987,7 @@ const getLiveOrderStatus = async (req, res) => {
       order: {
         id: order.id,
         shipment_status: order.shipment_status,
+        status_display: toDisplay(order.shipment_status),
         shiprocket_order_id: order.shiprocket_order_id,
         shiprocket_shipment_id: order.shiprocket_shipment_id,
         tracking_number: order.tracking_number,
@@ -2468,7 +2473,7 @@ const assignOrderAWB = async (req, res) => {
         message: 'AWB assigned successfully',
         awb_code: awbData.awb_code,
         pickup_scheduled_date: awbData.pickup_scheduled_date,
-        order: updatedOrder
+        order: { ...updatedOrder, status_display: toDisplay(updatedOrder.shipment_status) }
       });
     }
 
@@ -2687,6 +2692,7 @@ const trackOrderByAWB = async (req, res) => {
       order: {
         id: order.id,
         shipment_status: order.shipment_status,
+        status_display: toDisplay(order.shipment_status),
         tracking_number: order.tracking_number,
         courier_name: order.courier_name,
         label_url: order.label_url,

@@ -1,3 +1,5 @@
+const { toDisplay } = require('../utils/status');
+
 const getDashboardStats = async (req, res) => {
   const prisma = req.app.locals.prisma;
   const userId = req.user.id;
@@ -123,7 +125,18 @@ const getDashboardStats = async (req, res) => {
       }
     });
 
-    const graphData = Object.values(graphDataMap).sort((a, b) => a.date.localeCompare(b.date));
+    const graphData = Object.values(graphDataMap).sort((a, b) => a.date.localeCompare(b.date)).map(entry => {
+      const converted = { date: entry.date, TOTAL: entry.TOTAL };
+      const keyMap = {
+        'DELIVERED': 'Delivered', 'PENDING': 'Pending', 'CANCELLED': 'Cancelled',
+        'IN_TRANSIT': 'In Transit', 'DISPATCHED': 'Dispatched', 'MANIFESTED': 'Manifested',
+        'RTO': 'RTO In Transit', 'NOT_PICKED': 'Not Picked'
+      };
+      for (const [oldKey, newKey] of Object.entries(keyMap)) {
+        if (entry[oldKey] !== undefined) converted[newKey] = entry[oldKey];
+      }
+      return converted;
+    });
 
     const monthlyGrowthRaw = lastMonthOrders > 0 ? ((totalOrders - lastMonthOrders) / lastMonthOrders) * 100 : 100;
     const monthlyGrowth = `${monthlyGrowthRaw > 0 ? '+' : ''}${monthlyGrowthRaw.toFixed(1)}%`;
