@@ -218,7 +218,7 @@ function getValue(obj, ...keys) {
   return undefined;
 }
 
-const normalizeVyomFares = (vyomFares) => {
+const normalizeVyomFares = (vyomFares, actualWeight) => {
   if (!vyomFares || !Array.isArray(vyomFares)) return [];
   return vyomFares
     .filter((f) => !f.code && !f.error && !f.error_code)
@@ -255,7 +255,7 @@ const normalizeVyomFares = (vyomFares) => {
       handling_fee: handlingFee,
       etd: tat ? new Date(Date.now() + tat * 86400000).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
       estimated_delivery_days: String(tat || ''),
-      charge_weight: chargedWeight ? chargedWeight / 1000 : null,
+      charge_weight: actualWeight || (chargedWeight ? chargedWeight / 1000 : null),
       rating: 4.0,
       is_surface: !isExpress,
       mode: isExpress ? 1 : 0,

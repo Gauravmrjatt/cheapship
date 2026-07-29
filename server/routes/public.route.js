@@ -88,7 +88,7 @@ const getPublicRates = async (req, res) => {
       });
     }
 
-    const vyomCouriers = vyom.normalizeVyomFares(vyomFares?.data);
+    const vyomCouriers = vyom.normalizeVyomFares(vyomFares?.data, weight);
     const allCouriers = [...shiprocketCouriers, ...vyomCouriers];
 
     const filteredCourierIds = [217];
