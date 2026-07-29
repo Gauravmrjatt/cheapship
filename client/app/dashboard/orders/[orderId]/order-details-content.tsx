@@ -82,7 +82,8 @@ export default function OrderDetailsPage({
 }) {
   const { orderId } = React.use(params);
   const { data: order, isLoading, isError, refetch } = useOrder(orderId);
-  const { data: liveStatus, isLoading: liveStatusLoading, refetch: refetchLiveStatus } = useLiveOrderStatus(orderId, !!order?.shiprocket_shipment_id);
+  const enableTracking = !!(order?.shiprocket_shipment_id || (order?.is_vyom && order?.tracking_number));
+  const { data: liveStatus, isLoading: liveStatusLoading, refetch: refetchLiveStatus } = useLiveOrderStatus(orderId, enableTracking);
 
   const assignAWBMutation = useAssignAWB();
   const schedulePickupMutation = useSchedulePickup();
@@ -467,7 +468,7 @@ export default function OrderDetailsPage({
           </Card>
         )}
 
-        {(order.label_url || order.track_url || liveStatus?.live_status) && (
+        {(order.label_url || order.track_url || liveStatus?.live_status || liveStatus?.history?.length > 0) && (
           <Card className="rounded-xl shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
