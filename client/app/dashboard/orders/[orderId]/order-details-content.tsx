@@ -82,7 +82,8 @@ export default function OrderDetailsPage({
 }) {
   const { orderId } = React.use(params);
   const { data: order, isLoading, isError, refetch } = useOrder(orderId);
-  const { data: liveStatus, isLoading: liveStatusLoading, refetch: refetchLiveStatus } = useLiveOrderStatus(orderId, !!order?.shiprocket_shipment_id);
+  const enableTracking = !!(order?.shiprocket_shipment_id || (order?.is_vyom && order?.tracking_number));
+  const { data: liveStatus, isLoading: liveStatusLoading, refetch: refetchLiveStatus } = useLiveOrderStatus(orderId, enableTracking);
 
   const assignAWBMutation = useAssignAWB();
   const schedulePickupMutation = useSchedulePickup();
