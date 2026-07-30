@@ -62,7 +62,7 @@ const getPublicRates = async (req, res) => {
         ? vyom.getFare({
             receiverPincode: delivery_postcode,
             originPincode: pickup_postcode,
-            weight,
+            weight: parseFloat(weight) * 1000,
             height,
             width: breadth,
             length,

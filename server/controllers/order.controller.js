@@ -10,6 +10,7 @@ const { getReferralChain } = require('../utils/referral.commissions');
 const { toDisplay } = require('../utils/status');
 
 const getMergedCouriers = async (params) => {
+  console.log('params', params);
   const [srResult, vyomFares] = await Promise.all([
     getServiceability(params).catch((e) => {
       console.error('Shiprocket serviceability error:', e.message);
@@ -21,7 +22,7 @@ const getMergedCouriers = async (params) => {
       height: params.height || params.breadth || 10,
       width: params.breadth || 10,
       length: params.length || 10,
-      weight: params.weight,
+      weight: parseFloat(params.weight) * 1000,
       payment_mode: parseInt(params.cod) === 1 ? 'cod' : 'pre-paid',
       ...(parseInt(params.cod) === 1 ? { codAmount: params.declared_value } : {}),
     }).catch((e) => {
