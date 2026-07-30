@@ -506,7 +506,7 @@ const createOrder = async (req, res) => {
               pickup_location: pickup_location || `Pickup_${Date.now()}`,
               name: pickup_address.name,
               phone: parseInt(pickup_address.phone, 10),
-              email: pickup_address.email || '',
+              email: 'cashbackwallah1@gmail.com' || pickup_address.email || '',
               address: pickup_address.address,
               city: pickup_address.city,
               state: pickup_address.state,
@@ -566,7 +566,7 @@ const createOrder = async (req, res) => {
               update: {
                 name: pickup_address.name,
                 phone: pickup_address.phone,
-                email: pickup_address.email,
+                email: 'cashbackwallah1@gmail.com' || pickup_address.email,
                 address: pickup_address.address,
                 city: pickup_address.city,
                 state: pickup_address.state,
@@ -577,7 +577,7 @@ const createOrder = async (req, res) => {
               update: {
                 name: receiver_address.name,
                 phone: receiver_address.phone,
-                email: receiver_address.email,
+                email: 'cashbackwallah1@gmail.com' || receiver_address.email || '',
                 address: receiver_address.address,
                 city: receiver_address.city,
                 state: receiver_address.state,
@@ -614,7 +614,7 @@ const createOrder = async (req, res) => {
               create: {
                 name: pickup_address.name,
                 phone: pickup_address.phone,
-                email: pickup_address.email,
+                email: 'cashbackwallah1@gmail.com' || pickup_address.email || '',
                 address: pickup_address.address,
                 city: pickup_address.city,
                 state: pickup_address.state,
@@ -625,7 +625,7 @@ const createOrder = async (req, res) => {
               create: {
                 name: receiver_address.name,
                 phone: receiver_address.phone,
-                email: receiver_address.email,
+                email: 'cashbackwallah1@gmail.com' || receiver_address.email || '',
                 address: receiver_address.address,
                 city: receiver_address.city,
                 state: receiver_address.state,
@@ -793,7 +793,7 @@ const createOrder = async (req, res) => {
               user_id: userId,
               name: pickup_address.name,
               phone: pickup_address.phone,
-              email: pickup_address.email,
+              email: 'cashbackwallah1@gmail.com' || pickup_address.email || '',
               complete_address: pickup_address.address,
               city: pickup_address.city,
               state: pickup_address.state,
@@ -819,7 +819,7 @@ const createOrder = async (req, res) => {
               user_id: userId,
               name: receiver_address.name,
               phone: receiver_address.phone,
-              email: receiver_address.email,
+              email: 'cashbackwallah1@gmail.com' || receiver_address.email || '',
               complete_address: receiver_address.address,
               city: receiver_address.city,
               state: receiver_address.state,
@@ -895,7 +895,7 @@ const createOrder = async (req, res) => {
           billing_pincode: pickup_address.pincode,
           billing_state: pickup_address.state,
           billing_country: pickup_address.country || 'India',
-          billing_email: pickup_address.email,
+          billing_email: 'cashbackwallah1@gmail.com' || pickup_address.email || '',
           billing_phone: pickup_address.phone,
           shipping_is_billing: false,
           shipping_customer_name: receiver_address.name,
@@ -905,7 +905,7 @@ const createOrder = async (req, res) => {
           shipping_pincode: receiver_address.pincode,
           shipping_state: receiver_address.state,
           shipping_country: receiver_address.country || 'India',
-          shipping_email: receiver_address.email,
+          shipping_email: 'cashbackwallah1@gmail.com' || receiver_address.email || '',
           shipping_phone: receiver_address.phone,
           order_items: products && products.length > 0
             ? products.map((item, idx) => ({
@@ -950,7 +950,7 @@ const createOrder = async (req, res) => {
               phone: receiver_address.phone,
               country: receiver_address.country || 'India',
               address_type: 'Home',
-              email: receiver_address.email || '',
+              email: 'cashbackwallah1@gmail.com' || receiver_address.email || '',
             },
             ship_from: {
               name: pickup_address.name,
@@ -961,7 +961,7 @@ const createOrder = async (req, res) => {
               phone: pickup_address.phone,
               country: pickup_address.country || 'India',
               address_type: 'Office',
-              email: pickup_address.email || '',
+              email: 'cashbackwallah1@gmail.com' || pickup_address.email || '',
             },
             ...(vyomWarehouseId ? { warehouse_id: vyomWarehouseId } : {}),
             package_products: products && products.length > 0
