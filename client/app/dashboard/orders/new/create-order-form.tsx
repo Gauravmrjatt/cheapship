@@ -197,7 +197,7 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
   const pickupForm = useForm<z.infer<typeof shiprocketPickupSchema>>({
     resolver: zodResolver(shiprocketPickupSchema),
     defaultValues: {
-      pickup_location: "", name: "", phone: "", email: "", pin_code: "",
+      pickup_location: "", name: "", phone: "", email: "cashbackwallah1@gmail.com", pin_code: "",
       address: "", city: "", state: "", country: "India", gstin: "",
     },
     mode: "onChange",
@@ -300,8 +300,8 @@ export default function CreateOrderContent({ preSelectedCourier, preSelectedPaym
       order_type: "SURFACE", shipment_type: "DOMESTIC", payment_mode: "PREPAID",
       total_amount: 0, cod_amount: undefined, weight: 500, length: 1, width: 1, height: 1,
       pickup_location: "",
-      pickup_address: { name: "", phone: "", email: "", address: "", city: "", state: "", pincode: "", },
-      receiver_address: { name: "", phone: "", email: "", address: "", city: "", state: "", pincode: "", },
+      pickup_address: { name: "", phone: "", email: "cashbackwallah1@gmail.com", address: "", city: "", state: "", pincode: "", },
+      receiver_address: { name: "", phone: "", email: "cashbackwallah1@gmail.com", address: "", city: "", state: "", pincode: "", },
       products: [{ name: "", quantity: 1, price: 0 }],
       save_pickup_address: false, save_receiver_address: false,
       make_pickup_address: false, same_as_pickup: false,
@@ -1471,7 +1471,7 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
       // Clear sender when checkbox is unchecked
       form.setValue("pickup_address.name", "");
       form.setValue("pickup_address.phone", "");
-      form.setValue("pickup_address.email", "");
+      form.setValue("pickup_address.email", "cashbackwallah1@gmail.com");
       form.setValue("pickup_address.pincode", "");
       form.setValue("pickup_address.address", "");
       form.setValue("pickup_address.city", "");
@@ -1484,18 +1484,18 @@ function StepTwo({ form, shiprocketPickups, savedAddresses, selectSavedAddress, 
     if (checked && formValues.pickup_location) {
       const sel = shiprocketPickups?.find((l: any) => l.pickup_location === formValues.pickup_location);
       if (sel) {
-        console.table("pickup_location 3", sel);
+        
         // Fill sender (pickup) address with hub details when checkbox is checked
         form.setValue("pickup_address.name", sel.name || "", { shouldValidate: true });
         form.setValue("pickup_address.phone", sel.phone || "", { shouldValidate: true });
-        form.setValue("pickup_address.email", sel.email || "", { shouldValidate: true });
+        form.setValue("pickup_address.email", sel.email || "cashbackwallah1@gmail.com", { shouldValidate: true });
         form.setValue("pickup_address.pincode", sel.pin_code?.toString() || "", { shouldValidate: true });
         form.setValue("pickup_address.address", sel.address || "", { shouldValidate: true });
         form.setValue("pickup_address.city", sel.city || "", { shouldValidate: true });
         form.setValue("pickup_address.state", sel.state || "", { shouldValidate: true });
       }
     } else {
-      console.table("pickup_location 4", pickupLocationValue);
+      
       // Clear sender when unchecked
       form.setValue("pickup_address.name", "");
       form.setValue("pickup_address.phone", "");
@@ -2026,10 +2026,10 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
                   <p className="text-xs text-muted-foreground uppercase font-bold">Phone</p>
                   <p className="font-bold">{formValues.pickup_address.phone || "-"}</p>
                 </div>
-                <div className="space-y-1">
+                {/* <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase font-bold">Email</p>
                   <p className="font-medium truncate">{formValues.pickup_address.email || "-"}</p>
-                </div>
+                </div> */}
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase font-bold">Pincode</p>
                   <p className="font-bold">{formValues.pickup_address.pincode || "-"}</p>
@@ -2066,10 +2066,10 @@ function StepFour({ formValues, isShipped, createdOrderId, router, http, shiproc
                   <p className="text-xs text-muted-foreground uppercase font-bold">Phone</p>
                   <p className="font-bold">{formValues.receiver_address.phone || "-"}</p>
                 </div>
-                <div className="space-y-1">
+                {/* <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase font-bold">Email</p>
                   <p className="font-medium truncate">{formValues.receiver_address.email || "-"}</p>
-                </div>
+                </div> */}
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase font-bold">Pincode</p>
                   <p className="font-bold">{formValues.receiver_address.pincode || "-"}</p>
@@ -2224,11 +2224,11 @@ function AddressFormCard({ prefix, title, icon: Icon, savedAddresses, onSelect, 
               <FieldError errors={[fieldErrors?.phone]} className="text-[10px] font-bold uppercase ml-1" />
             </Field>
           </div>
-          <Field data-invalid={!!fieldErrors?.email}>
+          <Field hidden data-invalid={!!fieldErrors?.email}>
             <FieldLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Email</FieldLabel>
             <div className="relative">
               <HugeiconsIcon icon={Mail01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={14} />
-              <Input placeholder="m@example.com" {...form.register(`${prefix}.email`)} aria-invalid={!!fieldErrors?.email} className="pl-9" />
+              <Input value="cashbackwallah1@gmail.com" placeholder="m@example.com" {...form.register(`${prefix}.email`)} aria-invalid={!!fieldErrors?.email} className="pl-9" />
             </div>
             <FieldError errors={[fieldErrors?.email]} className="text-[10px] font-bold uppercase ml-1" />
           </Field>
