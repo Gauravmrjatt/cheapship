@@ -527,7 +527,7 @@ export default function OrderDetailsPage({
               <div>
                 <p className="font-bold">{order.order_pickup_address.name}</p>
                 <p className="text-sm text-muted-foreground">{order.order_pickup_address.phone}</p>
-                {order.order_pickup_address.email && <p className="text-sm text-muted-foreground">{order.order_pickup_address.email}</p>}
+                {/* {order.order_pickup_address.email && <p className="text-sm text-muted-foreground">{order.order_pickup_address.email}</p>} */}
               </div>
               <Separator />
               <div className="text-sm">
@@ -547,7 +547,7 @@ export default function OrderDetailsPage({
               <div>
                 <p className="font-bold">{order.order_receiver_address.name}</p>
                 <p className="text-sm text-muted-foreground">{order.order_receiver_address.phone}</p>
-                {order.order_receiver_address.email && <p className="text-sm text-muted-foreground">{order.order_receiver_address.email}</p>}
+                {/* {order.order_receiver_address.email && <p className="text-sm text-muted-foreground">{order.order_receiver_address.email}</p>} */}
               </div>
               <Separator />
               <div className="text-sm">
