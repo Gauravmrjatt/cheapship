@@ -1,11 +1,6 @@
 const map = new Map();
 
 const NINE_DAYS = 9 * 24 * 60 * 60 * 1000; // ms
-map.set("token", {
-  value:
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjExMzE1MzgwLCJzb3VyY2UiOiJzci1hdXRoLWludCIsImV4cCI6MTc4NTkyMzAxMywianRpIjoieWY1amxCT21jeXFGaUhvTyIsImlhdCI6MTc4NTA1OTAxMywiaXNzIjoiaHR0cHM6Ly9zci1hdXRoLnNoaXByb2NrZXQuaW4vYXV0aG9yaXplL3VzZXIiLCJuYmYiOjE3ODUwNTkwMTMsImNpZCI6NTY1MTI5NCwidGMiOjM2MCwidmVyYm9zZSI6ZmFsc2UsInZlbmRvcl9pZCI6MCwidmVuZG9yX2NvZGUiOiIifQ.LUAHJlPrnPUYpUsX3nMNeyt1ooRWUVd1afDr5r6fu1s",
-  expiresAt: Date.now() + NINE_DAYS,
-});
 
 const getShiprocketToken = async () => {
   // Check if token exists and is not expired
