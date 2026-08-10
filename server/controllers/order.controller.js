@@ -1345,6 +1345,16 @@ const cancelOrder = async (req, res) => {
       return res.status(403).json({ message: 'You are not authorized to cancel this order' });
     }
 
+    // Vyom orders cannot be cancelled once created (only drafts can be deleted)
+    if (order.is_vyom && !order.is_draft) {
+      return res.status(400).json({
+        message: 'Vyom orders cannot be cancelled',
+        code: 'VYOM_CANCELLATION_NOT_ALLOWED',
+        current_status: order.shipment_status,
+        status_display: toDisplay(order.shipment_status)
+      });
+    }
+
     // Allow cancellation if status is PENDING, PROCESSING, MANIFESTED or if it's a draft
     const isCancellable = (order.shipment_status === 'PENDING' || order.shipment_status === 'PROCESSING' || order.shipment_status === 'MANIFESTED' || order.is_draft);
 

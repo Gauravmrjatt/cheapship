@@ -188,7 +188,7 @@ export default function OrderDetailsPage({
   const isPending = order.shipment_status === "PENDING";
   const isProcessing = order.shipment_status === "PROCESSING";
   const isManifested = order.shipment_status === "MANIFESTED";
-  const isCancellable = (isPending || isProcessing || isManifested) || order.is_draft;
+  const isCancellable = order.is_draft || (!order.is_vyom && (isPending || isProcessing || isManifested));
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-700">
