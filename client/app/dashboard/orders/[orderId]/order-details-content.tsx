@@ -186,8 +186,9 @@ export default function OrderDetailsPage({
   const isCancelled = order.shipment_status === "CANCELLED";
   const hasAWB = !!order.tracking_number;
   const isPending = order.shipment_status === "PENDING";
+  const isProcessing = order.shipment_status === "PROCESSING";
   const isManifested = order.shipment_status === "MANIFESTED";
-  const isCancellable = (isPending || isManifested) || order.is_draft;
+  const isCancellable = (isPending || isProcessing || isManifested) || order.is_draft;
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 space-y-8 animate-in fade-in duration-700">
