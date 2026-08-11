@@ -37,7 +37,9 @@ async function checkDbConnection() {
   }
 }
 
-checkDbConnection();
+// Seed blocked users cache (survives server restarts)
+const { seed: seedBlockedUsers } = require('./utils/blockedUsers');
+checkDbConnection().then(seedBlockedUsers);
 
 // Initialize cron jobs
 const { initializeCronJobs } = require('./cron/security-refund.cron');

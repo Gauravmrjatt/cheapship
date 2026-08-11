@@ -3,6 +3,7 @@ const { validationResult } = require('express-validator');
 const otpService = require('../services/otp.service');
 const emailService = require('../services/email.service');
 const moment = require('moment-timezone');
+const { block, unblock } = require('../utils/blockedUsers');
 
 const sendAdminForgotPasswordOtp = async (req, res) => {
   const { email: rawEmail } = req.body;
@@ -375,6 +376,12 @@ const toggleUserStatus = async (req, res) => {
       data: { is_active },
       select: { id: true, is_active: true }
     });
+
+    if (user.is_active) {
+      unblock(user.id);
+    } else {
+      block(user.id);
+    }
 
     res.json(user);
   } catch (error) {

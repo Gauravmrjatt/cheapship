@@ -25,6 +25,7 @@
     "jsonwebtoken": "^9.0.3",
     "moment-timezone": "^0.6.1",
     "morgan": "~1.9.1",
+    "node-cache": "^5.1.2",
     "node-cron": "^3.0.3",
     "node-fetch": "^2.7.0",
     "node-latex": "^3.0.0",

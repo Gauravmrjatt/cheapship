@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { isBlocked } = require('../utils/blockedUsers');
 
 module.exports = async function (req, res, next) {
   // Get token from header
@@ -13,13 +14,17 @@ module.exports = async function (req, res, next) {
     const decoded = jwt.verify(token.split(' ')[1], process.env.JWT_SECRET);
     req.user = decoded.user;
 
+    if (req.user && isBlocked(req.user.id)) {
+      return res.status(401).json({ message: 'Your account is deactivated. Please contact support.' });
+    }
+
     const prisma = req.app.locals.prisma;
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { user_type: true }
+      select: { user_type: true, is_active: true }
     });
 
-    if (!user || user.user_type !== 'ADMIN') {
+    if (!user || user.user_type !== 'ADMIN' || !user.is_active) {
       return res.status(403).json({ message: 'Access denied. Admin only.' });
     }
 
